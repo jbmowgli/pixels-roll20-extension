@@ -16,15 +16,15 @@
       window.pixelsModifier = '0';
     }
 
-    // Update header title to show no modifier selected
+    // Update header title to show standard title
     if (modifierBox) {
       const headerTitle = modifierBox.querySelector('.pixels-title');
       if (headerTitle) {
         const logoImg = headerTitle.querySelector('.pixels-logo');
         if (logoImg) {
-          headerTitle.innerHTML = `<img src="${logoImg.src}" alt="Pixels" class="pixels-logo"> Pixels Modifier Box`;
+          headerTitle.innerHTML = `<img src="${logoImg.src}" alt="Pixels" class="pixels-logo"> Modifiers`;
         } else {
-          headerTitle.textContent = 'Pixels Modifier Box';
+          headerTitle.textContent = 'Modifiers';
         }
       }
     }
@@ -93,7 +93,7 @@
     newRow.innerHTML = `
             <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
             <input type="radio" name="modifier-select" value="${rowCounter}" class="modifier-radio" id="mod-${rowCounter}">
-            <input type="text" class="modifier-name" placeholder="Modifier ${rowCounter + 1}" value="Modifier ${rowCounter + 1}" data-index="${rowCounter}">
+            <input type="text" class="modifier-name" placeholder="Modifier" value="Modifier" data-index="${rowCounter}">
             <input type="number" class="modifier-value" value="0" min="-99" max="99" data-index="${rowCounter}">
             <button class="remove-row-btn" type="button">×</button>
         `;
@@ -302,21 +302,15 @@
         // Save the modifier rows state to localStorage
         saveModifierRows(modifierBox);
 
-        // Update the header title to show the selected modifier
+        // Update the header title to show standard title
         const headerTitle = modifierBox.querySelector('.pixels-title');
         if (headerTitle) {
-          const valueText =
-            modifierValue === '0'
-              ? '±0'
-              : modifierValue > 0
-                ? `+${modifierValue}`
-                : modifierValue;
           // Find the logo image and preserve it, then update the text content
           const logoImg = headerTitle.querySelector('.pixels-logo');
           if (logoImg) {
-            headerTitle.innerHTML = `<img src="${logoImg.src}" alt="Pixels" class="pixels-logo"> ${modifierName} (${valueText})`;
+            headerTitle.innerHTML = `<img src="${logoImg.src}" alt="Pixels" class="pixels-logo"> Modifiers`;
           } else {
-            headerTitle.textContent = `${modifierName} (${valueText})`;
+            headerTitle.textContent = 'Modifiers';
           }
         }
 
@@ -352,7 +346,7 @@
 
         if (nameInput && valueInput) {
           rowsData.push({
-            name: nameInput.value || `Modifier ${domIndex + 1}`,
+            name: nameInput.value || 'Modifier',
             value: valueInput.value || '0',
             originalIndex: radio ? radio.value : domIndex.toString() // Store original index for reference
           });
@@ -410,7 +404,7 @@
         newRow.innerHTML = `
           <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
           <input type="radio" name="modifier-select" value="${index}" class="modifier-radio" id="mod-${index}">
-          <input type="text" class="modifier-name" placeholder="Modifier ${index + 1}" value="${rowData.name}" data-index="${index}">
+          <input type="text" class="modifier-name" placeholder="Modifier" value="${rowData.name}" data-index="${index}">
           <input type="number" class="modifier-value" value="${rowData.value}" min="-99" max="99" data-index="${index}">
           <button class="remove-row-btn" type="button">×</button>
         `;

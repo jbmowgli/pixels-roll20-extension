@@ -2,7 +2,7 @@
 #pixels-modifier-box {
   position: fixed !important;
   z-index: 1000000 !important;
-  min-width: 300px !important;
+  min-width: 250px !important;
   width: 400px;
   min-height: 120px !important;
   border-radius: 8px !important;
@@ -165,12 +165,16 @@
 #pixels-modifier-box .modifier-name,
 #pixels-modifier-box .modifier-row input[type='text'] {
   flex: 1 !important;
+  min-width: 80px !important;
   padding: 6px 8px !important;
   border-radius: 4px !important;
   font-size: 13px !important;
   color: #ffffff !important;
   background-color: #333333 !important;
   border: 1px solid #555555 !important;
+  word-wrap: break-word !important;
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
 }
 
 #pixels-modifier-box .modifier-value,

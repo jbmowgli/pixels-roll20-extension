@@ -120,7 +120,7 @@ describe('ModifierBox Main Module', () => {
       expect(removeBtn).toBeTruthy();
 
       expect(radio.checked).toBe(true);
-      expect(nameInput.value).toBe('Modifier 1');
+      expect(nameInput.value).toBe('Modifier');
       expect(valueInput.value).toBe('0');
     });
 
@@ -146,9 +146,9 @@ describe('ModifierBox Main Module', () => {
 
       expect(element).toBe(existingBox);
 
-      // Check that "D20" was updated to "Modifier 1"
+      // Check that "D20" was updated to "Modifier"
       const nameInput = element.querySelector('.modifier-name');
-      expect(nameInput.value).toBe('Modifier 1');
+      expect(nameInput.value).toBe('Modifier');
     });
 
     test('should call all component setup methods', async () => {

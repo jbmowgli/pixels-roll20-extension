@@ -32,8 +32,8 @@
   let pixels = [];
 
   // Roll formulas
-  let pixelsFormulaWithModifier = '&{template:default} {{name=#modifier_name}} {{Result=[[#face_value + #modifier]]}}';
-  let pixelsFormulaSimple = '&{template:default} {{name=Result}} {{Pixel Dice=[[#result]]}}';
+  let pixelsFormulaWithModifier = '&{template:default} {{name=#modifier_name (+#modifier)}} {{Pixel=#face_value}} {{Result=[[#face_value + #modifier]]}}';
+  let pixelsFormulaSimple = '&{template:default} {{name=Pixel Roll}} {{Pixel=#face_value}} {{Result=[[#result]]}}';
 
   // Pixel class - represents a connected Pixels die
   class Pixel {
@@ -197,12 +197,12 @@
 
         // Add critical hit message if face value is 20
         if (diceValue === 20 && isModifierBoxVisible) {
-          formula = formula.replace('{{Result=[[#face_value + #modifier]]}}', '{{<span style="color: #ff4444; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">CRITICAL!</span>}} {{Result=[[#face_value + #modifier]]}}');
+          formula = formula.replace('{{Pixel=#face_value}}', '{{<span style="color: #ff4444; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">CRITICAL!</span>}} {{Pixel=#face_value}}');
         }
         
         // Add fumble message if face value is 1
         if (diceValue === 1 && isModifierBoxVisible) {
-          formula = formula.replace('{{Result=[[#face_value + #modifier]]}}', '{{<span style="color: #888888; font-size: 16px; font-style: italic; opacity: 0.7;">FUMBLE!</span>}} {{Result=[[#face_value + #modifier]]}}');
+          formula = formula.replace('{{Pixel=#face_value}}', '{{<span style="color: #888888; font-size: 16px; font-style: italic; opacity: 0.7;">FUMBLE!</span>}} {{Pixel=#face_value}}');
         }
 
         log('Formula before replacement: ' + formula);
@@ -315,6 +315,9 @@
           pixel.setNotifyCharacteristic(notify);
           sendTextToExtension('Just connected to ' + pixel.name);
           pixels.push(pixel);
+
+          // Update connection status in popup
+          sendStatusToExtension();
 
           // Start connection monitoring
           startConnectionMonitoring(pixel);

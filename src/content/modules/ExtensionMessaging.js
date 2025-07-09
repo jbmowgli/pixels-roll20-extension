@@ -41,9 +41,7 @@
       const status = connectedPixels.length == 1 ? 'connected' : 'disconnected';
       sendTextToExtension(`1 Pixel ${status}`);
     } else {
-      sendTextToExtension(
-        `${connectedPixels.length}/${totalPixels} Pixels connected`
-      );
+      sendTextToExtension(`${connectedPixels.length} Pixels connected`);
     }
   }
 

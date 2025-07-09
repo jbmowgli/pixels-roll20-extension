@@ -81,12 +81,12 @@
         firstNameInput &&
         (firstNameInput.value === 'None' || firstNameInput.value === 'D20')
       ) {
-        firstNameInput.value = 'Modifier 1';
-        firstNameInput.placeholder = 'Modifier 1';
+        firstNameInput.value = 'Modifier';
+        firstNameInput.placeholder = 'Modifier';
 
         // Update global variable too
         if (typeof window.pixelsModifierName !== 'undefined') {
-          window.pixelsModifierName = 'Modifier 1';
+          window.pixelsModifierName = 'Modifier';
         }
       }
 
@@ -173,7 +173,7 @@
     modifierBox.innerHTML = `
             <div class="pixels-header">
                 <span class="pixels-title">
-                    <img src="${logoUrl}" alt="Pixels" class="pixels-logo"> Dice Modifiers
+                    <img src="${logoUrl}" alt="Pixels" class="pixels-logo"> Modifiers
                 </span>
                 <div class="pixels-controls">
                     <button class="add-modifier-btn" type="button" title="Add Row">Add</button>
@@ -185,7 +185,7 @@
                 <div class="modifier-row">
                     <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
                     <input type="radio" name="modifier-select" value="0" class="modifier-radio" id="mod-0" checked>
-                    <input type="text" class="modifier-name" placeholder="Modifier 1" value="Modifier 1" data-index="0">
+                    <input type="text" class="modifier-name" placeholder="Modifier" value="Modifier" data-index="0">
                     <input type="number" class="modifier-value" value="0" min="-99" max="99" data-index="0">
                     <button class="remove-row-btn" type="button">×</button>
                 </div>

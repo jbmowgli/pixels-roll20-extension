@@ -21,7 +21,6 @@
     "48": "assets/images/logo-128.png",
     "128": "assets/images/logo-128.png"
   },
-  "options_page": "src/components/options/options.html",
   "content_scripts": [
     {
       "matches": [

@@ -189,8 +189,8 @@ describe('ModifierBox Row Manager', () => {
 
       expect(radio.value).toBe(initialCounter.toString());
       expect(radio.id).toBe(`mod-${initialCounter}`);
-      expect(nameInput.value).toBe(`Modifier ${initialCounter + 1}`);
-      expect(nameInput.placeholder).toBe(`Modifier ${initialCounter + 1}`);
+      expect(nameInput.value).toBe('Modifier');
+      expect(nameInput.placeholder).toBe('Modifier');
       expect(valueInput.value).toBe('0');
       expect(removeBtn.textContent).toBe('×');
     });
@@ -499,7 +499,7 @@ describe('ModifierBox Row Manager', () => {
 
       // Verify title is reset
       const title = mockBox.querySelector('.pixels-title');
-      expect(title.textContent).toBe('Pixels Modifier Box');
+      expect(title.textContent).toBe('Modifiers');
     });
   });
 
@@ -669,7 +669,7 @@ describe('ModifierBox Row Manager', () => {
       window.ModifierBoxRowManager.updateSelectedModifier(mockModifierBox);
 
       const headerTitle = mockModifierBox.querySelector('.pixels-title');
-      expect(headerTitle.innerHTML).toContain('Strength Bonus (+3)');
+      expect(headerTitle.innerHTML).toContain('Modifiers');
       expect(headerTitle.innerHTML).toContain('pixels-logo');
     });
 
@@ -693,7 +693,7 @@ describe('ModifierBox Row Manager', () => {
         window.ModifierBoxRowManager.updateSelectedModifier(mockModifierBox);
 
         const headerTitle = mockModifierBox.querySelector('.pixels-title');
-        expect(headerTitle.innerHTML).toContain(`Test (${expected})`);
+        expect(headerTitle.innerHTML).toContain('Modifiers');
       });
     });
 
@@ -712,7 +712,7 @@ describe('ModifierBox Row Manager', () => {
 
       window.ModifierBoxRowManager.updateSelectedModifier(mockModifierBox);
 
-      expect(headerTitle.textContent).toBe('Test (+2)');
+      expect(headerTitle.textContent).toBe('Modifiers');
     });
 
     test('should call sendMessageToExtension if available', () => {
