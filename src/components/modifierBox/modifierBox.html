@@ -1,0 +1,51 @@
+<!-- ModifierBox HTML Template -->
+<div
+  id="pixels-modifier-box"
+  data-testid="pixels-modifier-box"
+  class="PIXELS_EXTENSION_BOX_FIND_ME"
+>
+  <div class="pixels-header">
+    <span class="pixels-title">
+      <img src="{{logoUrl}}" alt="Pixels" class="pixels-logo" /> Dice Modifiers
+    </span>
+    <div class="pixels-controls">
+      <button class="add-modifier-btn" type="button" title="Add Row">
+        Add
+      </button>
+      <button class="clear-all-btn" type="button" title="Clear All">
+        Clear All
+      </button>
+      <button class="pixels-minimize" title="Minimize">−</button>
+    </div>
+  </div>
+  <div class="pixels-content">
+    <div class="modifier-row">
+      <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
+      <input
+        type="radio"
+        name="modifier-select"
+        value="0"
+        class="modifier-radio"
+        id="mod-0"
+        checked
+      />
+      <input
+        type="text"
+        class="modifier-name"
+        placeholder="Modifier 1"
+        value="Modifier 1"
+        data-index="0"
+      />
+      <input
+        type="number"
+        class="modifier-value"
+        value="0"
+        min="-99"
+        max="99"
+        data-index="0"
+      />
+      <button class="remove-row-btn" type="button">×</button>
+    </div>
+  </div>
+  <div class="pixels-resize-handle"></div>
+</div>

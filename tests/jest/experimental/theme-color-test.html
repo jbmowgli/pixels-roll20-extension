@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Theme Color Fix Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background: #f0f0f0;
+      }
+      .test-container {
+        margin: 20px 0;
+        padding: 20px;
+        border: 1px solid #ccc;
+        background: white;
+        border-radius: 5px;
+      }
+      .theme-toggle {
+        padding: 10px 20px;
+        margin: 10px;
+        background: #007cba;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .theme-toggle:hover {
+        background: #005a8b;
+      }
+      .status {
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 5px;
+        font-weight: bold;
+      }
+      .success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      .info {
+        background: #cce8ff;
+        color: #004085;
+        border: 1px solid #99d3ff;
+      }
+
+      /* Simulate Roll20 dark theme */
+      .roll20-dark-theme {
+        background: #1a1a1a;
+        color: #ffffff;
+      }
+      .roll20-light-theme {
+        background: #ffffff;
+        color: #333333;
+      }
+
+      /* Simulate the problematic style injection */
+      .inject-bad-style * {
+        color: rgb(64, 64, 64) !important;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Pixels Roll20 Extension - Theme Color Fix Test</h1>
+
+    <div class="test-container">
+      <h2>Test Controls</h2>
+      <button class="theme-toggle" onclick="toggleTheme()">
+        Toggle Light/Dark Theme
+      </button>
+      <button class="theme-toggle" onclick="injectBadStyles()">
+        Inject Bad Styles (Simulate Roll20)
+      </button>
+      <button class="theme-toggle" onclick="createModifierBox()">
+        Create Modifier Box
+      </button>
+      <button class="theme-toggle" onclick="forceThemeUpdate()">
+        Force Theme Update
+      </button>
+      <button class="theme-toggle" onclick="cleanup()">Cleanup</button>
+
+      <div id="status" class="status info">
+        Ready to test. Current theme: <span id="current-theme">dark</span>
+      </div>
+    </div>
+
+    <div class="test-container">
+      <h2>Instructions</h2>
+      <ol>
+        <li>Click "Create Modifier Box" to create the modifier box</li>
+        <li>
+          Click "Toggle Light/Dark Theme" to switch themes - text should update
+          properly
+        </li>
+        <li>Click "Inject Bad Styles" to simulate Roll20 style injection</li>
+        <li>Click "Force Theme Update" to test our fix</li>
+        <li>
+          Observe if text colors remain correct and the resize handle works
+          properly
+        </li>
+      </ol>
+    </div>
+
+    <!-- Load our modules -->
+    <script src="../src/content/common/themeDetector.js"></script>
+    <script src="../src/content/modifierBox/themeManager.js"></script>
+    <script src="../src/content/modifierBox/dragHandler.js"></script>
+    <script src="../src/content/modifierBox/rowManager.js"></script>
+    <script src="../src/content/modifierBox/modifierBox.js"></script>
+
+    <script>
+      let currentTheme = 'dark';
+      let modifierBox = null;
+
+      // Set up theme detector for testing
+      document.addEventListener('DOMContentLoaded', function () {
+        // Initialize theme detector if not already done
+        if (window.ThemeDetector) {
+          updateStatus('Theme detector loaded successfully', 'success');
+        }
+      });
+
+      function updateStatus(message, type = 'info') {
+        const status = document.getElementById('status');
+        status.className = `status ${type}`;
+        status.innerHTML = `${message}<br>Current theme: <span id="current-theme">${currentTheme}</span>`;
+      }
+
+      function toggleTheme() {
+        currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+        // Update body class to simulate Roll20 theme change
+        document.body.classList.remove(
+          'roll20-dark-theme',
+          'roll20-light-theme'
+        );
+        document.body.classList.add(`roll20-${currentTheme}-theme`);
+
+        // Simulate theme change detection
+        if (window.ThemeDetector && modifierBox) {
+          const colors =
+            currentTheme === 'light'
+              ? {
+                  theme: 'light',
+                  primary: '#4CAF50',
+                  background: '#ffffff',
+                  text: '#333333',
+                  input: '#f8f8f8',
+                  inputBorder: '#cccccc',
+                  button: '#f0f0f0',
+                  border: '#dddddd',
+                }
+              : {
+                  theme: 'dark',
+                  primary: '#4CAF50',
+                  background: '#2b2b2b',
+                  text: '#ffffff',
+                  input: '#333333',
+                  inputBorder: '#555555',
+                  button: '#444444',
+                  border: '#555555',
+                };
+
+          // Mock the theme detector
+          window.ThemeDetector.getThemeColors = () => colors;
+
+          // Update the modifier box theme
+          if (window.ModifierBoxThemeManager) {
+            window.ModifierBoxThemeManager.updateTheme(modifierBox);
+          }
+        }
+
+        updateStatus(`Theme switched to ${currentTheme}`, 'success');
+      }
+
+      function injectBadStyles() {
+        if (!modifierBox) {
+          updateStatus('Please create modifier box first', 'error');
+          return;
+        }
+
+        // Simulate Roll20 injecting bad styles
+        const badStyleElements = modifierBox.querySelectorAll('*');
+        badStyleElements.forEach(element => {
+          element.style.setProperty('color', 'rgb(64, 64, 64)', 'important');
+        });
+
+        updateStatus(
+          'Injected bad styles (rgb(64, 64, 64)) - text should be grey now',
+          'error'
+        );
+      }
+
+      function createModifierBox() {
+        if (modifierBox) {
+          updateStatus('Modifier box already exists', 'info');
+          return;
+        }
+
+        // Initialize theme detector first
+        if (window.ThemeDetector) {
+          const colors =
+            currentTheme === 'light'
+              ? {
+                  theme: 'light',
+                  background: '#ffffff',
+                  text: '#333333',
+                  input: '#f8f8f8',
+                  inputBorder: '#cccccc',
+                  button: '#f0f0f0',
+                  border: '#dddddd',
+                }
+              : {
+                  theme: 'dark',
+                  background: '#2b2b2b',
+                  text: '#ffffff',
+                  input: '#333333',
+                  inputBorder: '#555555',
+                  button: '#444444',
+                  border: '#555555',
+                };
+
+          window.ThemeDetector.getThemeColors = () => colors;
+        }
+
+        if (window.ModifierBoxManager) {
+          modifierBox = window.ModifierBoxManager.createModifierBox();
+          updateStatus('Modifier box created successfully', 'success');
+        } else {
+          updateStatus('ModifierBoxManager not available', 'error');
+        }
+      }
+
+      function forceThemeUpdate() {
+        if (!modifierBox) {
+          updateStatus('Please create modifier box first', 'error');
+          return;
+        }
+
+        if (window.ModifierBoxThemeManager) {
+          window.ModifierBoxThemeManager.forceThemeRefresh(modifierBox);
+          updateStatus(
+            'Theme update forced - bad colors should be fixed now',
+            'success'
+          );
+        } else {
+          updateStatus('ModifierBoxThemeManager not available', 'error');
+        }
+      }
+
+      function cleanup() {
+        if (modifierBox) {
+          modifierBox.remove();
+          modifierBox = null;
+          updateStatus('Modifier box removed', 'info');
+        }
+      }
+
+      // Initialize with dark theme
+      document.body.classList.add('roll20-dark-theme');
+    </script>
+  </body>
+</html>

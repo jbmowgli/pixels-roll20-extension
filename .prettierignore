@@ -1,0 +1,11 @@
+node_modules/
+coverage/
+dist/
+build/
+*.zip
+*.log
+.git/
+.husky/
+Copilot-Feedback/
+assets/screenshots/
+assets/New Screenshots/

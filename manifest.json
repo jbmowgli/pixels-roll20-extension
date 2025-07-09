@@ -1,0 +1,65 @@
+{
+  "name": "Pixels Roll20 Integration",
+  "version": "1.0.0",
+  "description": "Connect Pixels dice to Roll20 via Bluetooth with advanced modifier support and seamless integration.",
+  "permissions": ["activeTab", "tabs", "storage", "scripting"],
+  "background": {
+    "service_worker": "src/background/background.js"
+  },
+  "action": {
+    "default_popup": "src/components/popup/popup.html",
+    "default_icon": {
+      "16": "assets/images/logo-128.png",
+      "32": "assets/images/logo-128.png",
+      "48": "assets/images/logo-128.png",
+      "128": "assets/images/logo-128.png"
+    }
+  },
+  "icons": {
+    "16": "assets/images/logo-128.png",
+    "32": "assets/images/logo-128.png",
+    "48": "assets/images/logo-128.png",
+    "128": "assets/images/logo-128.png"
+  },
+  "options_page": "src/components/options/options.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://roll20.net/editor/*",
+        "https://app.roll20.net/editor/*"
+      ],
+      "js": [
+        "src/utils/modifierSettings.js",
+        "src/utils/themeDetector.js",
+        "src/utils/cssLoader.js",
+        "src/utils/htmlLoader.js",
+        "src/components/modifierBox/themeManager.js",
+        "src/components/modifierBox/dragHandler.js",
+        "src/components/modifierBox/rowManager.js",
+        "src/components/modifierBox/dragDrop.js",
+        "src/components/modifierBox/modifierBox.js",
+        "src/content/modules/Utils.js",
+        "src/content/modules/PopupDetection.js",
+        "src/content/modules/ExtensionMessaging.js",
+        "src/content/modules/Roll20Integration.js",
+        "src/content/modules/StorageManager.js",
+        "src/content/modules/ModifierBoxManager.js",
+        "src/content/modules/PixelsBluetooth.js",
+        "src/content/roll20.js"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/images/*",
+        "src/components/modifierBox/styles/*.css",
+        "src/components/modifierBox/*.html"
+      ],
+      "matches": ["https://roll20.net/*", "https://app.roll20.net/*"]
+    }
+  ],
+  "manifest_version": 3,
+  "author": "Enhanced by community contributors",
+  "homepage_url": "https://github.com/[your-username]/PixelsRoll20ChromeExtension"
+}

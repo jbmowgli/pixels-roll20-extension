@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Popup Detection Integration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .test-case {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 3px;
+        }
+        .pass {
+            color: green;
+            font-weight: bold;
+        }
+        .fail {
+            color: red;
+            font-weight: bold;
+        }
+        .result {
+            font-family: monospace;
+            background-color: #e8e8e8;
+            padding: 5px;
+            margin: 5px 0;
+        }
+        button {
+            background-color: #007cba;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #005a87;
+        }
+    </style>
+</head>
+<body>
+    <h1>Popup Detection Integration Test</h1>
+    <p>This test verifies that the popup detection logic works correctly in a real browser environment.</p>
+    
+    <div class="test-section">
+        <h2>Pure Function Tests (checkUrlForPopup)</h2>
+        <p>Testing the core URL checking logic with various inputs:</p>
+        <div id="pure-function-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Browser Integration Test (isRoll20PopupWindow)</h2>
+        <p>Current URL: <span id="current-url"></span></p>
+        <p>Popup Detection Result: <span id="popup-result"></span></p>
+        <button onclick="testCurrentUrl()">Test Current URL</button>
+        
+        <h3>Manual URL Testing</h3>
+        <p>Enter different URLs to test popup detection:</p>
+        <input type="text" id="test-url" style="width: 500px" placeholder="Enter a URL to test...">
+        <button onclick="testCustomUrl()">Test URL</button>
+        <div id="manual-test-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Pre-defined Test Cases</h2>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <div id="test-results"></div>
+    </div>
+
+    <!-- Mock Chrome API for testing -->
+    <script>
+        // Mock Chrome API to prevent errors
+        window.chrome = {
+            runtime: {
+                sendMessage: function(data) {
+                    console.log('Mock Chrome message:', data);
+                },
+                onMessage: {
+                    addListener: function(listener) {
+                        console.log('Mock Chrome message listener added');
+                    }
+                }
+            }
+        };
+
+        // Mock console for clean output
+        const originalLog = console.log;
+        console.log = function(...args) {
+            // Only log actual errors, not the extension debug messages
+            if (args[0] && typeof args[0] === 'string' && args[0].includes('Error')) {
+                originalLog.apply(console, args);
+            }
+        };
+    </script>
+
+    <!-- Load the Roll20 extension -->
+    <script src="../../src/content/roll20.js"></script>
+
+    <script>
+        // Test cases for the pure function
+        const testCases = [
+            // Should detect as popup
+            { url: 'https://app.roll20.net/editor/popout', expected: true, description: 'Journal popout' },
+            { url: 'https://app.roll20.net/editor/popout/123', expected: true, description: 'Journal popout with ID' },
+            { url: 'https://app.roll20.net/journal/popout', expected: true, description: 'Direct journal popout' },
+            { url: 'https://app.roll20.net/editor/character/123?popout=true', expected: true, description: 'Character sheet popout' },
+            { url: 'https://app.roll20.net/something?popout=true&other=value', expected: true, description: 'URL with popout parameter' },
+            { url: 'https://app.roll20.net/editor/POPOUT', expected: true, description: 'Case insensitive popout' },
+            { url: 'https://app.roll20.net/something?POPOUT=TRUE', expected: true, description: 'Case insensitive parameter' },
+            { url: '/editor/popout', expected: true, description: 'Relative URL popout' },
+            { url: '/something?popout=true', expected: true, description: 'Relative URL with parameter' },
+
+            // Should NOT detect as popup
+            { url: 'https://app.roll20.net/editor/123', expected: false, description: 'Main editor page' },
+            { url: 'https://app.roll20.net/campaigns/456', expected: false, description: 'Campaigns page' },
+            { url: 'https://app.roll20.net/dashboard', expected: false, description: 'Dashboard page' },
+            { url: 'https://app.roll20.net/', expected: false, description: 'Root page' },
+            { url: 'https://app.roll20.net/editor/123/view', expected: false, description: 'Editor view page' },
+            
+            // Edge cases
+            { url: '', expected: false, description: 'Empty string' },
+            { url: null, expected: false, description: 'Null value' },
+            { url: undefined, expected: false, description: 'Undefined value' },
+        ];
+
+        function runPureFunctionTests() {
+            const resultsDiv = document.getElementById('pure-function-results');
+            let html = '';
+            let passCount = 0;
+            let totalCount = testCases.length;
+
+            testCases.forEach((testCase, index) => {
+                const result = window.checkUrlForPopup(testCase.url);
+                const passed = result === testCase.expected;
+                if (passed) passCount++;
+
+                html += `
+                    <div class="test-case">
+                        <strong>Test ${index + 1}:</strong> ${testCase.description}<br>
+                        <div class="result">URL: ${testCase.url}</div>
+                        <div class="result">Expected: ${testCase.expected}, Got: ${result}</div>
+                        <span class="${passed ? 'pass' : 'fail'}">${passed ? 'PASS' : 'FAIL'}</span>
+                    </div>
+                `;
+            });
+
+            html = `<p><strong>Results: ${passCount}/${totalCount} tests passed</strong></p>` + html;
+            resultsDiv.innerHTML = html;
+        }
+
+        function testCurrentUrl() {
+            const currentUrl = window.location.href;
+            const result = window.isRoll20PopupWindow();
+            
+            document.getElementById('current-url').textContent = currentUrl;
+            document.getElementById('popup-result').innerHTML = `<span class="result">${result}</span>`;
+        }
+
+        function testCustomUrl() {
+            const url = document.getElementById('test-url').value;
+            if (!url) {
+                alert('Please enter a URL to test');
+                return;
+            }
+
+            const result = window.checkUrlForPopup(url);
+            const resultDiv = document.getElementById('manual-test-result');
+            
+            resultDiv.innerHTML = `
+                <div class="test-case">
+                    <strong>Manual Test Result:</strong><br>
+                    <div class="result">URL: ${url}</div>
+                    <div class="result">Is Popup: ${result}</div>
+                </div>
+            `;
+        }
+
+        function runAllTests() {
+            runPureFunctionTests();
+            testCurrentUrl();
+        }
+
+        // Run tests on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            runAllTests();
+        });
+    </script>
+</body>
+</html>

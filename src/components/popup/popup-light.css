@@ -1,0 +1,82 @@
+/* Light Theme Overrides for Popup */
+body {
+  background: transparent;
+}
+
+.popup-container {
+  background-color: #ffffff;
+  border: 1px solid #dddddd;
+  color: #333333;
+}
+
+/* Header - Light Theme */
+.popup-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dddddd;
+  color: #333333;
+}
+
+/* Content Area - Light Theme */
+.popup-content {
+  background-color: #ffffff;
+  color: #333333;
+}
+
+/* Connection Section - Light Theme */
+.connection-section {
+  color: #333333;
+}
+
+.connection-status {
+  background-color: #f8f9fa;
+  border: 1px solid #cccccc;
+}
+
+.status-text {
+  color: #666666;
+}
+
+/* Button Styles - Light Theme */
+.primary-button {
+  background-color: #4a9eff;
+  color: #ffffff;
+  border: 1px solid #4a9eff;
+}
+
+.primary-button:hover {
+  background-color: #3a8eef;
+  border-color: #3a8eef;
+}
+
+.primary-button:active {
+  background-color: #2a7edf;
+  border-color: #2a7edf;
+}
+
+.secondary-button {
+  background-color: #f8f9fa;
+  color: #333333;
+  border: 1px solid #cccccc;
+}
+
+.secondary-button:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.secondary-button:active {
+  background-color: #dee2e6;
+  border-color: #adb5bd;
+}
+
+/* Modifier Section - Light Theme */
+.modifier-section {
+  border-top: 1px solid #dddddd;
+}
+
+/* Focus states for accessibility */
+.primary-button:focus,
+.secondary-button:focus {
+  outline: 2px solid #4a9eff;
+  outline-offset: 2px;
+}

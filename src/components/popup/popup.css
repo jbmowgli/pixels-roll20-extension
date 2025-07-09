@@ -1,0 +1,293 @@
+/* Popup Container - Matching Modifier Box Style */
+body {
+  margin: 0;
+  padding: 0;
+  width: 380px;
+  background: transparent;
+  font-family: Arial, sans-serif;
+}
+
+.popup-container {
+  background-color: #2b2b2b;
+  border: 1px solid #555555;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  color: #ffffff;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header - Matching Modifier Box Header */
+.popup-header {
+  background-color: #333333;
+  border-bottom: 1px solid #555555;
+  border-radius: 7px 7px 0 0;
+  padding: 12px 16px;
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #ffffff;
+}
+
+.popup-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.popup-title {
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* Content Area */
+.popup-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Connection Section */
+.connection-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.connection-status {
+  min-height: 40px;
+  padding: 8px 12px;
+  background-color: #1a1a1a;
+  border: 1px solid #444444;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.status-text {
+  color: #cccccc;
+  font-size: 13px;
+  font-weight: normal;
+}
+
+/* Modifier Section */
+.modifier-section {
+  border-top: 1px solid #444444;
+  padding-top: 16px;
+}
+
+.button-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Button Styles */
+.primary-button {
+  background-color: #4a9eff;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.primary-button:hover {
+  background-color: #3a8eef;
+}
+
+.primary-button:active {
+  background-color: #2a7edf;
+}
+
+.primary-button:disabled {
+  background-color: #555555;
+  color: #999999;
+  cursor: not-allowed;
+}
+
+.secondary-button {
+  background-color: #404040;
+  color: #ffffff;
+  border: 1px solid #555555;
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: normal;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.secondary-button:hover {
+  background-color: #4a4a4a;
+  border-color: #666666;
+}
+
+.secondary-button:active {
+  background-color: #383838;
+  border-color: #444444;
+}
+
+.secondary-button:disabled {
+  background-color: #2a2a2a;
+  color: #666666;
+  border-color: #333333;
+  cursor: not-allowed;
+}
+
+/* Focus States */
+.primary-button:focus,
+.secondary-button:focus {
+  outline: 2px solid #4a9eff;
+  outline-offset: 2px;
+}
+
+/* Legacy support for existing JS selectors */
+.connectdice {
+  /* Redirect to secondary-button styling */
+  background-color: #404040;
+  color: #ffffff;
+  border: 1px solid #555555;
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: normal;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.connectdice:hover {
+  background-color: #4a4a4a;
+  border-color: #666666;
+}
+
+.connectdice.main-button {
+  /* Redirect to primary-button styling */
+  background-color: #4a9eff;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.connectdice.main-button:hover {
+  background-color: #3a8eef;
+}
+
+/* Status indicators */
+.status-connected {
+  color: #4ade80 !important;
+}
+
+.status-disconnected {
+  color: #f87171 !important;
+}
+
+.status-connecting {
+  color: #fbbf24 !important;
+}
+
+/* Utility classes */
+.text-center {
+  text-align: center;
+}
+
+.text-small {
+  font-size: 12px;
+}
+
+.text-muted {
+  color: #999999;
+}
+
+/* Legacy styles for backward compatibility */
+.blockdice {
+  display: none; /* Hide old dice block */
+}
+
+.blockdetail {
+  display: none; /* Hide old detail block */
+}
+
+.dicename {
+  display: none; /* Hide old dice name */
+}
+
+/* Animation for status updates */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.status-text {
+  animation: fadeIn 0.3s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 400px) {
+  body {
+    width: 320px;
+  }
+  
+  .popup-content {
+    padding: 12px;
+  }
+  
+  .popup-header {
+    padding: 10px 12px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .popup-container {
+    border-color: #ffffff;
+  }
+  
+  .primary-button {
+    border: 2px solid #ffffff;
+  }
+  
+  .secondary-button {
+    border-color: #ffffff;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .primary-button,
+  .secondary-button,
+  .status-text {
+    transition: none;
+    animation: none;
+  }
+}

@@ -1,0 +1,9 @@
+# Files to exclude from Chrome Web Store package
+tests/
+docs/DEVELOPER_GUIDE.md
+docs/PROJECT_STRUCTURE.md
+docs/PUBLICATION_CHECKLIST.md
+docs/CHROME_STORE_LISTING.md
+.git/
+.gitignore
+README.md

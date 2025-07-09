@@ -1,0 +1,199 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Bluetooth Connection Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background: #f5f5f5;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .test-button {
+        background: #007cba;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 10px 5px;
+        font-size: 16px;
+      }
+      .test-button:hover {
+        background: #005a87;
+      }
+      .error {
+        color: #d32f2f;
+        background: #ffebee;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+      .success {
+        color: #388e3c;
+        background: #e8f5e8;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+      .info {
+        color: #1976d2;
+        background: #e3f2fd;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+      #log {
+        background: #f5f5f5;
+        border: 1px solid #ddd;
+        padding: 10px;
+        margin: 20px 0;
+        height: 200px;
+        overflow-y: auto;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Bluetooth Device Picker Test</h1>
+
+      <div class="info">
+        <strong>Instructions:</strong>
+        <ol>
+          <li>
+            Make sure you're using Chrome/Edge and have a Bluetooth device
+            nearby
+          </li>
+          <li>
+            Click "Test Device Picker" to see if the Bluetooth device selection
+            dialog appears
+          </li>
+          <li>
+            The test will succeed if the picker appears (even if you cancel it)
+          </li>
+        </ol>
+      </div>
+
+      <button class="test-button" onclick="testDevicePicker()">
+        Test Device Picker
+      </button>
+      <button class="test-button" onclick="clearLog()">Clear Log</button>
+
+      <div id="status"></div>
+      <div id="log"></div>
+    </div>
+
+    <script>
+      // Simple logging function
+      function log(message) {
+        const timestamp = new Date().toLocaleTimeString();
+        const logDiv = document.getElementById('log');
+        logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+        logDiv.scrollTop = logDiv.scrollHeight;
+        console.log(message);
+      }
+
+      function clearLog() {
+        document.getElementById('log').innerHTML = '';
+        document.getElementById('status').innerHTML = '';
+      }
+
+      function showStatus(message, type = 'info') {
+        const statusDiv = document.getElementById('status');
+        statusDiv.innerHTML = `<div class="${type}">${message}</div>`;
+      }
+
+      // Test function using the same UUID as the extension
+      const PIXELS_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+
+      async function testDevicePicker() {
+        log('Starting Bluetooth device picker test...');
+        showStatus('Testing...', 'info');
+
+        try {
+          // Check if Bluetooth is available
+          if (!navigator.bluetooth) {
+            throw new Error('Bluetooth API not available in this browser');
+          }
+
+          log('Bluetooth API is available');
+
+          // Test the device picker with the same options as the extension
+          const options = {
+            filters: [{ services: [PIXELS_SERVICE_UUID] }],
+            optionalServices: [],
+          };
+
+          log(
+            'Requesting Bluetooth Device with options: ' +
+              JSON.stringify(options)
+          );
+
+          // This should trigger the device picker
+          const device = await navigator.bluetooth.requestDevice(options);
+
+          log(
+            '✅ SUCCESS: Device picker appeared and user selected: ' +
+              device.name
+          );
+          showStatus(
+            '✅ SUCCESS: Device picker worked! Selected device: ' + device.name,
+            'success'
+          );
+        } catch (error) {
+          log('❌ Error: ' + error.message);
+
+          if (
+            error.message.includes('User cancelled') ||
+            error.message.includes('chooser was cancelled')
+          ) {
+            log(
+              '✅ SUCCESS: Device picker appeared (user cancelled - this is expected)'
+            );
+            showStatus(
+              '✅ SUCCESS: Device picker appeared and was cancelled by user',
+              'success'
+            );
+          } else if (error.message.includes('no devices found')) {
+            log(
+              '⚠️ WARNING: Device picker appeared but no matching devices found'
+            );
+            showStatus(
+              '⚠️ Device picker worked, but no Pixel dice were found nearby',
+              'info'
+            );
+          } else {
+            log('❌ FAILED: Device picker may not have appeared');
+            showStatus('❌ FAILED: ' + error.message, 'error');
+          }
+        }
+      }
+
+      // Test on page load to show initial status
+      window.addEventListener('load', () => {
+        if (!navigator.bluetooth) {
+          showStatus(
+            '❌ Bluetooth API not available in this browser. Try Chrome or Edge.',
+            'error'
+          );
+          log('Bluetooth API not available');
+        } else {
+          showStatus(
+            '✅ Bluetooth API is available. Ready to test!',
+            'success'
+          );
+          log('Page loaded - Bluetooth API available');
+        }
+      });
+    </script>
+  </body>
+</html>

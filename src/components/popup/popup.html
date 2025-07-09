@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="popup-container">
+      <!-- Header matching modifier box style -->
+      <div class="popup-header">
+        <img src="" alt="Pixels Roll20" class="popup-icon">
+        <span class="popup-title">Pixels Roll20</span>
+      </div>
+      
+      <!-- Content area -->
+      <div class="popup-content">
+        <!-- Connection section -->
+        <div class="connection-section">
+          <button id="connect" class="primary-button">
+            Connect to Pixel
+          </button>
+          <div class="connection-status">
+            <div id="text" class="status-text"></div>
+          </div>
+        </div>
+        
+        <!-- Modifier controls -->
+        <div class="modifier-section">
+          <div class="button-container">
+            <button id="showModifier" class="secondary-button">Show Modifier Box</button>
+            <button id="hideModifier" class="secondary-button">Hide Modifier Box</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- <button id="disconnect">Disconnect</button> -->
+    <script src="popup.js"></script>
+  </body>
+</html>

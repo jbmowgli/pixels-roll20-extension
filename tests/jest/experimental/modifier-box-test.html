@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Modifier Box Module Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background: #f0f0f0;
+      }
+      .test-container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .test-section {
+        margin-bottom: 20px;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      .test-section h3 {
+        margin-top: 0;
+        color: #333;
+      }
+      button {
+        background: #4caf50;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 5px;
+      }
+      button:hover {
+        background: #45a049;
+      }
+      .status {
+        margin-top: 10px;
+        padding: 8px;
+        border-radius: 4px;
+      }
+      .status.success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .status.error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      .mock-chat {
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        width: 200px;
+        height: 300px;
+        background: #333;
+        color: white;
+        padding: 10px;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="test-container">
+      <h1>Modifier Box Module Test</h1>
+      <p>
+        This page tests the refactored modifier box modules to ensure they work
+        correctly.
+      </p>
+
+      <div class="test-section">
+        <h3>Module Loading Test</h3>
+        <button onclick="testModuleLoading()">Test Module Loading</button>
+        <div id="module-status" class="status"></div>
+      </div>
+
+      <div class="test-section">
+        <h3>Modifier Box Creation Test</h3>
+        <button onclick="testModifierBoxCreation()">Create Modifier Box</button>
+        <button onclick="testShowHide()">Test Show/Hide</button>
+        <div id="creation-status" class="status"></div>
+      </div>
+
+      <div class="test-section">
+        <h3>Theme Test</h3>
+        <button onclick="testThemeUpdate()">Test Theme Update</button>
+        <button onclick="simulateThemeSwitch()">
+          Simulate Dark/Light Toggle
+        </button>
+        <button onclick="forceThemeRefresh()">Force Theme Refresh</button>
+        <div id="theme-status" class="status"></div>
+      </div>
+
+      <div class="test-section">
+        <h3>Row Management Test</h3>
+        <button onclick="testAddRow()">Add Row</button>
+        <button onclick="testRemoveRow()">Remove Row</button>
+        <div id="row-status" class="status"></div>
+      </div>
+    </div>
+
+    <!-- Mock chat container for positioning test -->
+    <div class="mock-chat textchatcontainer">
+      <h4>Mock Roll20 Chat</h4>
+      <p>This simulates the Roll20 chat container for positioning tests.</p>
+    </div>
+
+    <!-- Load the modules in correct order -->
+    <script>
+      // Mock chrome.runtime.getURL for testing
+      if (typeof chrome === 'undefined') {
+        window.chrome = {
+          runtime: {
+            getURL: function (path) {
+              return '../' + path;
+            },
+          },
+        };
+      }
+    </script>
+    <script src="../src/content/theme-detector.js"></script>
+    <script src="../src/content/modules/themeManager.js"></script>
+    <script src="../src/content/modules/dragHandler.js"></script>
+    <script src="../src/content/modules/positionManager.js"></script>
+    <script src="../src/content/modules/rowManager.js"></script>
+    <script src="../src/content/modifierBox.js"></script>
+
+    <script>
+      // Mock global variables that would normally be set by roll20.js
+      window.pixelsModifierName = 'Test Modifier';
+      window.pixelsModifier = '0';
+      window.sendMessageToExtension = function (message) {
+        console.log('Mock extension message:', message);
+      };
+
+      function updateStatus(elementId, message, isSuccess = true) {
+        const element = document.getElementById(elementId);
+        element.textContent = message;
+        element.className = `status ${isSuccess ? 'success' : 'error'}`;
+      }
+
+      function testModuleLoading() {
+        const modules = [
+          'ModifierBoxThemeManager',
+          'ModifierBoxDragHandler',
+          'ModifierBoxPositionManager',
+          'ModifierBoxRowManager',
+          'ModifierBox',
+        ];
+
+        const missingModules = modules.filter(module => !window[module]);
+
+        if (missingModules.length === 0) {
+          updateStatus(
+            'module-status',
+            '✓ All modules loaded successfully!',
+            true
+          );
+        } else {
+          updateStatus(
+            'module-status',
+            `✗ Missing modules: ${missingModules.join(', ')}`,
+            false
+          );
+        }
+      }
+
+      function testModifierBoxCreation() {
+        try {
+          if (!window.ModifierBox) {
+            throw new Error('ModifierBox module not available');
+          }
+
+          const box = window.ModifierBox.create();
+          if (box) {
+            updateStatus(
+              'creation-status',
+              '✓ Modifier box created successfully!',
+              true
+            );
+          } else {
+            updateStatus(
+              'creation-status',
+              '✗ Failed to create modifier box',
+              false
+            );
+          }
+        } catch (error) {
+          updateStatus('creation-status', `✗ Error: ${error.message}`, false);
+        }
+      }
+
+      function testShowHide() {
+        try {
+          window.ModifierBox.show();
+          setTimeout(() => {
+            window.ModifierBox.hide();
+            setTimeout(() => {
+              window.ModifierBox.show();
+              updateStatus(
+                'creation-status',
+                '✓ Show/Hide test completed!',
+                true
+              );
+            }, 1000);
+          }, 1000);
+        } catch (error) {
+          updateStatus(
+            'creation-status',
+            `✗ Show/Hide error: ${error.message}`,
+            false
+          );
+        }
+      }
+
+      function testThemeUpdate() {
+        try {
+          if (window.ModifierBox && window.ModifierBox.updateTheme) {
+            window.ModifierBox.updateTheme();
+            updateStatus('theme-status', '✓ Theme update completed!', true);
+          } else {
+            updateStatus(
+              'theme-status',
+              '✗ Theme update function not available',
+              false
+            );
+          }
+        } catch (error) {
+          updateStatus(
+            'theme-status',
+            `✗ Theme error: ${error.message}`,
+            false
+          );
+        }
+      }
+
+      function simulateThemeSwitch() {
+        try {
+          // Simulate a theme switch by modifying the ThemeDetector's return values
+          if (window.ThemeDetector && window.ThemeDetector.getThemeColors) {
+            const currentColors = window.ThemeDetector.getThemeColors();
+            const isDark = currentColors.theme === 'dark';
+
+            // Mock new theme colors
+            const newColors = isDark
+              ? {
+                  theme: 'light',
+                  primary: '#4CAF50',
+                  background: '#ffffff',
+                  surface: '#f5f5f5',
+                  border: '#dddddd',
+                  text: '#000000',
+                  textSecondary: '#666666',
+                  input: '#ffffff',
+                  inputBorder: '#cccccc',
+                  button: '#eeeeee',
+                  buttonHover: '#dddddd',
+                }
+              : {
+                  theme: 'dark',
+                  primary: '#4CAF50',
+                  background: '#2b2b2b',
+                  surface: '#1a1a1a',
+                  border: '#555555',
+                  text: '#ffffff',
+                  textSecondary: '#cccccc',
+                  input: '#333333',
+                  inputBorder: '#555555',
+                  button: '#444444',
+                  buttonHover: '#555555',
+                };
+
+            // Override the getThemeColors function temporarily
+            const originalGetThemeColors = window.ThemeDetector.getThemeColors;
+            window.ThemeDetector.getThemeColors = () => newColors;
+
+            // Trigger theme update
+            if (window.ModifierBox && window.ModifierBox.forceThemeRefresh) {
+              window.ModifierBox.forceThemeRefresh();
+              updateStatus(
+                'theme-status',
+                `✓ Switched to ${newColors.theme} theme!`,
+                true
+              );
+            }
+
+            // Restore original function after 5 seconds
+            setTimeout(() => {
+              window.ThemeDetector.getThemeColors = originalGetThemeColors;
+            }, 5000);
+          } else {
+            updateStatus(
+              'theme-status',
+              '✗ ThemeDetector not available for simulation',
+              false
+            );
+          }
+        } catch (error) {
+          updateStatus(
+            'theme-status',
+            `✗ Theme switch error: ${error.message}`,
+            false
+          );
+        }
+      }
+
+      function forceThemeRefresh() {
+        try {
+          if (window.ModifierBox && window.ModifierBox.forceThemeRefresh) {
+            window.ModifierBox.forceThemeRefresh();
+            updateStatus('theme-status', '✓ Theme refresh forced!', true);
+          } else {
+            updateStatus(
+              'theme-status',
+              '✗ Force refresh function not available',
+              false
+            );
+          }
+        } catch (error) {
+          updateStatus(
+            'theme-status',
+            `✗ Force refresh error: ${error.message}`,
+            false
+          );
+        }
+      }
+
+      function testAddRow() {
+        try {
+          const box = window.ModifierBox.getElement();
+          if (box && window.ModifierBoxRowManager) {
+            const beforeCount = box.querySelectorAll('.modifier-row').length;
+            window.ModifierBoxRowManager.addModifierRow(box, () => {
+              console.log('Row added callback');
+            });
+            const afterCount = box.querySelectorAll('.modifier-row').length;
+
+            if (afterCount > beforeCount) {
+              updateStatus(
+                'row-status',
+                `✓ Row added! (${beforeCount} → ${afterCount})`,
+                true
+              );
+            } else {
+              updateStatus('row-status', '✗ Row was not added', false);
+            }
+          } else {
+            updateStatus(
+              'row-status',
+              '✗ Modifier box or row manager not available',
+              false
+            );
+          }
+        } catch (error) {
+          updateStatus(
+            'row-status',
+            `✗ Add row error: ${error.message}`,
+            false
+          );
+        }
+      }
+
+      function testRemoveRow() {
+        try {
+          const box = window.ModifierBox.getElement();
+          if (box && window.ModifierBoxRowManager) {
+            const rows = box.querySelectorAll('.modifier-row');
+            if (rows.length > 1) {
+              const beforeCount = rows.length;
+              window.ModifierBoxRowManager.removeModifierRow(
+                rows[rows.length - 1],
+                box,
+                () => {
+                  console.log('Row removed callback');
+                }
+              );
+              const afterCount = box.querySelectorAll('.modifier-row').length;
+
+              if (afterCount < beforeCount) {
+                updateStatus(
+                  'row-status',
+                  `✓ Row removed! (${beforeCount} → ${afterCount})`,
+                  true
+                );
+              } else {
+                updateStatus(
+                  'row-status',
+                  '✓ Last row reset instead of removed (expected behavior)',
+                  true
+                );
+              }
+            } else {
+              updateStatus(
+                'row-status',
+                '✓ Only one row left - cannot remove (expected behavior)',
+                true
+              );
+            }
+          } else {
+            updateStatus(
+              'row-status',
+              '✗ Modifier box or row manager not available',
+              false
+            );
+          }
+        } catch (error) {
+          updateStatus(
+            'row-status',
+            `✗ Remove row error: ${error.message}`,
+            false
+          );
+        }
+      }
+
+      // Auto-run module loading test on page load
+      window.addEventListener('load', () => {
+        setTimeout(testModuleLoading, 100);
+      });
+    </script>
+  </body>
+</html>

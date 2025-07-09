@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+
+# Testing
+coverage/
+.nyc_output
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+
+# Extension packaging
+*.zip
+chrome-store-package/
+
+# Specific packaging script outputs
+PixelsRoll20Extension-v*.zip
+
+# Logs
+logs/
+*.log
+
+# Feedback Documentation
+Copilot-Feedback/
