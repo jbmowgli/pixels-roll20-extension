@@ -7,8 +7,9 @@ Connect your Pixels dice to Roll20 via Bluetooth for seamless physical dice roll
 This project was originally inspired by the [Pixels on Roll20](https://github.com/obasille/PixelsRoll20ChromeExtension) extension by [Olivier Basille](https://github.com/obasille). While this implementation has evolved into a completely different codebase with extensive new features, modular architecture, and comprehensive testing, we acknowledge the original work that sparked the idea.
 
 **Key Differences from Original:**
+
 - Complete rewrite with modular architecture (7 focused modules)
-- Advanced modifier box with drag/drop, theming, and persistence  
+- Advanced modifier box with drag/drop, theming, and persistence
 - Comprehensive test suite (180+ automated tests)
 - Modern Manifest V3 Chrome extension
 - Professional documentation and publication readiness

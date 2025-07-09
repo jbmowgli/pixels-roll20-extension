@@ -257,11 +257,11 @@ body {
   body {
     width: 320px;
   }
-  
+
   .popup-content {
     padding: 12px;
   }
-  
+
   .popup-header {
     padding: 10px 12px;
   }
@@ -272,11 +272,11 @@ body {
   .popup-container {
     border-color: #ffffff;
   }
-  
+
   .primary-button {
     border: 2px solid #ffffff;
   }
-  
+
   .secondary-button {
     border-color: #ffffff;
   }

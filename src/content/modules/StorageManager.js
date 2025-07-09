@@ -1,12 +1,12 @@
 /**
  * StorageManager.js
- * 
+ *
  * Handles localStorage operations for modifier settings persistence.
  */
 
 'use strict';
 
-(function() {
+(function () {
   const log = window.log || console.log;
 
   // Save modifier settings to localStorage
@@ -15,7 +15,7 @@
       const settings = {
         modifier: window.pixelsModifier,
         modifierName: window.pixelsModifierName,
-        lastUpdated: Date.now()
+        lastUpdated: Date.now(),
       };
       localStorage.setItem('pixels_roll20_settings', JSON.stringify(settings));
       log('Saved modifier settings to localStorage');
@@ -32,7 +32,9 @@
         const settings = JSON.parse(stored);
         window.pixelsModifier = settings.modifier || '0';
         window.pixelsModifierName = settings.modifierName || 'Modifier 1';
-        log(`Loaded modifier settings: ${window.pixelsModifier}, ${window.pixelsModifierName}`);
+        log(
+          `Loaded modifier settings: ${window.pixelsModifier}, ${window.pixelsModifierName}`
+        );
         return true;
       }
     } catch (error) {
@@ -66,7 +68,7 @@
     saveModifierSettings,
     loadModifierSettings,
     updateModifierSettings,
-    clearAllModifierSettings
+    clearAllModifierSettings,
   };
 
   // Legacy exports for compatibility
@@ -74,5 +76,4 @@
   window.loadModifierSettings = loadModifierSettings;
   window.updateModifierSettings = updateModifierSettings;
   window.clearAllModifierSettings = clearAllModifierSettings;
-
 })();

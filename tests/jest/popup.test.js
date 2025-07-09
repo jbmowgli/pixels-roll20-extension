@@ -8,26 +8,26 @@ describe('Popup Theme System', () => {
     tabs: {
       query: jest.fn(),
       executeScript: jest.fn(),
-      sendMessage: jest.fn()
+      sendMessage: jest.fn(),
     },
     scripting: {
-      executeScript: jest.fn()
+      executeScript: jest.fn(),
     },
     storage: {
       sync: {
         get: jest.fn((key, callback) => {
           callback({ modifier: '0' });
         }),
-        set: jest.fn()
-      }
+        set: jest.fn(),
+      },
     },
     runtime: {
       onMessage: {
-        addListener: jest.fn()
+        addListener: jest.fn(),
       },
       lastError: null,
-      getURL: jest.fn((path) => `chrome-extension://test-extension-id/${path}`)
-    }
+      getURL: jest.fn(path => `chrome-extension://test-extension-id/${path}`),
+    },
   };
 
   beforeEach(() => {
@@ -55,10 +55,10 @@ describe('Popup Theme System', () => {
         </div>
       </div>
     `;
-    
+
     // Mock chrome global
     global.chrome = mockChrome;
-    
+
     // Reset mocks
     jest.clearAllMocks();
   });
@@ -85,16 +85,18 @@ describe('Popup Theme System', () => {
     expect(lightThemeLink).toBeNull();
   });
 
-  test('should apply light theme when Roll20 is in light mode', (done) => {
+  test('should apply light theme when Roll20 is in light mode', done => {
     // Mock chrome.tabs.query to return active Roll20 tab
     mockChrome.tabs.query.mockImplementation((query, callback) => {
       callback([{ id: 1, url: 'https://app.roll20.net/editor/game/123' }]);
     });
 
     // Mock chrome.tabs.sendMessage to return light theme
-    mockChrome.tabs.sendMessage.mockImplementation((tabId, message, callback) => {
-      callback({ theme: 'light' });
-    });
+    mockChrome.tabs.sendMessage.mockImplementation(
+      (tabId, message, callback) => {
+        callback({ theme: 'light' });
+      }
+    );
 
     // Load popup script
     require('../../src/components/popup/popup.js');
@@ -119,9 +121,11 @@ describe('Popup Theme System', () => {
     });
 
     // Mock chrome.tabs.sendMessage to return dark theme
-    mockChrome.tabs.sendMessage.mockImplementation((tabId, message, callback) => {
-      callback({ theme: 'dark' });
-    });
+    mockChrome.tabs.sendMessage.mockImplementation(
+      (tabId, message, callback) => {
+        callback({ theme: 'dark' });
+      }
+    );
 
     // Load popup script
     require('../../src/components/popup/popup.js');
@@ -134,20 +138,24 @@ describe('Popup Theme System', () => {
     expect(lightThemeLink).toBeNull();
   });
 
-  test('should handle script execution failures gracefully', (done) => {
+  test('should handle script execution failures gracefully', done => {
     // Mock chrome.tabs.query to return active Roll20 tab
     mockChrome.tabs.query.mockImplementation((query, callback) => {
       callback([{ id: 1, url: 'https://app.roll20.net/editor/game/123' }]);
     });
 
     // Mock chrome.tabs.sendMessage to fail (content script not available)
-    mockChrome.tabs.sendMessage.mockImplementation((tabId, message, callback) => {
-      mockChrome.runtime.lastError = { message: 'Content script not available' };
-      callback(null);
-    });
+    mockChrome.tabs.sendMessage.mockImplementation(
+      (tabId, message, callback) => {
+        mockChrome.runtime.lastError = {
+          message: 'Content script not available',
+        };
+        callback(null);
+      }
+    );
 
     // Mock chrome.scripting.executeScript to return light theme
-    mockChrome.scripting.executeScript.mockImplementation((options) => {
+    mockChrome.scripting.executeScript.mockImplementation(options => {
       return Promise.resolve([{ result: 'light' }]);
     });
 

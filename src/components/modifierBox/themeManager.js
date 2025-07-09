@@ -19,8 +19,10 @@
     },
     forceElementUpdates: function (modifierBox) {
       // Now that we use CSS classes, just re-apply the theme class to ensure proper styling
-      if (!modifierBox) return;
-      
+      if (!modifierBox) {
+        return;
+      }
+
       const colors = window.ThemeDetector
         ? window.ThemeDetector.getThemeColors()
         : { theme: 'dark' };
@@ -29,7 +31,7 @@
       const body = document.body;
       body.classList.remove('roll20-light-theme', 'roll20-dark-theme');
       body.classList.add(`roll20-${colors.theme}-theme`);
-      
+
       console.log(`Force updated theme class: roll20-${colors.theme}-theme`);
     },
   };
@@ -131,11 +133,13 @@
     const body = document.body;
     body.classList.remove('roll20-light-theme', 'roll20-dark-theme');
     body.classList.add(`roll20-${colors.theme}-theme`);
-    
+
     console.log(`Applied theme class: roll20-${colors.theme}-theme`);
 
     // Let CSS handle the styling now that we have the proper theme class applied
-    console.log(`Theme update complete. ${colors.theme} theme applied via CSS classes.`);
+    console.log(
+      `Theme update complete. ${colors.theme} theme applied via CSS classes.`
+    );
   }
 
   function startThemeMonitoring(onThemeChangeCallback) {

@@ -22,8 +22,14 @@
 }
 
 .roll20-light-theme #pixels-modifier-box .pixels-controls button:hover,
-.roll20-light-theme #pixels-modifier-box .pixels-controls .add-modifier-btn:hover,
-.roll20-light-theme #pixels-modifier-box .pixels-controls .pixels-minimize:hover,
+.roll20-light-theme
+  #pixels-modifier-box
+  .pixels-controls
+  .add-modifier-btn:hover,
+.roll20-light-theme
+  #pixels-modifier-box
+  .pixels-controls
+  .pixels-minimize:hover,
 .roll20-light-theme #pixels-modifier-box .remove-row-btn:hover {
   background-color: #e9ecef !important;
 }

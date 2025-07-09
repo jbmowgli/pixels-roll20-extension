@@ -37,21 +37,25 @@ The Pixels Roll20 Integration extension ("the Extension") is designed to connect
 The Extension requests the following permissions:
 
 ### activeTab
+
 - **Purpose**: Interact with Roll20 pages
 - **Scope**: Only active Roll20 tabs
 - **Usage**: Inject dice roll results into Roll20 chat
 
 ### tabs
+
 - **Purpose**: Identify Roll20 tabs and communicate with content scripts
 - **Scope**: Read tab URLs to verify Roll20 pages only
 - **Usage**: Ensure extension only activates on Roll20 pages
 
 ### storage
+
 - **Purpose**: Save modifier settings locally
 - **Scope**: Local browser storage only
 - **Usage**: Remember modifier box settings between sessions
 
 ### scripting
+
 - **Purpose**: Inject content scripts into Roll20 pages
 - **Scope**: Roll20 pages only
 - **Usage**: Enable dice integration functionality
@@ -61,6 +65,7 @@ The Extension requests the following permissions:
 The Extension stores the following data locally on your device:
 
 ### Modifier Settings
+
 - **Data**: Modifier box configuration (names, values, positions)
 - **Location**: Chrome's local storage (sync.storage)
 - **Purpose**: Remember your modifier preferences
@@ -68,6 +73,7 @@ The Extension stores the following data locally on your device:
 - **Control**: Can be cleared via Chrome settings
 
 ### Theme Preferences
+
 - **Data**: UI theme detection cache
 - **Location**: Temporary in-memory storage
 - **Purpose**: Match Roll20's theme for consistent appearance
@@ -76,12 +82,14 @@ The Extension stores the following data locally on your device:
 ## Third-Party Services
 
 ### Roll20
+
 - The Extension interacts with Roll20's interface to display dice results
 - No data is sent to Roll20 beyond normal chat messages
 - Extension follows Roll20's existing privacy practices
 - No data is collected from Roll20 beyond what's necessary for functionality
 
 ### Pixels Dice
+
 - Direct Bluetooth connection to dice hardware
 - No data is sent to Pixels servers or third parties
 - Connection is local and temporary
@@ -98,11 +106,13 @@ The Extension stores the following data locally on your device:
 ## User Control
 
 ### Data Management
+
 - **Clear Storage**: Remove all saved modifiers via Chrome settings
 - **Disable Extension**: Turn off via Chrome extensions page
 - **Uninstall**: Removes all local data automatically
 
 ### Permissions Control
+
 - All permissions can be reviewed in Chrome's extension settings
 - Extension will not function if required permissions are denied
 - No hidden or undisclosed data access

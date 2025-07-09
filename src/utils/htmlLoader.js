@@ -40,7 +40,9 @@
         }
       } catch (error) {
         console.error('Error getting chrome extension URL:', error);
-        reject(new Error(`Chrome extension context not available: ${error.message}`));
+        reject(
+          new Error(`Chrome extension context not available: ${error.message}`)
+        );
         return;
       }
 

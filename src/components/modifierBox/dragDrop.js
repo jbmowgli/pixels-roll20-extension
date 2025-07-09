@@ -28,7 +28,9 @@ class RowDragDrop {
   }
 
   updatePlaceholderTheme() {
-    if (!this.placeholder) return;
+    if (!this.placeholder) {
+      return;
+    }
 
     // Get theme colors if available
     let primaryColor = '#4caf50'; // Default fallback
@@ -66,10 +68,14 @@ class RowDragDrop {
 
   handleMouseDown(e) {
     const dragHandle = e.target.closest('.drag-handle');
-    if (!dragHandle) return;
+    if (!dragHandle) {
+      return;
+    }
 
     const row = dragHandle.closest(this.rowSelector);
-    if (!row) return;
+    if (!row) {
+      return;
+    }
 
     e.preventDefault(); // Prevent text selection
 
@@ -87,7 +93,9 @@ class RowDragDrop {
   }
 
   handleMouseMove(e) {
-    if (!this.draggedElement) return;
+    if (!this.draggedElement) {
+      return;
+    }
 
     // Start dragging only after moving a few pixels (prevent accidental drags)
     const deltaX = Math.abs(e.clientX - this.startX);
@@ -104,7 +112,9 @@ class RowDragDrop {
   }
 
   startDrag() {
-    if (!this.draggedElement) return;
+    if (!this.draggedElement) {
+      return;
+    }
 
     this.isDragging = true;
 
@@ -116,7 +126,9 @@ class RowDragDrop {
   }
 
   updateDragPosition(e) {
-    if (!this.draggedElement || !this.container) return;
+    if (!this.draggedElement || !this.container) {
+      return;
+    }
 
     const afterElement = this.getDragAfterElement(this.container, e.clientY);
     const rows = this.container.querySelectorAll(this.rowSelector);
@@ -129,7 +141,7 @@ class RowDragDrop {
     // Update placeholder theme before showing it
     this.updatePlaceholderTheme();
 
-    if (afterElement == null) {
+    if (afterElement === null) {
       // Insert at the end
       const lastRow = Array.from(rows)
         .filter(row => row !== this.draggedElement)
@@ -146,8 +158,10 @@ class RowDragDrop {
     }
   }
 
-  handleMouseUp(e) {
-    if (!this.draggedElement) return;
+  handleMouseUp(_e) {
+    if (!this.draggedElement) {
+      return;
+    }
 
     document.body.style.cursor = '';
 
@@ -181,7 +195,7 @@ class RowDragDrop {
       const modifierBox = this.container.closest('#pixels-modifier-box');
       if (modifierBox) {
         this.rowManager.reindexRows(modifierBox);
-        
+
         // Save the new order to localStorage after reindexing
         if (typeof this.rowManager.saveModifierRows === 'function') {
           this.rowManager.saveModifierRows(modifierBox);
@@ -238,7 +252,9 @@ class RowDragDrop {
   // Method to add drag handle to a row
   static addDragHandle(row) {
     // Check if drag handle already exists
-    if (row.querySelector('.drag-handle')) return;
+    if (row.querySelector('.drag-handle')) {
+      return;
+    }
 
     const dragHandle = document.createElement('div');
     dragHandle.className = 'drag-handle';

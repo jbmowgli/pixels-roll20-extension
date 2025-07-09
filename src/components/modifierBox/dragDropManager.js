@@ -76,7 +76,9 @@
 
   function handleMouseDown(e) {
     const dragHandle = e.target.closest('.drag-handle');
-    if (!dragHandle) return;
+    if (!dragHandle) {
+      return;
+    }
 
     e.preventDefault();
     startDrag(dragHandle.parentElement, e.clientX, e.clientY);
@@ -84,7 +86,9 @@
 
   function handleTouchStart(e) {
     const dragHandle = e.target.closest('.drag-handle');
-    if (!dragHandle) return;
+    if (!dragHandle) {
+      return;
+    }
 
     e.preventDefault();
     const touch = e.touches[0];
@@ -92,7 +96,9 @@
   }
 
   function startDrag(row, clientX, clientY) {
-    if (isDragging) return;
+    if (isDragging) {
+      return;
+    }
 
     isDragging = true;
     draggedElement = row;
@@ -125,14 +131,18 @@
   }
 
   function handleMouseMove(e) {
-    if (!isDragging) return;
+    if (!isDragging) {
+      return;
+    }
     e.preventDefault();
     updateDragPosition(e.clientX, e.clientY);
     updateDropTarget(e.clientX, e.clientY);
   }
 
   function handleTouchMove(e) {
-    if (!isDragging) return;
+    if (!isDragging) {
+      return;
+    }
     e.preventDefault();
     const touch = e.touches[0];
     updateDragPosition(touch.clientX, touch.clientY);
@@ -140,18 +150,24 @@
   }
 
   function updateDragPosition(clientX, clientY) {
-    if (!draggedElement) return;
+    if (!draggedElement) {
+      return;
+    }
 
     const rect = draggedElement.getBoundingClientRect();
-    draggedElement.style.left = clientX - rect.width / 2 + 'px';
-    draggedElement.style.top = clientY - 20 + 'px';
+    draggedElement.style.left = `${clientX - rect.width / 2}px`;
+    draggedElement.style.top = `${clientY - 20}px`;
   }
 
   function updateDropTarget(clientX, clientY) {
-    if (!draggedElement || !placeholder) return;
+    if (!draggedElement || !placeholder) {
+      return;
+    }
 
     const content = draggedElement.closest('.pixels-content');
-    if (!content) return;
+    if (!content) {
+      return;
+    }
 
     const rows = Array.from(content.querySelectorAll('.modifier-row')).filter(
       row => row !== draggedElement && row !== placeholder
@@ -177,18 +193,24 @@
     }
   }
 
-  function handleMouseUp(e) {
-    if (!isDragging) return;
+  function handleMouseUp(_e) {
+    if (!isDragging) {
+      return;
+    }
     endDrag();
   }
 
-  function handleTouchEnd(e) {
-    if (!isDragging) return;
+  function handleTouchEnd(_e) {
+    if (!isDragging) {
+      return;
+    }
     endDrag();
   }
 
   function endDrag() {
-    if (!isDragging || !draggedElement || !placeholder) return;
+    if (!isDragging || !draggedElement || !placeholder) {
+      return;
+    }
 
     const content = draggedElement.closest('.pixels-content');
     const modifierBox = content._modifierBox;

@@ -12,12 +12,18 @@
       try {
         const roll20Theme = localStorage.getItem('colorTheme');
         if (roll20Theme === 'dark' || roll20Theme === 'light') {
-          console.log(`Theme detected from Roll20 localStorage: ${roll20Theme}`);
+          console.log(
+            `Theme detected from Roll20 localStorage: ${roll20Theme}`
+          );
           return roll20Theme;
         } else if (roll20Theme) {
-          console.log(`Unexpected Roll20 theme value: ${roll20Theme}, falling back to other detection`);
+          console.log(
+            `Unexpected Roll20 theme value: ${roll20Theme}, falling back to other detection`
+          );
         } else {
-          console.log('No colorTheme found in localStorage, falling back to other detection');
+          console.log(
+            'No colorTheme found in localStorage, falling back to other detection'
+          );
         }
       } catch (error) {
         console.warn('Could not access Roll20 localStorage colorTheme:', error);
@@ -87,7 +93,9 @@
 
     // Parse color string to RGB values
     parseColor(colorStr) {
-      if (!colorStr) return null;
+      if (!colorStr) {
+        return null;
+      }
 
       // Handle rgb() format
       const rgbMatch = colorStr.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
@@ -132,31 +140,34 @@
       console.log(`Getting theme colors for detected theme: ${theme}`);
 
       // Define static, clean theme colors
-      const colors = theme === 'dark' ? {
-        theme: 'dark',
-        primary: '#4CAF50',
-        background: '#2b2b2b',
-        surface: '#1e1e1e',
-        border: '#444444',
-        text: '#ffffff',
-        textSecondary: '#cccccc',
-        input: '#333333',
-        inputBorder: '#555555',
-        button: '#404040',
-        buttonHover: '#505050',
-      } : {
-        theme: 'light',
-        primary: '#4CAF50',
-        background: '#ffffff',
-        surface: '#f8f9fa',
-        border: '#dee2e6',
-        text: '#212529',
-        textSecondary: '#6c757d',
-        input: '#ffffff',
-        inputBorder: '#ced4da',
-        button: 'rgb(248, 249, 250)',
-        buttonHover: '#e9ecef',
-      };
+      const colors =
+        theme === 'dark'
+          ? {
+              theme: 'dark',
+              primary: '#4CAF50',
+              background: '#2b2b2b',
+              surface: '#1e1e1e',
+              border: '#444444',
+              text: '#ffffff',
+              textSecondary: '#cccccc',
+              input: '#333333',
+              inputBorder: '#555555',
+              button: '#404040',
+              buttonHover: '#505050',
+            }
+          : {
+              theme: 'light',
+              primary: '#4CAF50',
+              background: '#ffffff',
+              surface: '#f8f9fa',
+              border: '#dee2e6',
+              text: '#212529',
+              textSecondary: '#6c757d',
+              input: '#ffffff',
+              inputBorder: '#ced4da',
+              button: 'rgb(248, 249, 250)',
+              buttonHover: '#e9ecef',
+            };
 
       console.log('Final theme colors:', colors);
       return colors;
@@ -168,7 +179,7 @@
 
       // Monitor localStorage changes for Roll20's colorTheme
       const originalSetItem = localStorage.setItem;
-      localStorage.setItem = function(key, value) {
+      localStorage.setItem = function (key, value) {
         if (key === 'colorTheme' && (value === 'dark' || value === 'light')) {
           const newTheme = value;
           if (newTheme !== currentTheme) {
@@ -181,8 +192,11 @@
       };
 
       // Listen for storage events (changes from other tabs/windows)
-      window.addEventListener('storage', (e) => {
-        if (e.key === 'colorTheme' && (e.newValue === 'dark' || e.newValue === 'light')) {
+      window.addEventListener('storage', e => {
+        if (
+          e.key === 'colorTheme' &&
+          (e.newValue === 'dark' || e.newValue === 'light')
+        ) {
           const newTheme = e.newValue;
           if (newTheme !== currentTheme) {
             currentTheme = newTheme;
@@ -193,7 +207,7 @@
       });
 
       // Create mutation observer to watch for theme changes (fallback)
-      const observer = new MutationObserver(mutations => {
+      const observer = new MutationObserver(_mutations => {
         const newTheme = this.detectTheme();
         if (newTheme !== currentTheme) {
           currentTheme = newTheme;

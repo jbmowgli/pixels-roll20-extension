@@ -42,7 +42,7 @@
       .info {
         background-color: #2d4a5a;
       }
-      
+
       /* Basic modifier box styles for testing */
       #pixels-modifier-box {
         position: fixed;
@@ -57,7 +57,7 @@
         font-family: Arial, sans-serif;
         color: white;
       }
-      
+
       .pixels-header {
         background: #333;
         padding: 8px 12px;
@@ -66,11 +66,11 @@
         justify-content: space-between;
         align-items: center;
       }
-      
+
       .pixels-content {
         padding: 12px;
       }
-      
+
       .modifier-row {
         display: flex;
         align-items: center;
@@ -79,31 +79,35 @@
         background: #333;
         border-radius: 4px;
       }
-      
+
       .drag-handle {
         cursor: grab;
         padding: 4px;
         margin-right: 8px;
         color: #888;
       }
-      
+
       .drag-handle:active {
         cursor: grabbing;
       }
-      
-      .modifier-radio, .modifier-name, .modifier-value {
+
+      .modifier-radio,
+      .modifier-name,
+      .modifier-value {
         margin-right: 8px;
       }
-      
-      .modifier-name, .modifier-value {
+
+      .modifier-name,
+      .modifier-value {
         background: #444;
         border: 1px solid #666;
         color: white;
         padding: 4px;
         border-radius: 2px;
       }
-      
-      .remove-row-btn, .add-modifier-btn {
+
+      .remove-row-btn,
+      .add-modifier-btn {
         background: #666;
         border: none;
         color: white;
@@ -111,8 +115,9 @@
         border-radius: 2px;
         cursor: pointer;
       }
-      
-      .remove-row-btn:hover, .add-modifier-btn:hover {
+
+      .remove-row-btn:hover,
+      .add-modifier-btn:hover {
         background: #777;
       }
     </style>
@@ -196,28 +201,33 @@
           // Initialize global variables that the modifier box expects
           window.pixelsModifierName = 'Modifier 1';
           window.pixelsModifier = '0';
-          
+
           // Mock extension messaging function
-          window.sendMessageToExtension = function(message) {
+          window.sendMessageToExtension = function (message) {
             // Mock function for testing
           };
 
           // Check if required modules are loaded
           const requiredModules = [
             'HTMLLoader',
-            'ModifierBoxThemeManager', 
+            'ModifierBoxThemeManager',
             'ModifierBoxDragHandler',
-            'ModifierBoxRowManager'
+            'ModifierBoxRowManager',
           ];
-          
-          const missingModules = requiredModules.filter(module => !window[module]);
+
+          const missingModules = requiredModules.filter(
+            module => !window[module]
+          );
           if (missingModules.length > 0) {
-            updateStatus(`Missing modules: ${missingModules.join(', ')}`, 'error');
+            updateStatus(
+              `Missing modules: ${missingModules.join(', ')}`,
+              'error'
+            );
             return;
           }
 
           updateStatus('Creating modifier box...', 'info');
-          
+
           // Create the modifier box
           testModifierBox = await window.ModifierBox.create();
 
@@ -230,7 +240,7 @@
               }
               container.appendChild(testModifierBox);
             }
-            
+
             await window.ModifierBox.show();
             updateStatus('Modifier box created successfully!', 'success');
           } else {
@@ -315,15 +325,15 @@
           // Check which modules loaded successfully
           const modules = [
             'HTMLLoader',
-            'ModifierBoxThemeManager', 
+            'ModifierBoxThemeManager',
             'ModifierBoxDragHandler',
             'ModifierBoxRowManager',
-            'ModifierBox'
+            'ModifierBox',
           ];
-          
+
           const loadedModules = modules.filter(module => window[module]);
           const missingModules = modules.filter(module => !window[module]);
-          
+
           updateStatus(
             `Page loaded. ${loadedModules.length}/${modules.length} modules loaded. Click "Create Modifier Box" to begin testing.`,
             missingModules.length > 0 ? 'error' : 'info'

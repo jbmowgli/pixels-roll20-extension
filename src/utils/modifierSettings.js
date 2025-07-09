@@ -12,7 +12,7 @@
       const settings = {
         modifier: window.pixelsModifier,
         modifierName: window.pixelsModifierName,
-        lastUpdated: Date.now()
+        lastUpdated: Date.now(),
       };
       localStorage.setItem('pixels_roll20_settings', JSON.stringify(settings));
       console.log('Saved modifier settings to localStorage');
@@ -28,7 +28,9 @@
         const settings = JSON.parse(stored);
         window.pixelsModifier = settings.modifier || '0';
         window.pixelsModifierName = settings.modifierName || 'Modifier 1';
-        console.log(`Loaded modifier settings: ${window.pixelsModifier}, ${window.pixelsModifierName}`);
+        console.log(
+          `Loaded modifier settings: ${window.pixelsModifier}, ${window.pixelsModifierName}`
+        );
         return true;
       }
     } catch (error) {
@@ -60,7 +62,7 @@
     saveModifierSettings,
     loadModifierSettings,
     updateModifierSettings,
-    clearAllModifierSettings
+    clearAllModifierSettings,
   };
 
   // Make functions available globally for backward compatibility

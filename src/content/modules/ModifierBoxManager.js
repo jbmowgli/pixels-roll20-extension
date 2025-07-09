@@ -1,12 +1,12 @@
 /**
  * ModifierBoxManager.js
- * 
+ *
  * Handles showing and hiding the modifier box based on context.
  */
 
 'use strict';
 
-(function() {
+(function () {
   const log = window.log || console.log;
 
   // Show modifier box (respects popup detection)
@@ -16,7 +16,7 @@
       log('Skipping modifier box display - this is a Roll20 popup window');
       return;
     }
-    
+
     if (typeof window.ModifierBox !== 'undefined') {
       if (!window.ModifierBox.isInitialized()) {
         log('ModifierBox module not initialized yet');
@@ -46,11 +46,10 @@
   // Export functions to global scope
   window.ModifierBoxManager = {
     showModifierBox,
-    hideModifierBox
+    hideModifierBox,
   };
 
   // Legacy exports for compatibility
   window.showModifierBox = showModifierBox;
   window.hideModifierBox = hideModifierBox;
-
 })();

@@ -114,7 +114,7 @@
         ) {
           logoUrl = chrome.runtime.getURL('assets/images/logo-128.png');
         }
-      } catch (error) {
+      } catch {
         console.log('Using fallback logo URL (not in extension context)');
       }
 
@@ -166,7 +166,7 @@
       ) {
         logoUrl = chrome.runtime.getURL('assets/images/logo-128.png');
       }
-    } catch (error) {
+    } catch {
       console.log('Using fallback logo URL (not in extension context)');
     }
 
@@ -229,17 +229,17 @@
 
     // Add minimize functionality
     const minimizeBtn = modifierBox.querySelector('.pixels-minimize');
-    
+
     // Add clear all functionality
     const clearAllBtn = modifierBox.querySelector('.clear-all-btn');
-    
+
     if (clearAllBtn) {
       console.log('Clear All button found, adding event listener');
       clearAllBtn.addEventListener('click', e => {
         console.log('Clear All button clicked');
         e.preventDefault();
         e.stopPropagation();
-        
+
         clearAllModifiers();
       });
     } else {
@@ -296,12 +296,12 @@
           if (originalWidth && originalHeight) {
             modifierBox.style.setProperty(
               'width',
-              originalWidth + 'px',
+              `${originalWidth}px`,
               'important'
             );
             modifierBox.style.setProperty(
               'height',
-              originalHeight + 'px',
+              `${originalHeight}px`,
               'important'
             );
             console.log(
@@ -330,7 +330,10 @@
 
     // Try to load saved modifier rows from localStorage
     if (window.ModifierBoxRowManager.loadModifierRows) {
-      const loaded = window.ModifierBoxRowManager.loadModifierRows(modifierBox, updateCallback);
+      const loaded = window.ModifierBoxRowManager.loadModifierRows(
+        modifierBox,
+        updateCallback
+      );
       if (loaded) {
         console.log('Successfully loaded modifier rows from localStorage');
       } else {
@@ -415,7 +418,7 @@
         window.ModifierBoxThemeManager.updateTheme(modifierBox);
         // Also force element-specific updates
         window.ModifierBoxThemeManager.forceElementUpdates(modifierBox);
-        
+
         // Apply theme again after a short delay to ensure CSS is fully loaded
         setTimeout(() => {
           console.log('Applying delayed theme update...');
@@ -449,7 +452,7 @@
 
   function clearAllModifiers() {
     console.log('clearAllModifiers called');
-    
+
     if (!modifierBox) {
       console.error('Cannot clear modifiers - modifierBox is null');
       return;
@@ -461,7 +464,10 @@
     }
 
     // Reset all rows using rowManager
-    if (window.ModifierBoxRowManager && window.ModifierBoxRowManager.resetAllRows) {
+    if (
+      window.ModifierBoxRowManager &&
+      window.ModifierBoxRowManager.resetAllRows
+    ) {
       const updateCallback = () => {
         if (window.ModifierBoxRowManager.updateSelectedModifier) {
           window.ModifierBoxRowManager.updateSelectedModifier(modifierBox);

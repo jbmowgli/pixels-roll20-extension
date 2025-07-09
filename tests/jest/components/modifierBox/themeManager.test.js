@@ -195,7 +195,7 @@ describe('ModifierBox Theme Manager', () => {
 
     test('should apply theme class to body element', () => {
       const mockBody = document.body;
-      
+
       // Mock ThemeDetector
       global.window.ThemeDetector = {
         getThemeColors: jest.fn().mockReturnValue({
@@ -203,7 +203,7 @@ describe('ModifierBox Theme Manager', () => {
           background: '#ffffff',
           text: '#333333',
           // other colors...
-        })
+        }),
       };
 
       window.ModifierBoxThemeManager.updateTheme(mockModifierBox);

@@ -279,27 +279,28 @@ The extension uses a modular architecture that loads files directly from their o
 ```javascript
 // manifest.json content_scripts.js array:
 [
-  "src/utils/modifierSettings.js",     // Settings persistence
-  "src/utils/themeDetector.js",        // Theme detection
-  "src/utils/cssLoader.js",            // CSS loading utility
-  "src/utils/htmlLoader.js",           // HTML loading utility
-  "src/components/modifierBox/themeManager.js",
-  "src/components/modifierBox/dragHandler.js",
-  "src/components/modifierBox/rowManager.js",
-  "src/components/modifierBox/dragDrop.js",
-  "src/components/modifierBox/modifierBox.js",
-  "src/content/modules/Utils.js",           // Core utilities
-  "src/content/modules/PopupDetection.js",  // Popup detection
-  "src/content/modules/ExtensionMessaging.js", // Extension communication
-  "src/content/modules/Roll20Integration.js",  // Roll20 platform integration
-  "src/content/modules/StorageManager.js",     // Storage coordination
-  "src/content/modules/ModifierBoxManager.js", // ModifierBox coordination
-  "src/content/modules/PixelsBluetooth.js",    // Bluetooth management
-  "src/content/roll20.js"               // Main coordinator (loads last)
-]
+  'src/utils/modifierSettings.js', // Settings persistence
+  'src/utils/themeDetector.js', // Theme detection
+  'src/utils/cssLoader.js', // CSS loading utility
+  'src/utils/htmlLoader.js', // HTML loading utility
+  'src/components/modifierBox/themeManager.js',
+  'src/components/modifierBox/dragHandler.js',
+  'src/components/modifierBox/rowManager.js',
+  'src/components/modifierBox/dragDrop.js',
+  'src/components/modifierBox/modifierBox.js',
+  'src/content/modules/Utils.js', // Core utilities
+  'src/content/modules/PopupDetection.js', // Popup detection
+  'src/content/modules/ExtensionMessaging.js', // Extension communication
+  'src/content/modules/Roll20Integration.js', // Roll20 platform integration
+  'src/content/modules/StorageManager.js', // Storage coordination
+  'src/content/modules/ModifierBoxManager.js', // ModifierBox coordination
+  'src/content/modules/PixelsBluetooth.js', // Bluetooth management
+  'src/content/roll20.js', // Main coordinator (loads last)
+];
 ```
 
 This modular approach provides:
+
 - **Clear dependencies**: Each module has defined responsibilities
 - **Easy maintenance**: Issues can be isolated to specific modules
 - **Testable components**: Each module can be tested independently
@@ -328,17 +329,17 @@ The project includes robust Jest test coverage with pre-commit validation:
 
 ```
 ✅ tests/jest/components/modifierBox/index.test.js      - ModifierBox component tests
-✅ tests/jest/components/modifierBox/dragHandler.test.js - Drag functionality tests  
+✅ tests/jest/components/modifierBox/dragHandler.test.js - Drag functionality tests
 ✅ tests/jest/components/modifierBox/themeManager.test.js - Theme management tests
 ✅ tests/jest/components/modifierBox/rowManager.test.js  - Row management tests
 ✅ tests/jest/roll20.test.js                            - Comprehensive Roll20 integration (modular)
 ✅ tests/jest/campaignIdValidation.test.js              - Campaign ID validation
-✅ tests/jest/popup.test.js                             - Popup functionality  
+✅ tests/jest/popup.test.js                             - Popup functionality
 ✅ tests/jest/coreModules.test.js                       - Core module loading
 
 🧪 tests/jest/experimental/                             - Development test suites
    ├── BluetoothConnection.test.js                     - Bluetooth API mocking challenges
-   ├── ExtensionMessaging.test.js                      - Chrome API mocking complexity  
+   ├── ExtensionMessaging.test.js                      - Chrome API mocking complexity
    ├── ChatIntegration.test.js                         - DOM integration scenarios
    ├── Pixel.test.js                                   - Advanced Pixels dice scenarios
    └── roll20-*.test.js                                - Complex Roll20 integration tests
@@ -433,7 +434,7 @@ npm run format:check        # Check formatting without writing
 ### Project Health
 
 - ✅ **180 tests passing** with comprehensive coverage
-- ✅ **Pre-commit hooks** enforcing code quality  
+- ✅ **Pre-commit hooks** enforcing code quality
 - ✅ **Modular architecture** with focused, single-responsibility modules
 - ✅ **Consistent naming** following camelCase conventions and feature-based utilities
 - ✅ **Modern tooling** with Prettier, Husky, and Jest

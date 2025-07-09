@@ -94,10 +94,16 @@ describe('Core Modules - Structure Tests', () => {
       require('../../src/utils/modifierSettings.js');
 
       // Verify that all expected functionality is available
-      expect(global.window.PixelsSessionStorage).toHaveProperty('saveModifierSettings');
-      expect(global.window.PixelsSessionStorage).toHaveProperty('loadModifierSettings');
-      expect(global.window.PixelsSessionStorage).toHaveProperty('clearAllModifierSettings');
-      
+      expect(global.window.PixelsSessionStorage).toHaveProperty(
+        'saveModifierSettings'
+      );
+      expect(global.window.PixelsSessionStorage).toHaveProperty(
+        'loadModifierSettings'
+      );
+      expect(global.window.PixelsSessionStorage).toHaveProperty(
+        'clearAllModifierSettings'
+      );
+
       // Test that functions exist globally for backward compatibility
       expect(typeof global.window.saveModifierSettings).toBe('function');
       expect(typeof global.window.loadModifierSettings).toBe('function');

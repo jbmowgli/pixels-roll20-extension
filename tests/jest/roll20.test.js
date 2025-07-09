@@ -26,7 +26,7 @@ describe('Roll20.js - Comprehensive Tests', () => {
     require('../../src/content/modules/ModifierBoxManager.js');
     require('../../src/content/modules/PixelsBluetooth.js');
     require('../../src/content/roll20.js');
-    
+
     // The main roll20.js module auto-initializes via DOM ready or timeout
     // In tests, we need to wait for the timeout to complete
     // Since the timeout is 100ms, we need to flush it
@@ -37,7 +37,7 @@ describe('Roll20.js - Comprehensive Tests', () => {
     // Clear all mocks
     jest.clearAllMocks();
     jest.resetModules();
-    
+
     // Use fake timers to control setTimeout calls
     jest.useFakeTimers();
 
@@ -271,7 +271,7 @@ describe('Roll20.js - Comprehensive Tests', () => {
       global.window.location = { href: 'https://app.roll20.net/editor/123' };
       global.window.innerWidth = 1200;
       global.window.innerHeight = 800;
-      
+
       global.window.ModifierBox = {
         show: jest.fn(),
         hide: jest.fn(),
@@ -725,28 +725,68 @@ describe('Roll20.js - Comprehensive Tests', () => {
 
     describe('checkUrlForPopup (pure function)', () => {
       test('should detect journal popout URLs', () => {
-        expect(global.window.checkUrlForPopup('https://app.roll20.net/editor/popout')).toBe(true);
-        expect(global.window.checkUrlForPopup('https://app.roll20.net/editor/popout/123')).toBe(true);
-        expect(global.window.checkUrlForPopup('https://app.roll20.net/journal/popout')).toBe(true);
+        expect(
+          global.window.checkUrlForPopup('https://app.roll20.net/editor/popout')
+        ).toBe(true);
+        expect(
+          global.window.checkUrlForPopup(
+            'https://app.roll20.net/editor/popout/123'
+          )
+        ).toBe(true);
+        expect(
+          global.window.checkUrlForPopup(
+            'https://app.roll20.net/journal/popout'
+          )
+        ).toBe(true);
       });
 
       test('should detect character sheet popout URLs', () => {
-        expect(global.window.checkUrlForPopup('https://app.roll20.net/editor/character/123?popout=true')).toBe(true);
-        expect(global.window.checkUrlForPopup('https://app.roll20.net/something?popout=true&other=value')).toBe(true);
-        expect(global.window.checkUrlForPopup('https://app.roll20.net/path?foo=bar&popout=true')).toBe(true);
+        expect(
+          global.window.checkUrlForPopup(
+            'https://app.roll20.net/editor/character/123?popout=true'
+          )
+        ).toBe(true);
+        expect(
+          global.window.checkUrlForPopup(
+            'https://app.roll20.net/something?popout=true&other=value'
+          )
+        ).toBe(true);
+        expect(
+          global.window.checkUrlForPopup(
+            'https://app.roll20.net/path?foo=bar&popout=true'
+          )
+        ).toBe(true);
       });
 
       test('should handle case insensitive matching', () => {
-        expect(global.window.checkUrlForPopup('https://app.roll20.net/editor/POPOUT')).toBe(true);
-        expect(global.window.checkUrlForPopup('https://app.roll20.net/something?POPOUT=TRUE')).toBe(true);
-        expect(global.window.checkUrlForPopup('https://app.roll20.net/something?Popout=True')).toBe(true);
+        expect(
+          global.window.checkUrlForPopup('https://app.roll20.net/editor/POPOUT')
+        ).toBe(true);
+        expect(
+          global.window.checkUrlForPopup(
+            'https://app.roll20.net/something?POPOUT=TRUE'
+          )
+        ).toBe(true);
+        expect(
+          global.window.checkUrlForPopup(
+            'https://app.roll20.net/something?Popout=True'
+          )
+        ).toBe(true);
       });
 
       test('should NOT detect main Roll20 pages', () => {
-        expect(global.window.checkUrlForPopup('https://app.roll20.net/editor/123')).toBe(false);
-        expect(global.window.checkUrlForPopup('https://app.roll20.net/campaigns/456')).toBe(false);
-        expect(global.window.checkUrlForPopup('https://app.roll20.net/dashboard')).toBe(false);
-        expect(global.window.checkUrlForPopup('https://app.roll20.net/')).toBe(false);
+        expect(
+          global.window.checkUrlForPopup('https://app.roll20.net/editor/123')
+        ).toBe(false);
+        expect(
+          global.window.checkUrlForPopup('https://app.roll20.net/campaigns/456')
+        ).toBe(false);
+        expect(
+          global.window.checkUrlForPopup('https://app.roll20.net/dashboard')
+        ).toBe(false);
+        expect(global.window.checkUrlForPopup('https://app.roll20.net/')).toBe(
+          false
+        );
       });
 
       test('should handle edge cases gracefully', () => {
@@ -759,14 +799,28 @@ describe('Roll20.js - Comprehensive Tests', () => {
 
       test('should detect popout in various URL parts', () => {
         // These should still be detected as popups since they contain "popout"
-        expect(global.window.checkUrlForPopup('https://app.roll20.net/something-popout-related')).toBe(true);
-        expect(global.window.checkUrlForPopup('https://app.roll20.net/popout-test/page')).toBe(true);
-        expect(global.window.checkUrlForPopup('https://app.roll20.net/test/popout/123')).toBe(true);
+        expect(
+          global.window.checkUrlForPopup(
+            'https://app.roll20.net/something-popout-related'
+          )
+        ).toBe(true);
+        expect(
+          global.window.checkUrlForPopup(
+            'https://app.roll20.net/popout-test/page'
+          )
+        ).toBe(true);
+        expect(
+          global.window.checkUrlForPopup(
+            'https://app.roll20.net/test/popout/123'
+          )
+        ).toBe(true);
       });
 
       test('should handle URLs without protocols', () => {
         expect(global.window.checkUrlForPopup('/editor/popout')).toBe(true);
-        expect(global.window.checkUrlForPopup('/something?popout=true')).toBe(true);
+        expect(global.window.checkUrlForPopup('/something?popout=true')).toBe(
+          true
+        );
         expect(global.window.checkUrlForPopup('/editor/123')).toBe(false);
       });
     });
@@ -774,7 +828,7 @@ describe('Roll20.js - Comprehensive Tests', () => {
     describe('isRoll20PopupWindow (browser integration)', () => {
       test('should exist and be callable', () => {
         expect(typeof global.window.isRoll20PopupWindow).toBe('function');
-        
+
         // Should not throw when called (though result depends on environment)
         expect(() => {
           global.window.isRoll20PopupWindow();
@@ -785,8 +839,10 @@ describe('Roll20.js - Comprehensive Tests', () => {
         // Mock window.location to throw an error
         const originalLocation = global.window.location;
         Object.defineProperty(global.window, 'location', {
-          get: () => { throw new Error('Location access denied'); },
-          configurable: true
+          get: () => {
+            throw new Error('Location access denied');
+          },
+          configurable: true,
         });
 
         expect(global.window.isRoll20PopupWindow()).toBe(false);
@@ -794,7 +850,7 @@ describe('Roll20.js - Comprehensive Tests', () => {
         // Restore original location
         Object.defineProperty(global.window, 'location', {
           value: originalLocation,
-          configurable: true
+          configurable: true,
         });
       });
     });

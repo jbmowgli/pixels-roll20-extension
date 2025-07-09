@@ -17,7 +17,7 @@
 
     let isDragging = false;
     let isResizing = false;
-    let dragOffset = { x: 0, y: 0 };
+    const dragOffset = { x: 0, y: 0 };
 
     // Store original dimensions for restore functionality
     const originalDimensions = {
@@ -51,13 +51,13 @@
     resizeHandle.addEventListener('dblclick', e => {
       modifierBox.style.setProperty(
         'width',
-        originalDimensions.width + 'px',
+        `${originalDimensions.width}px`,
         'important'
       );
       if (originalDimensions.height) {
         modifierBox.style.setProperty(
           'height',
-          originalDimensions.height + 'px',
+          `${originalDimensions.height}px`,
           'important'
         );
       } else {
@@ -73,7 +73,7 @@
     // Set initial dimensions and store them
     modifierBox.style.setProperty(
       'width',
-      originalDimensions.width + 'px',
+      `${originalDimensions.width}px`,
       'important'
     );
 
@@ -144,8 +144,8 @@
         const maxLeft = window.innerWidth - 100; // Keep at least 100px visible
         const maxTop = window.innerHeight - 50; // Keep at least 50px visible
 
-        modifierBox.style.left = Math.max(0, Math.min(newLeft, maxLeft)) + 'px';
-        modifierBox.style.top = Math.max(0, Math.min(newTop, maxTop)) + 'px';
+        modifierBox.style.left = `${Math.max(0, Math.min(newLeft, maxLeft))}px`;
+        modifierBox.style.top = `${Math.max(0, Math.min(newTop, maxTop))}px`;
       } else if (isResizing) {
         // Calculate size change based on mouse movement
         const deltaX = e.clientX - dragOffset.x;
@@ -173,22 +173,22 @@
         // Use setProperty with important flag to override CSS !important rules
         modifierBox.style.setProperty(
           'width',
-          constrainedWidth + 'px',
+          `${constrainedWidth}px`,
           'important'
         );
         modifierBox.style.setProperty(
           'height',
-          constrainedHeight + 'px',
+          `${constrainedHeight}px`,
           'important'
         );
 
         // Prevent the box from going off-screen during resize
         const rect = modifierBox.getBoundingClientRect();
         if (rect.right > window.innerWidth) {
-          modifierBox.style.left = window.innerWidth - rect.width - 10 + 'px';
+          modifierBox.style.left = `${window.innerWidth - rect.width - 10}px`;
         }
         if (rect.bottom > window.innerHeight) {
-          modifierBox.style.top = window.innerHeight - rect.height - 10 + 'px';
+          modifierBox.style.top = `${window.innerHeight - rect.height - 10}px`;
         }
       }
     }

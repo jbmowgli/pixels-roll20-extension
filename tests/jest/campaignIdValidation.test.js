@@ -25,75 +25,75 @@ function loadRoll20Module() {
     ...global.window,
     addEventListener: jest.fn(),
     chrome: { runtime: { sendMessage: jest.fn() } },
-    location: { href: 'https://app.roll20.net/campaigns/123456789/' }
+    location: { href: 'https://app.roll20.net/campaigns/123456789/' },
   };
-  
+
   global.document = {
     createElement: jest.fn(() => ({
       setAttribute: jest.fn(),
       style: {},
       appendChild: jest.fn(),
-      remove: jest.fn()
+      remove: jest.fn(),
     })),
     body: { appendChild: jest.fn() },
     getElementById: jest.fn(() => null),
     getElementsByClassName: jest.fn(() => []),
     querySelector: jest.fn(() => null),
-    querySelectorAll: jest.fn(() => [])
+    querySelectorAll: jest.fn(() => []),
   };
 
   // Load the roll20.js module
   require('../../src/content/roll20.js');
-  
+
   // Extract the isValidCampaignId function from the loaded module
   // Since it's not exported, we need to access it through the global scope
   // or by re-executing the function definition
-  
+
   // Define the function locally for testing (copied from the source)
   function isValidCampaignId(campaignId) {
     // Campaign ID must exist and not be null/undefined
     if (!campaignId && campaignId !== 0) return false;
-    
+
     // Must be a string or number, not an object or array
     if (typeof campaignId !== 'string' && typeof campaignId !== 'number') {
       return false;
     }
-    
+
     // Convert to string for validation
     const idStr = String(campaignId).trim();
-    
+
     // Must be a numeric string (no decimals, no letters, no special chars except negative sign)
     if (!/^-?\d+$/.test(idStr)) {
       return false;
     }
-    
+
     // Parse as integer
     const idNum = parseInt(idStr, 10);
-    
+
     // Must be a positive integer
     if (idNum <= 0) {
       return false;
     }
-    
+
     // Roll20 campaign IDs are typically 8+ digits, but let's be more lenient for edge cases
     if (idNum < 1000) {
       return false;
     }
-    
+
     // Additional check: ensure the original value wasn't a float
     if (typeof campaignId === 'number' && !Number.isInteger(campaignId)) {
       return false;
     }
-    
+
     return true;
   }
-  
+
   return isValidCampaignId;
 }
 
 describe('Campaign ID Validation', () => {
   let isValidCampaignId;
-  
+
   beforeEach(() => {
     isValidCampaignId = loadRoll20Module();
   });

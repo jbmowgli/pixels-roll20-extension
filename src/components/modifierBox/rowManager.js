@@ -139,7 +139,7 @@
       return;
     }
 
-    const index = parseInt(radio.value);
+    const _index = parseInt(radio.value);
 
     // Count total rows
     const totalRows = modifierBox.querySelectorAll('.modifier-row').length;
@@ -296,7 +296,10 @@
 
         // Save the updated values to localStorage
         if (typeof window.updateModifierSettings === 'function') {
-          window.updateModifierSettings(window.pixelsModifier, window.pixelsModifierName);
+          window.updateModifierSettings(
+            window.pixelsModifier,
+            window.pixelsModifierName
+          );
         }
 
         // Save the modifier rows state to localStorage
@@ -331,7 +334,9 @@
 
   // Function to save all modifier rows to localStorage
   function saveModifierRows(modifierBox) {
-    if (!modifierBox) return;
+    if (!modifierBox) {
+      return;
+    }
 
     try {
       const rows = modifierBox.querySelectorAll('.modifier-row');
@@ -348,7 +353,7 @@
           rowsData.push({
             name: nameInput.value || 'Modifier',
             value: valueInput.value || '0',
-            originalIndex: radio ? radio.value : domIndex.toString() // Store original index for reference
+            originalIndex: radio ? radio.value : domIndex.toString(), // Store original index for reference
           });
 
           if (radio && radio.checked) {
@@ -361,10 +366,13 @@
         rows: rowsData,
         selectedIndex: selectedIndex,
         rowCounter: rowCounter,
-        lastUpdated: Date.now()
+        lastUpdated: Date.now(),
       };
 
-      localStorage.setItem('pixels_modifier_rows', JSON.stringify(modifierState));
+      localStorage.setItem(
+        'pixels_modifier_rows',
+        JSON.stringify(modifierState)
+      );
       console.log('Saved modifier rows to localStorage:', modifierState);
     } catch (error) {
       console.error('Error saving modifier rows:', error);
@@ -373,14 +381,20 @@
 
   // Function to load modifier rows from localStorage
   function loadModifierRows(modifierBox, updateSelectedModifierCallback) {
-    if (!modifierBox) return false;
+    if (!modifierBox) {
+      return false;
+    }
 
     try {
       const stored = localStorage.getItem('pixels_modifier_rows');
-      if (!stored) return false;
+      if (!stored) {
+        return false;
+      }
 
       const modifierState = JSON.parse(stored);
-      if (!modifierState.rows || !Array.isArray(modifierState.rows)) return false;
+      if (!modifierState.rows || !Array.isArray(modifierState.rows)) {
+        return false;
+      }
 
       console.log('Loading modifier rows from localStorage:', modifierState);
 
@@ -391,7 +405,9 @@
 
       // Clear existing rows
       const content = modifierBox.querySelector('.pixels-content');
-      if (!content) return false;
+      if (!content) {
+        return false;
+      }
 
       // Remove all existing modifier rows
       const existingRows = content.querySelectorAll('.modifier-row');
@@ -413,8 +429,13 @@
       });
 
       // Restore selected row
-      if (modifierState.selectedIndex >= 0 && modifierState.selectedIndex < modifierState.rows.length) {
-        const selectedRadio = modifierBox.querySelector(`input[name="modifier-select"][value="${modifierState.selectedIndex}"]`);
+      if (
+        modifierState.selectedIndex >= 0 &&
+        modifierState.selectedIndex < modifierState.rows.length
+      ) {
+        const selectedRadio = modifierBox.querySelector(
+          `input[name="modifier-select"][value="${modifierState.selectedIndex}"]`
+        );
         if (selectedRadio) {
           selectedRadio.checked = true;
         }
@@ -429,7 +450,10 @@
       }
 
       // Force theme updates on the restored elements
-      if (window.ModifierBoxThemeManager && window.ModifierBoxThemeManager.forceElementUpdates) {
+      if (
+        window.ModifierBoxThemeManager &&
+        window.ModifierBoxThemeManager.forceElementUpdates
+      ) {
         window.ModifierBoxThemeManager.forceElementUpdates(modifierBox);
       }
 

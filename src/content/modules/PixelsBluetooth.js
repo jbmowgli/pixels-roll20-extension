@@ -1,6 +1,6 @@
 /**
  * PixelsBluetooth.js
- * 
+ *
  * Handles all Bluetooth connectivity with Pixels dice, including:
  * - Device discovery and connection
  * - Connection monitoring and reconnection
@@ -10,14 +10,14 @@
 
 'use strict';
 
-(function() {
+(function () {
   const log = window.log || console.log;
-  const postChatMessage = window.postChatMessage || function() {};
-  const sendTextToExtension = window.sendTextToExtension || function() {};
-  const sendStatusToExtension = window.sendStatusToExtension || function() {};
+  const postChatMessage = window.postChatMessage || function () {};
+  const sendTextToExtension = window.sendTextToExtension || function () {};
+  const sendStatusToExtension = window.sendStatusToExtension || function () {};
 
   // Pixels dice UUIDs from the official Pixels JS SDK
-  
+
   // Modern Pixels dice UUIDs
   const PIXELS_SERVICE_UUID = 'a6b90001-7a5a-43f2-a962-350c8edc9b5b';
   const PIXELS_NOTIFY_CHARACTERISTIC = 'a6b90002-7a5a-43f2-a962-350c8edc9b5b';
@@ -25,15 +25,19 @@
 
   // Legacy Pixels dice UUIDs (for older dice)
   const PIXELS_LEGACY_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-  const PIXELS_LEGACY_NOTIFY_CHARACTERISTIC = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-  const PIXELS_LEGACY_WRITE_CHARACTERISTIC = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+  const PIXELS_LEGACY_NOTIFY_CHARACTERISTIC =
+    '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+  const PIXELS_LEGACY_WRITE_CHARACTERISTIC =
+    '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 
   // Global pixels array
   let pixels = [];
 
   // Roll formulas
-  let pixelsFormulaWithModifier = '&{template:default} {{name=#modifier_name (+#modifier)}} {{Pixel=#face_value}} {{Result=[[#face_value + #modifier]]}}';
-  let pixelsFormulaSimple = '&{template:default} {{name=Pixel Roll}} {{Pixel=#face_value}} {{Result=[[#result]]}}';
+  const pixelsFormulaWithModifier =
+    '&{template:default} {{name=#modifier_name (+#modifier)}} {{Pixel=#face_value}} {{Result=[[#face_value + #modifier]]}}';
+  const pixelsFormulaSimple =
+    '&{template:default} {{name=Pixel Roll}} {{Pixel=#face_value}} {{Result=[[#result]]}}';
 
   // Pixel class - represents a connected Pixels die
   class Pixel {
@@ -53,7 +57,7 @@
     get isConnected() {
       return (
         this._isConnected &&
-        this._server != null &&
+        this._server !== null &&
         this._device &&
         this._device.gatt.connected
       );
@@ -134,28 +138,28 @@
     handleNotifications(event) {
       this._lastActivity = Date.now(); // Track activity for connection monitoring
 
-      let value = event.target.value;
-      let arr = [];
+      const value = event.target.value;
+      const arr = [];
       // Convert raw data bytes to hex values just for the sake of showing something.
       for (let i = 0; i < value.byteLength; i++) {
-        arr.push('0x' + ('00' + value.getUint8(i).toString(16)).slice(-2));
+        arr.push(`0x${`00${value.getUint8(i).toString(16)}`.slice(-2)}`);
       }
 
-      log('Pixel notification: ' + arr.join(' '));
+      log(`Pixel notification: ${arr.join(' ')}`);
 
-      if (value.getUint8(0) == 3) {
+      if (value.getUint8(0) === 3) {
         this._handleFaceEvent(value.getUint8(1), value.getUint8(2));
       }
     }
 
     _handleFaceEvent(ev, face) {
       if (!this._hasMoved) {
-        if (ev != 1) {
+        if (ev !== 1) {
           this._hasMoved = true;
         }
-      } else if (ev == 1) {
+      } else if (ev === 1) {
         this._face = face;
-        let txt = this._name + ': face up = ' + (face + 1);
+        const txt = `${this._name}: face up = ${face + 1}`;
         log(txt);
 
         // Check if modifier box is visible to determine modifier application
@@ -180,15 +184,10 @@
         const result = diceValue + modifier;
 
         log(
-          'Dice value: ' +
-            diceValue +
-            ', Modifier: ' +
-            modifier +
-            ', Result: ' +
-            result
+          `Dice value: ${diceValue}, Modifier: ${modifier}, Result: ${result}`
         );
-        log('pixelsModifierName: "' + window.pixelsModifierName + '"');
-        log('Modifier box visible: ' + isModifierBoxVisible);
+        log(`pixelsModifierName: "${window.pixelsModifierName}"`);
+        log(`Modifier box visible: ${isModifierBoxVisible}`);
 
         // Choose formula based on modifier box visibility
         let formula = isModifierBoxVisible
@@ -197,24 +196,30 @@
 
         // Add critical hit message if face value is 20
         if (diceValue === 20 && isModifierBoxVisible) {
-          formula = formula.replace('{{Pixel=#face_value}}', '{{<span style="color: #ff4444; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">CRITICAL!</span>}} {{Pixel=#face_value}}');
+          formula = formula.replace(
+            '{{Pixel=#face_value}}',
+            '{{<span style="color: #ff4444; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">CRITICAL!</span>}} {{Pixel=#face_value}}'
+          );
         }
-        
+
         // Add fumble message if face value is 1
         if (diceValue === 1 && isModifierBoxVisible) {
-          formula = formula.replace('{{Pixel=#face_value}}', '{{<span style="color: #888888; font-size: 16px; font-style: italic; opacity: 0.7;">FUMBLE!</span>}} {{Pixel=#face_value}}');
+          formula = formula.replace(
+            '{{Pixel=#face_value}}',
+            '{{<span style="color: #888888; font-size: 16px; font-style: italic; opacity: 0.7;">FUMBLE!</span>}} {{Pixel=#face_value}}'
+          );
         }
 
-        log('Formula before replacement: ' + formula);
+        log(`Formula before replacement: ${formula}`);
 
-        let message = formula
+        const message = formula
           .replaceAll('#modifier_name', window.pixelsModifierName)
           .replaceAll('#face_value', diceValue.toString())
           .replaceAll('#pixel_name', this._name)
           .replaceAll('#modifier', modifier.toString())
           .replaceAll('#result', result.toString());
 
-        log('Formula after replacement: ' + message);
+        log(`Formula after replacement: ${message}`);
 
         message.split('\\n').forEach(s => postChatMessage(s));
 
@@ -233,42 +238,41 @@
           { services: [PIXELS_LEGACY_SERVICE_UUID] }, // Legacy Pixels dice
         ],
       };
-      log('Requesting Bluetooth Device with ' + JSON.stringify(options));
+      log(`Requesting Bluetooth Device with ${JSON.stringify(options)}`);
 
       const device = await navigator.bluetooth.requestDevice(options);
       log(
-        'User selected Pixel "' +
-          device.name +
-          '", connected=' +
+        `User selected Pixel "${device.name}", connected=${
           device.gatt.connected
+        }`
       );
 
       // Add disconnect event listener to handle unexpected disconnections
       device.addEventListener('gattserverdisconnected', event => {
-        log('Pixel device disconnected: ' + event.target.name);
+        log(`Pixel device disconnected: ${event.target.name}`);
         handleDeviceDisconnection(event.target);
       });
 
       let server, notify;
       const connect = async () => {
-        console.log('Connecting to ' + device.name);
+        console.log(`Connecting to ${device.name}`);
         server = await device.gatt.connect();
 
         // Try to detect which type of Pixel this is and use appropriate UUIDs
-        let serviceUuid, notifyUuid, writeUuid;
+        let serviceUuid, notifyUuid, _writeUuid;
         try {
           // Try modern UUIDs first
           await server.getPrimaryService(PIXELS_SERVICE_UUID);
           serviceUuid = PIXELS_SERVICE_UUID;
           notifyUuid = PIXELS_NOTIFY_CHARACTERISTIC;
-          writeUuid = PIXELS_WRITE_CHARACTERISTIC;
+          _writeUuid = PIXELS_WRITE_CHARACTERISTIC;
           log('Connected to modern Pixels die');
-        } catch (error) {
+        } catch {
           // Fall back to legacy UUIDs
           await server.getPrimaryService(PIXELS_LEGACY_SERVICE_UUID);
           serviceUuid = PIXELS_LEGACY_SERVICE_UUID;
           notifyUuid = PIXELS_LEGACY_NOTIFY_CHARACTERISTIC;
-          writeUuid = PIXELS_LEGACY_WRITE_CHARACTERISTIC;
+          _writeUuid = PIXELS_LEGACY_WRITE_CHARACTERISTIC;
           log('Connected to legacy Pixels die');
         }
 
@@ -283,11 +287,11 @@
           await connect();
           break;
         } catch (error) {
-          log('Error connecting to Pixel: ' + error);
+          log(`Error connecting to Pixel: ${error}`);
           // Wait a bit before trying again
           if (i) {
             const delay = 2;
-            log('Trying again in ' + delay + ' seconds...');
+            log(`Trying again in ${delay} seconds...`);
             await new Promise(resolve =>
               setTimeout(() => resolve(), delay * 1000)
             );
@@ -302,9 +306,9 @@
           const existingPixel = pixels.find(p => p.name === device.name);
           if (existingPixel) {
             log(
-              'Device ' +
-                device.name +
-                ' is already connected, skipping duplicate connection'
+              `Device ${
+                device.name
+              } is already connected, skipping duplicate connection`
             );
             return;
           }
@@ -313,7 +317,7 @@
           await notify.startNotifications();
           log('Pixels notifications started!');
           pixel.setNotifyCharacteristic(notify);
-          sendTextToExtension('Just connected to ' + pixel.name);
+          sendTextToExtension(`Just connected to ${pixel.name}`);
           pixels.push(pixel);
 
           // Update connection status in popup
@@ -322,7 +326,7 @@
           // Start connection monitoring
           startConnectionMonitoring(pixel);
         } catch (error) {
-          log('Error connecting to Pixel notifications: ' + error);
+          log(`Error connecting to Pixel notifications: ${error}`);
           // Handle notification error
           if (server) {
             server.disconnect();
@@ -330,14 +334,14 @@
         }
       }
     } catch (error) {
-      log('Error during device selection or connection: ' + error);
-      sendTextToExtension('Failed to connect to Pixel: ' + error.message);
+      log(`Error during device selection or connection: ${error}`);
+      sendTextToExtension(`Failed to connect to Pixel: ${error.message}`);
     }
   }
 
   // Handle device disconnection
   function handleDeviceDisconnection(device) {
-    log('Handling disconnection for device: ' + device.name);
+    log(`Handling disconnection for device: ${device.name}`);
 
     // Find the pixel in our array
     const pixelIndex = pixels.findIndex(p => p.name === device.name);
@@ -346,7 +350,7 @@
       pixel.markDisconnected();
 
       // Update status
-      sendTextToExtension('Pixel ' + device.name + ' disconnected');
+      sendTextToExtension(`Pixel ${device.name} disconnected`);
       sendStatusToExtension();
 
       // Attempt to reconnect after a delay
@@ -359,7 +363,7 @@
   // Attempt to reconnect to a disconnected device
   async function attemptReconnection(device, pixel) {
     if (!device.gatt.connected) {
-      log('Attempting to reconnect to ' + device.name);
+      log(`Attempting to reconnect to ${device.name}`);
       try {
         // First, ensure we're disconnected cleanly
         if (device.gatt.connected) {
@@ -384,7 +388,7 @@
           service = await server.getPrimaryService(PIXELS_SERVICE_UUID);
           notifyUuid = PIXELS_NOTIFY_CHARACTERISTIC;
           log('Reconnecting to modern Pixels die');
-        } catch (error) {
+        } catch {
           // Fall back to legacy UUIDs
           service = await server.getPrimaryService(PIXELS_LEGACY_SERVICE_UUID);
           notifyUuid = PIXELS_LEGACY_NOTIFY_CHARACTERISTIC;
@@ -395,8 +399,8 @@
         await notify.startNotifications();
 
         pixel.reconnect(server, notify);
-        sendTextToExtension('Reconnected to ' + pixel.name);
-        log('Successfully reconnected to ' + device.name);
+        sendTextToExtension(`Reconnected to ${pixel.name}`);
+        log(`Successfully reconnected to ${device.name}`);
 
         // Restart connection monitoring
         startConnectionMonitoring(pixel);
@@ -404,7 +408,7 @@
         // Reset retry count on successful reconnection
         pixel._reconnectAttempts = 0;
       } catch (error) {
-        log('Failed to reconnect to ' + device.name + ': ' + error);
+        log(`Failed to reconnect to ${device.name}: ${error}`);
 
         // Implement exponential backoff
         pixel._reconnectAttempts = (pixel._reconnectAttempts || 0) + 1;
@@ -440,7 +444,7 @@
     try {
       pixel._connectionMonitor = setInterval(() => {
         if (pixel._device && !pixel._device.gatt.connected) {
-          log('Connection lost detected for ' + pixel.name);
+          log(`Connection lost detected for ${pixel.name}`);
           handleDeviceDisconnection(pixel._device);
           clearInterval(pixel._connectionMonitor);
         }
@@ -501,7 +505,7 @@
     disconnectAllPixels,
     getPixels,
     initialize,
-    Pixel
+    Pixel,
   };
 
   // Legacy exports for compatibility
@@ -513,5 +517,4 @@
   if (typeof global !== 'undefined') {
     global.Pixel = Pixel;
   }
-
 })();

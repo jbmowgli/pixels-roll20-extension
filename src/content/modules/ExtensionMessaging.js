@@ -1,13 +1,13 @@
 /**
  * ExtensionMessaging.js
- * 
+ *
  * Handles communication between the content script and the extension.
  */
 
 'use strict';
 
-(function() {
-  const log = window.log || console.log;
+(function () {
+  const _log = window.log || console.log;
 
   // Send message to extension with error handling
   function sendMessageToExtension(data) {
@@ -35,10 +35,11 @@
     const connectedPixels = pixels.filter(p => p.isConnected);
     const totalPixels = pixels.length;
 
-    if (totalPixels == 0) {
+    if (totalPixels === 0) {
       sendTextToExtension('No Pixel connected');
-    } else if (totalPixels == 1) {
-      const status = connectedPixels.length == 1 ? 'connected' : 'disconnected';
+    } else if (totalPixels === 1) {
+      const status =
+        connectedPixels.length === 1 ? 'connected' : 'disconnected';
       sendTextToExtension(`1 Pixel ${status}`);
     } else {
       sendTextToExtension(`${connectedPixels.length} Pixels connected`);
@@ -68,11 +69,10 @@
   window.ExtensionMessaging = {
     sendMessageToExtension,
     sendTextToExtension,
-    sendStatusToExtension
+    sendStatusToExtension,
   };
 
   // Legacy exports for compatibility
   window.sendTextToExtension = sendTextToExtension;
   window.sendStatusToExtension = sendStatusToExtension;
-
 })();
