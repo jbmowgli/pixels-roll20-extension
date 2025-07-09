@@ -347,11 +347,13 @@
       const existingRows = modifierBox.querySelectorAll('.modifier-row');
       existingRows.forEach(row => {
         if (!row.querySelector('.drag-handle')) {
-          window.RowDragDrop.addDragHandle(row);
+          if (window.addDragHandle) {
+            window.addDragHandle(row);
+          }
         }
       });
 
-      window.modifierRowDragDrop = new window.RowDragDrop(
+      window.modifierRowDragDrop = window.RowDragDrop(
         '#pixels-modifier-box .pixels-content',
         '.modifier-row',
         window.ModifierBoxRowManager

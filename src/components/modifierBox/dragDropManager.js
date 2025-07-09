@@ -43,15 +43,20 @@
   }
 
   function addDragHandleToRow(row) {
-    // Create drag handle
-    const dragHandle = document.createElement('div');
-    dragHandle.className = 'drag-handle';
-    dragHandle.innerHTML = '⋮⋮'; // Unicode for vertical dots
-    dragHandle.title = 'Drag to reorder';
-    dragHandle.draggable = false; // We'll handle drag manually
+    // Use the functional API if available, otherwise fallback to direct implementation
+    if (window.addDragHandle) {
+      window.addDragHandle(row);
+    } else {
+      // Fallback implementation
+      const dragHandle = document.createElement('div');
+      dragHandle.className = 'drag-handle';
+      dragHandle.innerHTML = '⋮⋮'; // Unicode for vertical dots
+      dragHandle.title = 'Drag to reorder';
+      dragHandle.draggable = false; // We'll handle drag manually
 
-    // Insert at the beginning of the row
-    row.insertBefore(dragHandle, row.firstChild);
+      // Insert at the beginning of the row
+      row.insertBefore(dragHandle, row.firstChild);
+    }
 
     // Add drag styling to the row
     row.classList.add('draggable-row');

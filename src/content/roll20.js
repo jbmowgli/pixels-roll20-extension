@@ -5,7 +5,17 @@
  * This is the main entry point that loads and coordinates all other modules.
  */
 
-'use strict';
+import {
+  initialize as initializePixelsBluetooth,
+  connectToPixel,
+  disconnectAllPixels,
+  getPixels,
+} from './modules/PixelsBluetooth.js';
+import {
+  sendTextToExtension,
+  sendStatusToExtension,
+  setupMessageListener,
+} from '../core/extensionMessaging.js';
 
 if (typeof window.roll20PixelsLoaded === 'undefined') {
   const _roll20PixelsLoaded = true;
@@ -21,9 +31,17 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
     log('Starting Pixels Roll20 extension');
 
     // Initialize the Bluetooth module
-    if (window.PixelsBluetooth) {
-      window.PixelsBluetooth.initialize();
-    }
+    initializePixelsBluetooth();
+
+    // Expose functions to global scope for backwards compatibility
+    window.connectToPixel = connectToPixel;
+    window.disconnectAllPixels = disconnectAllPixels;
+    window.getPixels = getPixels;
+    window.sendTextToExtension = sendTextToExtension;
+    window.sendStatusToExtension = sendStatusToExtension;
+
+    // Set up extension messaging
+    setupMessageListener();
 
     // Set up formulas
     const pixelsFormulaWithModifier =
@@ -59,17 +77,22 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
             window.hideModifierBox();
           } else if (msg.action === 'connect') {
             log('Connect button clicked, attempting to connect to Pixel');
-            try {
-              window.connectToPixel();
-            } catch (error) {
-              log(`Error in connectToPixel: ${error}`);
-              window.sendTextToExtension(`Failed to connect: ${error.message}`);
-            }
+            // Handle connect asynchronously to catch all errors properly
+            (async () => {
+              try {
+                await connectToPixel();
+              } catch (error) {
+                log(`Error in connectToPixel: ${error}`);
+                if (typeof window.sendTextToExtension === 'function') {
+                  window.sendTextToExtension(
+                    `Failed to connect: ${error.message}`
+                  );
+                }
+              }
+            })();
           } else if (msg.action === 'disconnect') {
             log('Manual disconnect requested');
-            if (window.PixelsBluetooth) {
-              window.PixelsBluetooth.disconnectAllPixels();
-            }
+            disconnectAllPixels();
           } else if (msg.action === 'getTheme') {
             log('Received theme request');
             // Get current theme from ThemeDetector
