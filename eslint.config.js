@@ -8,6 +8,11 @@ module.exports = [
       'src/content/roll20.js',
       'src/core/extensionMessaging.js',
       'src/components/modifierBox/dragDrop.js',
+      'src/components/modifierBox/dragDropManager.js',
+      'src/components/modifierBox/themeManager.js',
+      'src/components/modifierBox/rowManager.js',
+      'src/components/modifierBox/dragHandler.js',
+      'src/components/modifierBox/modifierBox.js',
     ],
     languageOptions: {
       ecmaVersion: 2022,
@@ -67,6 +72,11 @@ module.exports = [
     files: ['**/*.js'],
     ignores: [
       'src/components/modifierBox/dragDrop.js', // Will be handled by ES modules config
+      'src/components/modifierBox/dragDropManager.js', // Will be handled by ES modules config
+      'src/components/modifierBox/themeManager.js', // Will be handled by ES modules config
+      'src/components/modifierBox/rowManager.js', // Will be handled by ES modules config
+      'src/components/modifierBox/dragHandler.js', // Will be handled by ES modules config
+      'src/components/modifierBox/modifierBox.js', // Will be handled by ES modules config
       'src/content/modules/*.js', // Will be handled by ES modules config
       'src/content/roll20.js', // Will be handled by ES modules config
       'src/core/extensionMessaging.js', // Will be handled by ES modules config

@@ -3,40 +3,11 @@
 //
 // Theme Manager Module - Handles styling and theme updates for the modifier box
 //
-(function () {
-  // Theme observer instance
-  let themeObserver = null;
 
-  // Export functions to global scope
-  window.ModifierBoxThemeManager = {
-    addStyles: addModifierBoxStyles,
-    updateTheme: updateTheme,
-    startThemeMonitoring: startThemeMonitoring,
-    stopThemeMonitoring: stopThemeMonitoring,
-    forceThemeRefresh: function (modifierBox) {
-      // Force an immediate theme refresh
-      updateTheme(modifierBox);
-    },
-    forceElementUpdates: function (modifierBox) {
-      // Now that we use CSS classes, just re-apply the theme class to ensure proper styling
-      if (!modifierBox) {
-        return;
-      }
+// Theme observer instance
+let themeObserver = null;
 
-      const colors = window.ThemeDetector
-        ? window.ThemeDetector.getThemeColors()
-        : { theme: 'dark' };
-
-      // Re-apply theme class to body
-      const body = document.body;
-      body.classList.remove('roll20-light-theme', 'roll20-dark-theme');
-      body.classList.add(`roll20-${colors.theme}-theme`);
-
-      console.log(`Force updated theme class: roll20-${colors.theme}-theme`);
-    },
-  };
-
-  function addModifierBoxStyles() {
+function addModifierBoxStyles() {
     // Check if CSSLoader is available
     if (!window.CSSLoader) {
       console.error(
@@ -49,15 +20,15 @@
     // Define CSS files to load
     const cssFiles = [
       {
-        path: 'src/components/modifierBox/styles/modifierBox.css',
+        path: 'components/modifierBox/styles/modifierBox.css',
         id: 'pixels-modifier-box-base-styles',
       },
       {
-        path: 'src/components/modifierBox/styles/minimized.css',
+        path: 'components/modifierBox/styles/minimized.css',
         id: 'pixels-modifier-box-minimized-styles',
       },
       {
-        path: 'src/components/modifierBox/styles/lightTheme.css',
+        path: 'components/modifierBox/styles/lightTheme.css',
         id: 'pixels-modifier-box-light-theme-styles',
       },
     ];
@@ -152,10 +123,75 @@
     }
   }
 
-  function stopThemeMonitoring() {
-    if (themeObserver) {
-      themeObserver.disconnect();
-      themeObserver = null;
-    }
+function stopThemeMonitoring() {
+  if (themeObserver) {
+    themeObserver.disconnect();
+    themeObserver = null;
   }
-})();
+}
+
+// Helper function for force theme refresh
+function forceThemeRefresh(modifierBox) {
+  // Force an immediate theme refresh
+  updateTheme(modifierBox);
+}
+
+// Helper function for force element updates
+function forceElementUpdates(modifierBox) {
+  // Now that we use CSS classes, just re-apply the theme class to ensure proper styling
+  if (!modifierBox) {
+    return;
+  }
+
+  const colors = window.ThemeDetector
+    ? window.ThemeDetector.getThemeColors()
+    : { theme: 'dark' };
+
+  // Re-apply theme class to body
+  const body = document.body;
+  body.classList.remove('roll20-light-theme', 'roll20-dark-theme');
+  body.classList.add(`roll20-${colors.theme}-theme`);
+
+  console.log(`Force updated theme class: roll20-${colors.theme}-theme`);
+}
+
+// Helper function to reset module state (for testing)
+function resetState() {
+  if (themeObserver) {
+    themeObserver.disconnect();
+    themeObserver = null;
+  }
+}
+
+// Export functions
+export const addStyles = addModifierBoxStyles;
+export { updateTheme };
+export { startThemeMonitoring };
+export { stopThemeMonitoring };
+export { forceThemeRefresh };
+export { forceElementUpdates };
+export { resetState };
+
+// Default export for convenience
+export default {
+  addStyles: addModifierBoxStyles,
+  updateTheme,
+  startThemeMonitoring,
+  stopThemeMonitoring,
+  forceThemeRefresh,
+  forceElementUpdates,
+  resetState,
+};
+
+// Legacy global exports for compatibility (temporary)
+if (typeof window !== 'undefined') {
+  window.ModifierBoxThemeManager = {
+    addStyles: addModifierBoxStyles,
+    updateTheme,
+    startThemeMonitoring,
+    stopThemeMonitoring,
+    forceThemeRefresh,
+    forceElementUpdates,
+    resetState,
+  };
+}

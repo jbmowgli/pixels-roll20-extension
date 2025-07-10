@@ -3,16 +3,11 @@
 //
 // Drag and Drop Manager Module - Handles reordering modifier rows
 //
-(function () {
-  let draggedElement = null;
-  let placeholder = null;
-  let isDragging = false;
+import { addDragHandle, removeDragHandle } from './dragDrop.js';
 
-  // Export functions to global scope
-  window.ModifierBoxDragDropManager = {
-    setupDragAndDrop: setupDragAndDrop,
-    cleanup: cleanup,
-  };
+let draggedElement = null;
+let placeholder = null;
+let isDragging = false;
 
   function setupDragAndDrop(modifierBox) {
     if (!modifierBox) {
@@ -43,21 +38,9 @@
   }
 
   function addDragHandleToRow(row) {
-    // Use the functional API if available, otherwise fallback to direct implementation
-    if (window.addDragHandle) {
-      window.addDragHandle(row);
-    } else {
-      // Fallback implementation
-      const dragHandle = document.createElement('div');
-      dragHandle.className = 'drag-handle';
-      dragHandle.innerHTML = '⋮⋮'; // Unicode for vertical dots
-      dragHandle.title = 'Drag to reorder';
-      dragHandle.draggable = false; // We'll handle drag manually
-
-      // Insert at the beginning of the row
-      row.insertBefore(dragHandle, row.firstChild);
-    }
-
+    // Use the imported ES module function
+    addDragHandle(row);
+    
     // Add drag styling to the row
     row.classList.add('draggable-row');
   }
@@ -285,4 +268,21 @@
       };
     }
   }
-})();
+
+// Export functions
+export { setupDragAndDrop };
+export { cleanup };
+
+// Default export for convenience
+export default {
+  setupDragAndDrop,
+  cleanup,
+};
+
+// Legacy global exports for compatibility (temporary)
+if (typeof window !== 'undefined') {
+  window.ModifierBoxDragDropManager = {
+    setupDragAndDrop,
+    cleanup,
+  };
+}

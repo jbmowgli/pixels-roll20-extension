@@ -11,6 +11,21 @@ module.exports = {
     // Content scripts
     'content/roll20': './src/content/roll20.js',
 
+    // Utility modules
+    'utils/modifierSettings': './src/utils/modifierSettings.js',
+    'utils/themeDetector': './src/utils/themeDetector.js',
+    'utils/cssLoader': './src/utils/cssLoader.js',
+    'utils/htmlLoader': './src/utils/htmlLoader.js',
+
+    // Content modules
+    'content/modules/Utils': './src/content/modules/Utils.js',
+    'content/modules/PopupDetection': './src/content/modules/PopupDetection.js',
+    'content/modules/ExtensionMessaging': './src/content/modules/ExtensionMessaging.js',
+    'content/modules/Roll20Integration': './src/content/modules/Roll20Integration.js',
+    'content/modules/StorageManager': './src/content/modules/StorageManager.js',
+    'content/modules/ModifierBoxManager': './src/content/modules/ModifierBoxManager.js',
+    'content/modules/PixelsBluetooth': './src/content/modules/PixelsBluetooth.js',
+
     // Modifier box components
     'components/modifierBox/modifierBox':
       './src/components/modifierBox/modifierBox.js',
@@ -18,11 +33,19 @@ module.exports = {
       './src/components/modifierBox/dragHandler.js',
     'components/modifierBox/themeManager':
       './src/components/modifierBox/themeManager.js',
+    'components/modifierBox/rowManager':
+      './src/components/modifierBox/rowManager.js',
+    'components/modifierBox/dragDrop':
+      './src/components/modifierBox/dragDrop.js',
+
+    // Popup component
+    'components/popup/popup': './src/components/popup/popup.js',
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: '[name].js',
     clean: true,
+    // No library wrapper for content scripts - just execute in global scope
   },
   resolve: {
     extensions: ['.js', '.ts'],
@@ -42,7 +65,19 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           options: {
-            presets: ['@babel/preset-env'],
+            presets: [
+              [
+                '@babel/preset-env',
+                {
+                  targets: {
+                    chrome: '88', // Chrome extension minimum version
+                  },
+                  modules: 'cjs', // Transform to CommonJS for browser compatibility
+                  useBuiltIns: 'usage',
+                  corejs: 3,
+                },
+              ],
+            ],
             plugins: ['@babel/plugin-transform-runtime'],
           },
         },
@@ -57,7 +92,7 @@ module.exports = {
     new CopyWebpackPlugin({
       patterns: [
         // Copy manifest and assets
-        { from: 'manifest.json' },
+        { from: 'src/manifest.json', to: 'manifest.json' },
         { from: 'assets', to: 'assets' },
 
         // Copy HTML files
@@ -65,32 +100,25 @@ module.exports = {
           from: 'src/components/modifierBox/modifierBox.html',
           to: 'components/modifierBox/modifierBox.html',
         },
+        {
+          from: 'src/components/popup/popup.html',
+          to: 'components/popup/popup.html',
+        },
 
         // Copy CSS files
         {
           from: 'src/components/modifierBox/styles',
           to: 'components/modifierBox/styles',
         },
+        {
+          from: 'src/components/popup/popup.css',
+          to: 'components/popup/popup.css',
+        },
       ],
     }),
   ],
   optimization: {
-    splitChunks: {
-      chunks: 'all',
-      cacheGroups: {
-        vendor: {
-          test: /[\\/]node_modules[\\/]/,
-          name: 'vendor',
-          chunks: 'all',
-        },
-        common: {
-          name: 'common',
-          minChunks: 2,
-          chunks: 'all',
-          enforce: true,
-        },
-      },
-    },
+    splitChunks: false, // Disable code splitting for content scripts
   },
   // Chrome extension specific settings
   target: 'web',

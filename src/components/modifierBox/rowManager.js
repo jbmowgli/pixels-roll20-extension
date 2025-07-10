@@ -3,8 +3,9 @@
 //
 // Row Manager Module - Handles adding, removing, and managing modifier rows
 //
-(function () {
-  let rowCounter = 1; // Start from 1 since we have row 0
+import { forceElementUpdates } from './themeManager.js';
+
+let rowCounter = 1; // Start from 1 since we have row 0
 
   // Function to clear modifier state
   function clearModifierState(modifierBox) {
@@ -109,11 +110,10 @@
     saveModifierRows(modifierBox);
 
     // Force theme updates on the new elements
-    if (
-      window.ModifierBoxThemeManager &&
-      window.ModifierBoxThemeManager.forceElementUpdates
-    ) {
+    if (window.ModifierBoxThemeManager && window.ModifierBoxThemeManager.forceElementUpdates) {
       window.ModifierBoxThemeManager.forceElementUpdates(modifierBox);
+    } else if (forceElementUpdates) {
+      forceElementUpdates(modifierBox);
     }
   }
 
@@ -450,11 +450,10 @@
       }
 
       // Force theme updates on the restored elements
-      if (
-        window.ModifierBoxThemeManager &&
-        window.ModifierBoxThemeManager.forceElementUpdates
-      ) {
+      if (window.ModifierBoxThemeManager && window.ModifierBoxThemeManager.forceElementUpdates) {
         window.ModifierBoxThemeManager.forceElementUpdates(modifierBox);
+      } else if (forceElementUpdates) {
+        forceElementUpdates(modifierBox);
       }
 
       return true;
@@ -516,12 +515,68 @@
 
     // Update selected modifier display
     if (updateSelectedModifierCallback) {
-      updateSelectedModifierCallback();
-    }
-
-    // Clear stored modifier rows
-    clearStoredModifierRows();
-
-    console.log('All rows reset to default');
+    updateSelectedModifierCallback();
   }
-})();
+
+  // Clear stored modifier rows
+  clearStoredModifierRows();
+
+  console.log('All rows reset to default');
+}
+
+// Export functions
+export { setupModifierRowLogic };
+export { addModifierRow };
+export { removeModifierRow };
+export { updateEventListeners };
+export { updateSelectedModifier };
+export { clearModifierState };
+export { reindexRows };
+export { saveModifierRows };
+export { loadModifierRows };
+export { clearStoredModifierRows };
+export { resetAllRows };
+export const getRowCounter = () => rowCounter;
+export const setRowCounter = value => (rowCounter = value);
+
+// Helper function to reset module state (for testing)
+export const resetState = () => {
+  rowCounter = 1;
+};
+
+// Default export for convenience
+export default {
+  setupModifierRowLogic,
+  addModifierRow,
+  removeModifierRow,
+  updateEventListeners,
+  updateSelectedModifier,
+  clearModifierState,
+  reindexRows,
+  saveModifierRows,
+  loadModifierRows,
+  clearStoredModifierRows,
+  resetAllRows,
+  getRowCounter,
+  setRowCounter,
+};
+
+// Legacy global exports for compatibility (temporary)
+if (typeof window !== 'undefined') {
+  window.ModifierBoxRowManager = {
+    setupModifierRowLogic,
+    addModifierRow,
+    removeModifierRow,
+    updateEventListeners,
+    updateSelectedModifier,
+    clearModifierState,
+    reindexRows,
+    saveModifierRows,
+    loadModifierRows,
+    clearStoredModifierRows,
+    resetAllRows,
+    getRowCounter,
+    setRowCounter,
+    resetState,
+  };
+}

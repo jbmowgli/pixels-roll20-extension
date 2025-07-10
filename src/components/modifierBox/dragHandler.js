@@ -3,13 +3,8 @@
 //
 // Drag Handler Module - Handles drag functionality for the modifier box
 //
-(function () {
-  // Export functions to global scope
-  window.ModifierBoxDragHandler = {
-    setupDragFunctionality: setupDragFunctionality,
-  };
 
-  function setupDragFunctionality(modifierBox) {
+function setupDragFunctionality(modifierBox) {
     if (!modifierBox) {
       console.error('setupDragFunctionality: modifierBox is required');
       return;
@@ -193,11 +188,25 @@
       }
     }
 
-    function onMouseUp() {
-      isDragging = false;
-      isResizing = false;
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-    }
+  function onMouseUp() {
+    isDragging = false;
+    isResizing = false;
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
   }
-})();
+}
+
+// Export function
+export { setupDragFunctionality };
+
+// Default export for convenience
+export default {
+  setupDragFunctionality,
+};
+
+// Legacy global exports for compatibility (temporary)
+if (typeof window !== 'undefined') {
+  window.ModifierBoxDragHandler = {
+    setupDragFunctionality,
+  };
+}

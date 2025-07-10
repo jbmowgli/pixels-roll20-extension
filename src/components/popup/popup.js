@@ -201,16 +201,6 @@ function applyTheme(theme) {
   console.log(`Popup: Theme application complete - ${theme}`);
 }
 
-function hookButton(name) {
-  document.getElementById(name).onclick = _element =>
-    sendMessage({ action: name });
-}
-
-// Hooks "connect" and "showModifier" buttons to injected JS
-hookButton('connect');
-hookButton('showModifier');
-hookButton('hideModifier');
-
 function showText(txt) {
   document.getElementById('text').innerHTML = txt;
 }
@@ -255,6 +245,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const iconElement = document.querySelector('.popup-icon');
   if (iconElement && typeof chrome !== 'undefined' && chrome.runtime) {
     iconElement.src = chrome.runtime.getURL('assets/images/logo-128.png');
+  }
+
+  // Setup button event handlers directly to avoid tree-shaking
+  const connectBtn = document.getElementById('connect');
+  const showModifierBtn = document.getElementById('showModifier');
+  const hideModifierBtn = document.getElementById('hideModifier');
+
+  if (connectBtn) {
+    connectBtn.onclick = () => sendMessage({ action: 'connect' });
+  }
+  if (showModifierBtn) {
+    showModifierBtn.onclick = () => sendMessage({ action: 'showModifier' });
+  }
+  if (hideModifierBtn) {
+    hideModifierBtn.onclick = () => sendMessage({ action: 'hideModifier' });
   }
 
   detectAndApplyTheme();

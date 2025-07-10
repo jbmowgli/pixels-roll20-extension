@@ -1,0 +1,70 @@
+{
+  "name": "Pixels Roll20 Integration",
+  "version": "1.0.0",
+  "description": "Connect Pixels dice to Roll20 via Bluetooth with advanced modifier support and seamless integration.",
+  "permissions": ["activeTab", "tabs", "storage", "scripting"],
+  "background": {
+    "service_worker": "background/background.js"
+  },
+  "action": {
+    "default_popup": "components/popup/popup.html",
+    "default_icon": {
+      "16": "assets/images/logo-128.png",
+      "32": "assets/images/logo-128.png",
+      "48": "assets/images/logo-128.png",
+      "128": "assets/images/logo-128.png"
+    }
+  },
+  "icons": {
+    "16": "assets/images/logo-128.png",
+    "32": "assets/images/logo-128.png",
+    "48": "assets/images/logo-128.png",
+    "128": "assets/images/logo-128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://roll20.net/editor/*",
+        "https://app.roll20.net/editor/*"
+      ],
+      "js": [
+        "utils/modifierSettings.js",
+        "utils/themeDetector.js",
+        "utils/cssLoader.js",
+        "utils/htmlLoader.js",
+        "components/modifierBox/themeManager.js",
+        "components/modifierBox/dragHandler.js",
+        "components/modifierBox/rowManager.js",
+        "components/modifierBox/dragDrop.js",
+        "components/modifierBox/modifierBox.js",
+        "content/modules/Utils.js",
+        "content/modules/PopupDetection.js",
+        "content/modules/ExtensionMessaging.js",
+        "content/modules/Roll20Integration.js",
+        "content/modules/StorageManager.js",
+        "content/modules/ModifierBoxManager.js",
+        "content/modules/PixelsBluetooth.js",
+        "content/roll20.js"
+      ]
+    }
+  ],
+  "host_permissions": [
+    "https://roll20.net/*",
+    "https://app.roll20.net/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "components/modifierBox/modifierBox.html",
+        "components/modifierBox/styles/*",
+        "components/popup/popup.css",
+        "assets/images/*"
+      ],
+      "matches": [
+        "https://roll20.net/*",
+        "https://app.roll20.net/*"
+      ]
+    }
+  ],
+  "manifest_version": 3
+}

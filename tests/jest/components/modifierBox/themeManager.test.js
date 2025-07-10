@@ -2,18 +2,22 @@
  * @jest-environment jsdom
  */
 
-const fs = require('fs');
-const path = require('path');
-
-function loadModule(modulePath) {
-  const fullPath = path.join(__dirname, '../../../../', modulePath);
-  const moduleCode = fs.readFileSync(fullPath, 'utf8');
-  eval(moduleCode);
-}
+// Import the ES module using require (Babel will transform it)
+const themeManagerModule = require('../../../../src/components/modifierBox/themeManager.js');
 
 describe('ModifierBox Theme Manager', () => {
   beforeEach(() => {
     resetMocks();
+
+    // Set up globals for backward compatibility
+    if (themeManagerModule.default) {
+      window.ModifierBoxThemeManager = themeManagerModule.default;
+    }
+
+    // Reset module state
+    if (window.ModifierBoxThemeManager.resetState) {
+      window.ModifierBoxThemeManager.resetState();
+    }
 
     // Mock ThemeDetector
     window.ThemeDetector = {
@@ -31,9 +35,6 @@ describe('ModifierBox Theme Manager', () => {
         disconnect: jest.fn(),
       })),
     };
-
-    // Load the theme manager module
-    loadModule('src/components/modifierBox/themeManager.js');
   });
 
   describe('Module Initialization', () => {
@@ -79,15 +80,15 @@ describe('ModifierBox Theme Manager', () => {
       // Should attempt to load CSS files
       expect(window.CSSLoader.loadMultipleCSS).toHaveBeenCalledWith([
         expect.objectContaining({
-          path: 'src/components/modifierBox/styles/modifierBox.css',
+          path: 'components/modifierBox/styles/modifierBox.css',
           id: 'pixels-modifier-box-base-styles',
         }),
         expect.objectContaining({
-          path: 'src/components/modifierBox/styles/minimized.css',
+          path: 'components/modifierBox/styles/minimized.css',
           id: 'pixels-modifier-box-minimized-styles',
         }),
         expect.objectContaining({
-          path: 'src/components/modifierBox/styles/lightTheme.css',
+          path: 'components/modifierBox/styles/lightTheme.css',
           id: 'pixels-modifier-box-light-theme-styles',
         }),
       ]);

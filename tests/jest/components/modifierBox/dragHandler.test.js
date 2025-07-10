@@ -2,19 +2,17 @@
  * @jest-environment jsdom
  */
 
-const fs = require('fs');
-const path = require('path');
-
-function loadModule(modulePath) {
-  const fullPath = path.join(__dirname, '../../../../', modulePath);
-  const moduleCode = fs.readFileSync(fullPath, 'utf8');
-  eval(moduleCode);
-}
+// Import the ES module using require (Babel will transform it)
+const dragHandlerModule = require('../../../../src/components/modifierBox/dragHandler.js');
 
 describe('ModifierBox Drag Handler', () => {
   beforeEach(() => {
     resetMocks();
-    loadModule('src/components/modifierBox/dragHandler.js');
+    
+    // Set up globals for backward compatibility
+    if (dragHandlerModule.default) {
+      window.ModifierBoxDragHandler = dragHandlerModule.default;
+    }
   });
 
   describe('Module Initialization', () => {
