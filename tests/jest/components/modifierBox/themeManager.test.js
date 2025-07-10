@@ -2,8 +2,34 @@
  * @jest-environment jsdom
  */
 
+// Mock the ES module imports
+jest.mock('../../../../src/utils/cssLoader.js', () => ({
+  loadMultipleCSS: jest.fn(() => Promise.resolve()),
+  loadCSS: jest.fn(() => Promise.resolve()),
+  removeCSS: jest.fn(),
+  isLoaded: jest.fn(() => false),
+}));
+
+jest.mock('../../../../src/utils/themeDetector.js', () => ({
+  getThemeColors: jest.fn(() => ({
+    theme: 'dark',
+    primary: '#4CAF50',
+    background: '#2b2b2b',
+    text: '#ffffff',
+    input: '#333333',
+    inputBorder: '#555555',
+    button: '#444444',
+    border: '#555555',
+  })),
+  onThemeChange: jest.fn(() => ({
+    disconnect: jest.fn(),
+  })),
+}));
+
 // Import the ES module using require (Babel will transform it)
 const themeManagerModule = require('../../../../src/components/modifierBox/themeManager.js');
+const { loadMultipleCSS } = require('../../../../src/utils/cssLoader.js');
+const { getThemeColors, onThemeChange } = require('../../../../src/utils/themeDetector.js');
 
 describe('ModifierBox Theme Manager', () => {
   beforeEach(() => {
@@ -19,21 +45,16 @@ describe('ModifierBox Theme Manager', () => {
       window.ModifierBoxThemeManager.resetState();
     }
 
-    // Mock ThemeDetector
+    // Clear mock calls
+    jest.clearAllMocks();
+
+    // Set up legacy globals for tests that still expect them
     window.ThemeDetector = {
-      getThemeColors: jest.fn(() => ({
-        theme: 'dark',
-        primary: '#4CAF50',
-        background: '#2b2b2b',
-        text: '#ffffff',
-        input: '#333333',
-        inputBorder: '#555555',
-        button: '#444444',
-        border: '#555555',
-      })),
-      onThemeChange: jest.fn(() => ({
-        disconnect: jest.fn(),
-      })),
+      getThemeColors,
+      onThemeChange,
+    };
+    window.CSSLoader = {
+      loadMultipleCSS,
     };
   });
 
@@ -64,21 +85,11 @@ describe('ModifierBox Theme Manager', () => {
   });
 
   describe('addStyles', () => {
-    beforeEach(() => {
-      // Mock CSSLoader for most tests
-      window.CSSLoader = {
-        loadMultipleCSS: jest.fn(() => Promise.resolve()),
-        loadCSS: jest.fn(() => Promise.resolve()),
-        removeCSS: jest.fn(),
-        isLoaded: jest.fn(() => false),
-      };
-    });
-
     test('should attempt to load external CSS files when CSSLoader is available', async () => {
       window.ModifierBoxThemeManager.addStyles();
 
       // Should attempt to load CSS files
-      expect(window.CSSLoader.loadMultipleCSS).toHaveBeenCalledWith([
+      expect(loadMultipleCSS).toHaveBeenCalledWith([
         expect.objectContaining({
           path: 'components/modifierBox/styles/modifierBox.css',
           id: 'pixels-modifier-box-base-styles',
@@ -95,7 +106,9 @@ describe('ModifierBox Theme Manager', () => {
     });
 
     test('should fall back to inline styles when CSSLoader is not available', () => {
-      delete window.CSSLoader;
+      // Create a version of the module where loadMultipleCSS is null
+      const originalLoadMultipleCSS = require('../../../../src/utils/cssLoader.js').loadMultipleCSS;
+      require('../../../../src/utils/cssLoader.js').loadMultipleCSS = null;
 
       window.ModifierBoxThemeManager.addStyles();
 
@@ -105,6 +118,9 @@ describe('ModifierBox Theme Manager', () => {
       expect(styleElement).toBeTruthy();
       expect(styleElement.tagName).toBe('STYLE');
       expect(styleElement.textContent).toContain('#pixels-modifier-box');
+
+      // Restore original function
+      require('../../../../src/utils/cssLoader.js').loadMultipleCSS = originalLoadMultipleCSS;
     });
 
     test('should fall back to inline styles when CSS loading fails', async () => {
@@ -175,7 +191,7 @@ describe('ModifierBox Theme Manager', () => {
       window.ModifierBoxThemeManager.updateTheme(mockModifierBox);
 
       // Check that styles were applied (we can't easily test the exact values due to browser differences)
-      expect(window.ThemeDetector.getThemeColors).toHaveBeenCalled();
+      expect(getThemeColors).toHaveBeenCalled();
     });
 
     test('should handle null modifier box gracefully', () => {
@@ -237,7 +253,7 @@ describe('ModifierBox Theme Manager', () => {
       expect(inputs.length).toBeGreaterThan(0);
 
       // Verify the function completes without error
-      expect(window.ThemeDetector.getThemeColors).toHaveBeenCalled();
+      expect(getThemeColors).toHaveBeenCalled();
     });
 
     test('should force style updates on remove buttons', () => {
@@ -268,7 +284,7 @@ describe('ModifierBox Theme Manager', () => {
 
       window.ModifierBoxThemeManager.startThemeMonitoring(mockCallback);
 
-      expect(window.ThemeDetector.onThemeChange).toHaveBeenCalled();
+      expect(onThemeChange).toHaveBeenCalled();
     });
 
     test('should not start monitoring if ThemeDetector is unavailable', () => {
@@ -287,7 +303,7 @@ describe('ModifierBox Theme Manager', () => {
       window.ModifierBoxThemeManager.startThemeMonitoring(mockCallback);
 
       // Should only call onThemeChange once
-      expect(window.ThemeDetector.onThemeChange).toHaveBeenCalledTimes(1);
+      expect(onThemeChange).toHaveBeenCalledTimes(1);
     });
 
     test('should stop theme monitoring', () => {

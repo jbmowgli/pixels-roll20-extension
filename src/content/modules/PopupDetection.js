@@ -7,49 +7,52 @@
 
 'use strict';
 
-(function () {
-  // Pure function to check if a URL indicates a Roll20 popup window
-  function checkUrlForPopup(url) {
-    if (!url || typeof url !== 'string') {
-      return false;
-    }
-
-    const urlLower = url.toLowerCase();
-    return (
-      urlLower.includes('popout') || // Broad popout detection
-      urlLower.includes('popout=true') // Parameter-based detection
-    );
+// Pure function to check if a URL indicates a Roll20 popup window
+export const checkUrlForPopup = (url) => {
+  if (!url || typeof url !== 'string') {
+    return false;
   }
 
-  // Detect if this is a Roll20 popup window (journal entry, character sheet, etc.)
-  function isRoll20PopupWindow() {
-    try {
-      const url = window.location.href;
-      const isPopup = checkUrlForPopup(url);
+  const urlLower = url.toLowerCase();
+  return (
+    urlLower.includes('popout') || // Broad popout detection
+    urlLower.includes('popout=true') // Parameter-based detection
+  );
+};
 
-      if (isPopup) {
-        console.log(
-          'Detected Roll20 popup window - modifier box will not be shown'
-        );
-        console.log('URL:', url);
-      } else {
-        console.log('Main Roll20 page detected - modifier box will be shown');
-      }
+// Detect if this is a Roll20 popup window (journal entry, character sheet, etc.)
+export const isRoll20PopupWindow = () => {
+  try {
+    const url = window.location.href;
+    const isPopup = checkUrlForPopup(url);
 
-      return isPopup;
-    } catch (error) {
-      console.log('Error detecting popup window:', error);
-      return false;
+    if (isPopup) {
+      console.log(
+        'Detected Roll20 popup window - modifier box will not be shown'
+      );
+      console.log('URL:', url);
+    } else {
+      console.log('Main Roll20 page detected - modifier box will be shown');
     }
+
+    return isPopup;
+  } catch (error) {
+    console.log('Error detecting popup window:', error);
+    return false;
   }
+};
 
-  // Export functions to global scope
-  window.PopupDetection = {
-    checkUrlForPopup,
-    isRoll20PopupWindow,
-  };
+// Default export with all functions
+const PopupDetection = {
+  checkUrlForPopup,
+  isRoll20PopupWindow,
+};
 
-  // Legacy exports for testing compatibility
+export default PopupDetection;
+
+// Legacy global exports for backward compatibility (temporary)
+if (typeof window !== 'undefined') {
+  window.PopupDetection = PopupDetection;
   window.checkUrlForPopup = checkUrlForPopup;
   window.isRoll20PopupWindow = isRoll20PopupWindow;
-})();
+}

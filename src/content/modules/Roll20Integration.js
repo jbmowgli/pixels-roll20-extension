@@ -6,37 +6,35 @@
 
 'use strict';
 
-(function () {
-  const log = window.log || console.log;
-  const getArrayFirstElement =
-    window.getArrayFirstElement ||
-    function (array) {
-      return typeof array === 'undefined' ? undefined : array[0];
-    };
+import { log, getArrayFirstElement } from './Utils.js';
 
-  // Post message to Roll20 chat
-  function postChatMessage(message) {
-    log(`Posting message on Roll20: ${message}`);
+// Post message to Roll20 chat
+export const postChatMessage = (message) => {
+  log(`Posting message on Roll20: ${message}`);
 
-    const chat = document.getElementById('textchat-input');
-    const txt = getArrayFirstElement(chat?.getElementsByTagName('textarea'));
-    const btn = getArrayFirstElement(chat?.getElementsByTagName('button'));
+  const chat = document.getElementById('textchat-input');
+  const txt = getArrayFirstElement(chat?.getElementsByTagName('textarea'));
+  const btn = getArrayFirstElement(chat?.getElementsByTagName('button'));
 
-    if (typeof txt === 'undefined' || typeof btn === 'undefined') {
-      log("Couldn't find Roll20 chat textarea and/or button");
-    } else {
-      const current_msg = txt.value;
-      txt.value = message;
-      btn.click();
-      txt.value = current_msg;
-    }
+  if (typeof txt === 'undefined' || typeof btn === 'undefined') {
+    log("Couldn't find Roll20 chat textarea and/or button");
+  } else {
+    const current_msg = txt.value;
+    txt.value = message;
+    btn.click();
+    txt.value = current_msg;
   }
+};
 
-  // Export functions to global scope
-  window.Roll20Integration = {
-    postChatMessage,
-  };
+// Default export with all functions
+const Roll20Integration = {
+  postChatMessage,
+};
 
-  // Legacy exports for compatibility
+export default Roll20Integration;
+
+// Legacy global exports for backward compatibility (temporary)
+if (typeof window !== 'undefined') {
+  window.Roll20Integration = Roll20Integration;
   window.postChatMessage = postChatMessage;
-})();
+}

@@ -7,6 +7,7 @@
 import { addStyles, updateTheme as updateThemeFromThemeManager, startThemeMonitoring, stopThemeMonitoring, forceThemeRefresh as forceThemeRefreshFromThemeManager, forceElementUpdates } from './themeManager.js';
 import { setupDragFunctionality } from './dragHandler.js';
 import { setupModifierRowLogic, updateSelectedModifier as updateSelectedModifierFromRowManager, loadModifierRows, resetAllRows } from './rowManager.js';
+import { loadTemplate } from '../../utils/htmlLoader.js';
 
 // Singleton instance v// Module initialization code ends here
 console.log(
@@ -150,7 +151,7 @@ async function createModifierBox() {
 
     try {
       // Load HTML template
-      if (!window.HTMLLoader) {
+      if (!loadTemplate) {
         console.error(
           'HTMLLoader module not available. Falling back to inline HTML.'
         );
@@ -172,7 +173,7 @@ async function createModifierBox() {
       }
 
       // Load the HTML template
-      const htmlTemplate = await window.HTMLLoader.loadTemplate(
+      const htmlTemplate = await loadTemplate(
         'src/components/modifierBox/modifierBox.html',
         'modifierBox'
       );

@@ -64,44 +64,53 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
             return;
           }
 
-          log(`Received message from extension: ${msg.action}`);
-          if (msg.action === 'getStatus') {
-            window.sendStatusToExtension();
-          } else if (msg.action === 'setModifier') {
-            handleSetModifierMessage(msg);
-          } else if (msg.action === 'showModifier') {
-            log('Received showModifier message');
-            window.showModifierBox();
-          } else if (msg.action === 'hideModifier') {
-            log('Received hideModifier message');
-            window.hideModifierBox();
-          } else if (msg.action === 'connect') {
-            log('Connect button clicked, attempting to connect to Pixel');
-            // Handle connect asynchronously to catch all errors properly
-            (async () => {
-              try {
-                await connectToPixel();
-              } catch (error) {
-                log(`Error in connectToPixel: ${error}`);
-                if (typeof window.sendTextToExtension === 'function') {
-                  window.sendTextToExtension(
-                    `Failed to connect: ${error.message}`
-                  );
+          switch (msg.action) {
+            case 'getStatus':
+              window.sendStatusToExtension();
+              break;
+
+            case 'setModifier':
+              handleSetModifierMessage(msg);
+              break;
+
+            case 'showModifier':
+              window.showModifierBox();
+              break;
+
+            case 'hideModifier':
+              window.hideModifierBox();
+              break;
+
+            case 'connect':
+              // Handle connect asynchronously to catch all errors properly
+              (async () => {
+                try {
+                  await connectToPixel();
+                } catch (error) {
+                  log(`Error connecting to Pixel: ${error.message}`);
+                  if (typeof window.sendTextToExtension === 'function') {
+                    window.sendTextToExtension(
+                      `Failed to connect: ${error.message}`
+                    );
+                  }
                 }
-              }
-            })();
-          } else if (msg.action === 'disconnect') {
-            log('Manual disconnect requested');
-            disconnectAllPixels();
-          } else if (msg.action === 'getTheme') {
-            log('Received theme request');
-            // Get current theme from ThemeDetector
-            const theme = window.ThemeDetector
-              ? window.ThemeDetector.detectTheme()
-              : 'dark';
-            log(`Sending theme response: ${theme}`);
-            sendResponse({ theme: theme });
-            return true; // Keep the message channel open for async response
+              })();
+              break;
+
+            case 'disconnect':
+              disconnectAllPixels();
+              break;
+
+            case 'getTheme':
+              // Get current theme from ThemeDetector
+              const theme = window.ThemeDetector
+                ? window.ThemeDetector.detectTheme()
+                : 'dark';
+              sendResponse({ theme: theme });
+              return true; // Keep the message channel open for async response
+
+            default:
+              log(`Unknown action received: ${msg.action}`);
           }
         });
       } catch (error) {

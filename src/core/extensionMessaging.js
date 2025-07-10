@@ -63,74 +63,84 @@ export const setupMessageListener = () => {
           return;
         }
 
-        console.log(`Received message from extension: ${msg.action}`);
+        switch (msg.action) {
+          case 'getStatus':
+            sendStatusToExtension();
+            break;
 
-        if (msg.action === 'getStatus') {
-          sendStatusToExtension();
-        } else if (msg.action === 'setModifier') {
-          if (window.pixelsModifier !== msg.modifier) {
-            window.pixelsModifier = msg.modifier || '0';
-            console.log(`Updated modifier: ${window.pixelsModifier}`);
+          case 'setModifier':
+            if (window.pixelsModifier !== msg.modifier) {
+              window.pixelsModifier = msg.modifier || '0';
+              console.log(`Updated modifier: ${window.pixelsModifier}`);
 
-            if (window.saveModifierSettings) {
-              window.saveModifierSettings(); // Save to localStorage
-            }
+              if (window.saveModifierSettings) {
+                window.saveModifierSettings(); // Save to localStorage
+              }
 
-            // Update floating box if it exists and ModifierBox is loaded
-            if (typeof window.ModifierBox !== 'undefined') {
-              const modifierBox = window.ModifierBox.getElement();
-              if (modifierBox) {
-                const selectedRadio = modifierBox.querySelector(
-                  'input[name="modifier-select"]:checked'
-                );
-                if (selectedRadio) {
-                  const index = parseInt(selectedRadio.value);
-                  const rows = modifierBox.querySelectorAll('.modifier-row');
-                  const row = rows[index];
-                  if (row) {
-                    const valueInput = row.querySelector('.modifier-value');
-                    if (valueInput) {
-                      valueInput.value = window.pixelsModifier;
+              // Update floating box if it exists and ModifierBox is loaded
+              if (typeof window.ModifierBox !== 'undefined') {
+                const modifierBox = window.ModifierBox.getElement();
+                if (modifierBox) {
+                  const selectedRadio = modifierBox.querySelector(
+                    'input[name="modifier-select"]:checked'
+                  );
+                  if (selectedRadio) {
+                    const index = parseInt(selectedRadio.value);
+                    const rows = modifierBox.querySelectorAll('.modifier-row');
+                    const row = rows[index];
+                    if (row) {
+                      const valueInput = row.querySelector('.modifier-value');
+                      if (valueInput) {
+                        valueInput.value = window.pixelsModifier;
+                      }
                     }
                   }
                 }
               }
             }
-          }
-        } else if (msg.action === 'showModifier') {
-          console.log('Received showModifier message');
-          if (window.showModifierBox) {
-            window.showModifierBox();
-          }
-        } else if (msg.action === 'hideModifier') {
-          console.log('Received hideModifier message');
-          if (window.hideModifierBox) {
-            window.hideModifierBox();
-          }
-        } else if (msg.action === 'connect') {
-          console.log('Connect button clicked, attempting to connect to Pixel');
-          try {
-            if (window.connectToPixel) {
-              window.connectToPixel();
+            break;
+
+          case 'showModifier':
+            if (window.showModifierBox) {
+              window.showModifierBox();
             }
-          } catch (error) {
-            console.log(`Error in connectToPixel: ${error}`);
-            sendTextToExtension(`Failed to connect: ${error.message}`);
-          }
-        } else if (msg.action === 'disconnect') {
-          if (
-            window.PixelsBluetoothManager &&
-            window.PixelsBluetoothManager.disconnectAllPixels
-          ) {
-            window.PixelsBluetoothManager.disconnectAllPixels();
-          } else if (window.pixels) {
-            // Fallback to direct pixel manipulation
-            window.pixels.forEach(pixel => {
-              pixel.disconnect();
-            });
-            window.pixels = [];
-            sendStatusToExtension();
-          }
+            break;
+
+          case 'hideModifier':
+            if (window.hideModifierBox) {
+              window.hideModifierBox();
+            }
+            break;
+
+          case 'connect':
+            try {
+              if (window.connectToPixel) {
+                window.connectToPixel();
+              }
+            } catch (error) {
+              console.log(`Error in connectToPixel: ${error}`);
+              sendTextToExtension(`Failed to connect: ${error.message}`);
+            }
+            break;
+
+          case 'disconnect':
+            if (
+              window.PixelsBluetoothManager &&
+              window.PixelsBluetoothManager.disconnectAllPixels
+            ) {
+              window.PixelsBluetoothManager.disconnectAllPixels();
+            } else if (window.pixels) {
+              // Fallback to direct pixel manipulation
+              window.pixels.forEach(pixel => {
+                pixel.disconnect();
+              });
+              window.pixels = [];
+              sendStatusToExtension();
+            }
+            break;
+
+          default:
+            console.log(`Unknown action received: ${msg.action}`);
         }
       });
     } catch (error) {

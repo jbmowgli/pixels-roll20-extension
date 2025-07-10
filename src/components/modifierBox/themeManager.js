@@ -4,12 +4,15 @@
 // Theme Manager Module - Handles styling and theme updates for the modifier box
 //
 
+import { loadMultipleCSS } from '../../utils/cssLoader.js';
+import { getThemeColors, onThemeChange } from '../../utils/themeDetector.js';
+
 // Theme observer instance
 let themeObserver = null;
 
 function addModifierBoxStyles() {
     // Check if CSSLoader is available
-    if (!window.CSSLoader) {
+    if (!loadMultipleCSS) {
       console.error(
         'CSSLoader utility not found. Loading inline styles as fallback.'
       );
@@ -34,7 +37,7 @@ function addModifierBoxStyles() {
     ];
 
     // Load all CSS files
-    window.CSSLoader.loadMultipleCSS(cssFiles)
+    loadMultipleCSS(cssFiles)
       .then(() => {
         // CSS files loaded successfully
       })
@@ -87,8 +90,8 @@ function addModifierBoxStyles() {
     }
 
     // Get current theme colors
-    const colors = window.ThemeDetector
-      ? window.ThemeDetector.getThemeColors()
+    const colors = getThemeColors
+      ? getThemeColors()
       : {
           theme: 'dark',
           primary: '#4CAF50',
@@ -114,8 +117,8 @@ function addModifierBoxStyles() {
   }
 
   function startThemeMonitoring(onThemeChangeCallback) {
-    if (window.ThemeDetector && !themeObserver) {
-      themeObserver = window.ThemeDetector.onThemeChange((newTheme, colors) => {
+    if (onThemeChange && !themeObserver) {
+      themeObserver = onThemeChange((newTheme, colors) => {
         if (onThemeChangeCallback) {
           onThemeChangeCallback(newTheme, colors);
         }
@@ -143,8 +146,8 @@ function forceElementUpdates(modifierBox) {
     return;
   }
 
-  const colors = window.ThemeDetector
-    ? window.ThemeDetector.getThemeColors()
+  const colors = getThemeColors
+    ? getThemeColors()
     : { theme: 'dark' };
 
   // Re-apply theme class to body

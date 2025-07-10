@@ -9,6 +9,7 @@
  */
 
 import { curry, pipe, reduce } from 'ramda';
+import { getThemeColors } from '../../utils/themeDetector.js';
 
 // Functional helpers
 const createElement = (tagName, className = '') => {
@@ -64,10 +65,10 @@ export const createRowDragDrop = (
     let primaryColor = '#4caf50'; // Default fallback
 
     if (
-      window.ThemeDetector &&
-      typeof window.ThemeDetector.getThemeColors === 'function'
+      getThemeColors &&
+      typeof getThemeColors === 'function'
     ) {
-      const colors = window.ThemeDetector.getThemeColors();
+      const colors = getThemeColors();
       if (colors?.primary) {
         primaryColor = colors.primary;
       }
