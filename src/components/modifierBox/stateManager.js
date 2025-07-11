@@ -117,11 +117,9 @@ export function ensureModifierBoxInDOM(modifierBox) {
   return true;
 }
 
-// Validate and fix position if needed
 export function validatePosition(modifierBox) {
   if (!modifierBox) return;
 
-  // Only reset position if it's not been set or if it's at 0,0 (which means lost)
   const currentTop = parseInt(modifierBox.style.top) || 0;
   const currentLeft = parseInt(modifierBox.style.left) || 0;
 
@@ -131,11 +129,8 @@ export function validatePosition(modifierBox) {
     currentLeft > window.innerWidth ||
     currentTop > window.innerHeight
   ) {
-    console.log('Resetting position - current position invalid');
     modifierBox.style.top = '20px';
     modifierBox.style.left = '20px';
-  } else {
-    console.log('Keeping existing position:', currentLeft, currentTop);
   }
   modifierBox.style.right = 'auto';
   modifierBox.style.bottom = 'auto';

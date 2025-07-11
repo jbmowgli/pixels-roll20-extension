@@ -1,9 +1,4 @@
 'use strict';
-
-//
-// Floating Modifier Box Module - Singleton Pattern
-// Refactored to use modular components for better maintainability
-//
 import { updateTheme as updateThemeFromThemeManager, forceThemeRefresh as forceThemeRefreshFromThemeManager, forceElementUpdates } from './themeManager.js';
 import { updateSelectedModifier as updateSelectedModifierFromRowManager, resetAllRows } from './rowManager.js';
 import { loadTemplate } from '../../utils/htmlLoader.js';
@@ -26,18 +21,10 @@ import {
   processTemplateHTML, 
   extractModifierBoxFromTemplate 
 } from './htmlGenerator.js';
-
-// Singleton instance v// Module initialization code ends here
-console.log(
-  'ModifierBox module initialized as singleton with modular components'
-);
-
-// Helper function to reset module state (for testing)
 function resetStateWrapper() {
   resetState();
 }
 
-// Helper functions for the module API
 const getModifierBoxElementWrapper = () => getModifierBoxElement();
 const isModifierBoxVisibleFunc = () => isModifierBoxVisible();
 const isModifierBoxInitializedWrapper = () => isModifierBoxInitialized();
@@ -86,7 +73,6 @@ const forceThemeRefreshWrapper = () => {
   }
 };
 
-// Function to sync global variables
 const syncGlobalVars = () => {
   const modifierBox = getModifierBoxElement();
   if (modifierBox) {
@@ -99,8 +85,6 @@ const syncGlobalVars = () => {
 };
 
 async function createModifierBox() {
-  // Check for required dependencies - for test environment we need to check window objects
-  // since the imports might not be mockable in the same way
   const hasThemeManager = (window.ModifierBoxThemeManager && 
      typeof window.ModifierBoxThemeManager.addStyles === 'function');
      
@@ -110,25 +94,21 @@ async function createModifierBox() {
   const hasRowManager = (window.ModifierBoxRowManager && 
      typeof window.ModifierBoxRowManager.setupModifierRowLogic === 'function');
 
-  // If testing environment is missing required dependencies, return null
   if (!hasThemeManager || !hasDragHandler || !hasRowManager) {
     console.error('Required modules not loaded. Make sure all modifier box modules are included.');
     return null;
   }
   
-  // Singleton check - ensure only one instance exists
   const modifierBox = getModifierBoxElement();
   if (modifierBox) {
     return modifierBox;
   }
 
-    // Check if an existing modifier box exists in the DOM
     const existingBox = document.getElementById('pixels-modifier-box');
     if (existingBox) {
       setModifierBoxElement(existingBox);
       setModifierBoxVisible(existingBox.style.display !== 'none');
 
-      // Update the first row's default values to match current standards
       const firstNameInput = existingBox.querySelector('.modifier-name');
       if (
         firstNameInput &&
@@ -137,19 +117,17 @@ async function createModifierBox() {
         firstNameInput.value = 'Modifier';
         firstNameInput.placeholder = 'Modifier';
 
-        // Update global variable too
         if (typeof window.pixelsModifierName !== 'undefined') {
           window.pixelsModifierName = 'Modifier';
         }
       }
 
-      setupModifierBoxComponents(existingBox, clearAllModifiers); // Setup all components
+      setupModifierBoxComponents(existingBox, clearAllModifiers);
       setModifierBoxCreated(true);
       return existingBox;
     }
 
     try {
-      // Load HTML template
       if (!loadTemplate) {
         console.error(
           'HTMLLoader module not available. Falling back to inline HTML.'
@@ -157,8 +135,7 @@ async function createModifierBox() {
         return createModifierBoxFallback();
       }
 
-      // Get logo URL safely - handle both extension and test environments
-      let logoUrl = 'assets/images/logo-128.png'; // fallback
+      let logoUrl = 'assets/images/logo-128.png';
       try {
         if (
           typeof chrome !== 'undefined' &&
@@ -168,27 +145,22 @@ async function createModifierBox() {
           logoUrl = chrome.runtime.getURL('assets/images/logo-128.png');
         }
       } catch {
-        console.log('Using fallback logo URL (not in extension context)');
+        // Using fallback logo URL (not in extension context)
       }
 
-      // Load the HTML template
       const htmlTemplate = await loadTemplate(
         'src/components/modifierBox/modifierBox.html',
         'modifierBox'
       );
 
-      // Replace logo URL placeholder
       const processedHTML = htmlTemplate.replace('{{logoUrl}}', logoUrl);
 
-      // Create temporary container to parse HTML
       const tempContainer = document.createElement('div');
       tempContainer.innerHTML = processedHTML;
 
-      // Get the modifier box element from the template
       const newModifierBox = tempContainer.firstElementChild;
       setModifierBoxElement(newModifierBox);
 
-      // Setup all components
       setupModifierBoxComponents(newModifierBox, clearAllModifiers);
 
       document.body.appendChild(newModifierBox);
@@ -202,17 +174,14 @@ async function createModifierBox() {
     }
   }
 
-  // Fallback function for inline HTML creation
   function createModifierBoxFallback() {
-    // Create the floating box
     const newModifierBox = document.createElement('div');
     newModifierBox.id = 'pixels-modifier-box';
     newModifierBox.setAttribute('data-testid', 'pixels-modifier-box');
     newModifierBox.className = 'PIXELS_EXTENSION_BOX_FIND_ME';
     setModifierBoxElement(newModifierBox);
 
-    // Get logo URL safely - handle both extension and test environments
-    let logoUrl = 'assets/images/logo-128.png'; // fallback
+    let logoUrl = 'assets/images/logo-128.png';
     try {
       if (
         typeof chrome !== 'undefined' &&
@@ -222,7 +191,7 @@ async function createModifierBox() {
         logoUrl = chrome.runtime.getURL('assets/images/logo-128.png');
       }
     } catch {
-      console.log('Using fallback logo URL (not in extension context)');
+      // Using fallback logo URL (not in extension context)
     }
 
     newModifierBox.innerHTML = `
@@ -248,21 +217,18 @@ async function createModifierBox() {
             <div class="pixels-resize-handle"></div>
         `;
 
-    // Setup all components
     setupModifierBoxComponents(newModifierBox, clearAllModifiers);
 
     document.body.appendChild(newModifierBox);
     setModifierBoxVisible(true);
     setModifierBoxCreated(true);
 
-    console.log('Modifier box created with fallback method and added to page');
     return newModifierBox;
   }
 
 
 
   function setupCleanupHandlers() {
-    // Cleanup on page unload
     window.addEventListener('beforeunload', () => {
       if (window.ModifierBoxThemeManager && window.ModifierBoxThemeManager.stopThemeMonitoring) {
         window.ModifierBoxThemeManager.stopThemeMonitoring();
@@ -273,9 +239,6 @@ async function createModifierBox() {
   }
 
   async function showModifierBox() {
-    console.log('showModifierBox called');
-
-    // Singleton check
     let modifierBox = getModifierBoxElement();
     if (!modifierBox) {
       const result = await createModifierBox();
@@ -283,11 +246,8 @@ async function createModifierBox() {
         console.error('Failed to create modifier box');
         return;
       }
-      modifierBox = getModifierBoxElement(); // Get the newly created element
+      modifierBox = getModifierBoxElement();
     } else {
-      console.log('Modifier box already exists, showing it');
-      
-      // Ensure it's in the DOM
       if (!document.body.contains(modifierBox)) {
         document.body.appendChild(modifierBox);
       }
@@ -295,7 +255,6 @@ async function createModifierBox() {
       modifierBox.style.setProperty('display', 'block', 'important');
       setModifierBoxVisible(true);
 
-      // Only reset position if it's not been set or if it's at 0,0 (which means lost)
       const currentTop = parseInt(modifierBox.style.top) || 0;
       const currentLeft = parseInt(modifierBox.style.left) || 0;
 
@@ -305,67 +264,48 @@ async function createModifierBox() {
         currentLeft > window.innerWidth ||
         currentTop > window.innerHeight
       ) {
-        console.log('Resetting position - current position invalid');
         modifierBox.style.top = '20px';
         modifierBox.style.left = '20px';
-      } else {
-        console.log('Keeping existing position:', currentLeft, currentTop);
       }
       modifierBox.style.right = 'auto';
       modifierBox.style.bottom = 'auto';
 
-      // Force theme update to ensure correct colors are applied
       if (window.ModifierBoxThemeManager) {
         window.ModifierBoxThemeManager.updateTheme(modifierBox);
-        // Also force element-specific updates
         window.ModifierBoxThemeManager.forceElementUpdates(modifierBox);
 
-        // Apply theme again after a short delay to ensure CSS is fully loaded
         setTimeout(() => {
-          console.log('Applying delayed theme update...');
           window.ModifierBoxThemeManager.updateTheme(modifierBox);
           window.ModifierBoxThemeManager.forceElementUpdates(modifierBox);
         }, 100);
       }
     }
 
-    // Sync global state with current UI values (not the other way around)
     if (modifierBox && window.ModifierBoxRowManager) {
       window.ModifierBoxRowManager.updateSelectedModifier(modifierBox);
     }
   }
 
   function hideModifierBox() {
-    console.log('hideModifierBox called');
     const modifierBox = getModifierBoxElement();
     if (modifierBox) {
-      console.log('Hiding modifier box');
-      // Use setProperty with important to ensure it overrides any CSS
       modifierBox.style.setProperty('display', 'none', 'important');
       setModifierBoxVisible(false);
-      console.log(
-        'Modifier box hidden successfully - display set to:',
-        modifierBox.style.display
-      );
     } else {
       console.error('Cannot hide - modifierBox is null');
     }
   }
 
   function clearAllModifiers() {
-    console.log('clearAllModifiers called');
-
     if (!modifierBox) {
       console.error('Cannot clear modifiers - modifierBox is null');
       return;
     }
 
-    // Clear localStorage
     if (typeof window.clearAllModifierSettings === 'function') {
       window.clearAllModifierSettings();
     }
 
-    // Reset all rows using rowManager
     if (
       window.ModifierBoxRowManager &&
       window.ModifierBoxRowManager.resetAllRows
@@ -379,16 +319,8 @@ async function createModifierBox() {
     } else {
       console.error('ModifierBoxRowManager.resetAllRows not available');
     }
-
-    console.log('All modifiers cleared successfully');
   }
 
-// Module initialization completed
-console.log(
-  'ModifierBox module initialized as singleton with modular components'
-);
-
-// Export functions
 export const create = createModifierBox;
 export const show = showModifierBox;
 export const hide = hideModifierBox;
@@ -402,7 +334,6 @@ export { syncGlobalVars };
 export const clearAll = clearAllModifiers;
 export { resetState };
 
-// Default export for convenience
 export default {
   create: createModifierBox,
   show: showModifierBox,
@@ -418,13 +349,9 @@ export default {
   resetState,
 };
 
-// Legacy global exports for compatibility (temporary)
 if (typeof window !== 'undefined') {
-  // For testing environment, always reinitialize to ensure fresh state
   if (window.ModifierBox && typeof window.jest === 'undefined') {
-    console.warn(
-      'ModifierBox module already loaded, skipping re-initialization'
-    );
+    // ModifierBox module already loaded, skipping re-initialization
   } else {
     window.ModifierBox = {
       create: createModifierBox,

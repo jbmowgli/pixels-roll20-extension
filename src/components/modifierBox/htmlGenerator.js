@@ -31,9 +31,8 @@ export function generateModifierBoxHTML(logoUrl = 'assets/images/logo-128.png') 
   `;
 }
 
-// Get logo URL safely - handle both extension and test environments
 export function getLogoUrl() {
-  let logoUrl = 'assets/images/logo-128.png'; // fallback
+  let logoUrl = 'assets/images/logo-128.png';
   try {
     if (
       typeof chrome !== 'undefined' &&
@@ -43,12 +42,11 @@ export function getLogoUrl() {
       logoUrl = chrome.runtime.getURL('assets/images/logo-128.png');
     }
   } catch {
-    console.log('Using fallback logo URL (not in extension context)');
+    // Using fallback logo URL (not in extension context)
   }
   return logoUrl;
 }
 
-// Create modifier box element with fallback HTML
 export function createModifierBoxElement() {
   const modifierBox = document.createElement('div');
   modifierBox.id = 'pixels-modifier-box';
@@ -58,11 +56,9 @@ export function createModifierBoxElement() {
   const logoUrl = getLogoUrl();
   modifierBox.innerHTML = generateModifierBoxHTML(logoUrl);
 
-  console.log('Modifier box element created with fallback HTML');
   return modifierBox;
 }
 
-// Process template HTML by replacing placeholders
 export function processTemplateHTML(htmlTemplate, logoUrl = null) {
   if (!logoUrl) {
     logoUrl = getLogoUrl();
@@ -70,14 +66,12 @@ export function processTemplateHTML(htmlTemplate, logoUrl = null) {
   return htmlTemplate.replace('{{logoUrl}}', logoUrl);
 }
 
-// Extract modifier box element from processed template
 export function extractModifierBoxFromTemplate(processedHTML) {
   const tempContainer = document.createElement('div');
   tempContainer.innerHTML = processedHTML;
   return tempContainer.firstElementChild;
 }
 
-// Export for legacy compatibility
 const HTMLGenerator = {
   generateModifierBoxHTML,
   getLogoUrl,
@@ -88,7 +82,6 @@ const HTMLGenerator = {
 
 export default HTMLGenerator;
 
-// Legacy global exports for compatibility (temporary)
 if (typeof window !== 'undefined') {
   window.ModifierBoxHTMLGenerator = HTMLGenerator;
 }
