@@ -169,10 +169,8 @@ chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
     // Request initial status from the content script
     sendMessage({ action: 'getStatus' });
 
-    // Load and send stored modifier value
-    chrome.storage.sync.get('modifier', data => {
-      sendMessage({ action: 'setModifier', modifier: data.modifier || '0' });
-    });
+    // Don't automatically override modifier values on popup initialization
+    // Let the content script sync FROM the UI instead of overwriting it
   }
 });
 
