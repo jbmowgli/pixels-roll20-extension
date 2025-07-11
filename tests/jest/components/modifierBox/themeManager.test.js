@@ -31,6 +31,22 @@ const themeManagerModule = require('../../../../src/components/modifierBox/theme
 const { loadMultipleCSS } = require('../../../../src/utils/cssLoader.js');
 const { getThemeColors, onThemeChange } = require('../../../../src/utils/themeDetector.js');
 
+// Helper function to reset mocks and DOM state
+function resetMocks() {
+  // Clear all mock calls
+  jest.clearAllMocks();
+
+  // Reset DOM state
+  document.head.innerHTML = '';
+  document.body.innerHTML = '';
+  document.body.className = '';
+
+  // Reset any global state
+  if (window.ModifierBoxThemeManager && window.ModifierBoxThemeManager.resetState) {
+    window.ModifierBoxThemeManager.resetState();
+  }
+}
+
 describe('ModifierBox Theme Manager', () => {
   beforeEach(() => {
     resetMocks();
@@ -124,26 +140,30 @@ describe('ModifierBox Theme Manager', () => {
     });
 
     test('should fall back to inline styles when CSS loading fails', async () => {
-      window.CSSLoader.loadMultipleCSS = jest.fn(() =>
-        Promise.reject(new Error('CSS load failed'))
-      );
+      // Mock the CSS loader to reject
+      loadMultipleCSS.mockRejectedValueOnce(new Error('CSS load failed'));
 
       window.ModifierBoxThemeManager.addStyles();
 
       // Wait for promise to reject and fallback to execute
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       const styleElement = document.getElementById(
         'pixels-modifier-box-styles-fallback'
       );
       expect(styleElement).toBeTruthy();
+      expect(styleElement.tagName).toBe('STYLE');
     });
 
-    test('should not add fallback styles twice', () => {
-      delete window.CSSLoader;
+    test('should not add fallback styles twice', async () => {
+      // Mock the CSS loader to reject both times
+      loadMultipleCSS.mockRejectedValue(new Error('CSS load failed'));
 
       window.ModifierBoxThemeManager.addStyles();
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
       window.ModifierBoxThemeManager.addStyles();
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       const styleElements = document.querySelectorAll(
         '#pixels-modifier-box-styles-fallback'
@@ -151,18 +171,24 @@ describe('ModifierBox Theme Manager', () => {
       expect(styleElements.length).toBe(1);
     });
 
-    test('should include comprehensive CSS rules in fallback', () => {
-      delete window.CSSLoader;
+    test('should include comprehensive CSS rules in fallback', async () => {
+      // Mock the CSS loader to reject
+      loadMultipleCSS.mockRejectedValueOnce(new Error('CSS load failed'));
 
       window.ModifierBoxThemeManager.addStyles();
+
+      // Wait for promise to reject and fallback to execute
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       const styleElement = document.getElementById(
         'pixels-modifier-box-styles-fallback'
       );
+      expect(styleElement).toBeTruthy();
       const css = styleElement.textContent;
 
       // Check for key CSS selectors
       expect(css).toContain('#pixels-modifier-box');
+      expect(css).toContain('position: fixed');
     });
   });
 
@@ -213,15 +239,17 @@ describe('ModifierBox Theme Manager', () => {
     test('should apply theme class to body element', () => {
       const mockBody = document.body;
 
-      // Mock ThemeDetector
-      global.window.ThemeDetector = {
-        getThemeColors: jest.fn().mockReturnValue({
-          theme: 'light',
-          background: '#ffffff',
-          text: '#333333',
-          // other colors...
-        }),
-      };
+      // Mock the imported getThemeColors function to return light theme
+      getThemeColors.mockReturnValue({
+        theme: 'light',
+        background: '#ffffff',
+        text: '#333333',
+        primary: '#2196F3',
+        input: '#ffffff',
+        inputBorder: '#cccccc',
+        button: '#f8f9fa',
+        border: '#dddddd',
+      });
 
       window.ModifierBoxThemeManager.updateTheme(mockModifierBox);
 
