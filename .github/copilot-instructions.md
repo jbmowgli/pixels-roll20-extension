@@ -22,38 +22,18 @@ This is the **Pixels Roll20 Chrome Extension** project - a browser extension tha
 
 ## Documentation Requirements
 
-When creating summary documents, analysis reports, progress reports, or any documentation files:
-
-### 📁 **IMPORTANT: All summary documents must be placed in the `Copilot-Feedback/` directory**
 
 Examples of documents that should go in `Copilot-Feedback/`:
 
-- Progress reports
-- Analysis summaries
-- Refactoring summaries
-- Test reports
-- Code review summaries
-- Architecture decisions
-- Performance analysis
 - Any `.md` files created during development assistance
 
 ### Document Naming Convention
 
 Use descriptive names with dates:
 
-- `YYYY-MM-DD-feature-name-summary.md`
-- `YYYY-MM-DD-analysis-topic.md`
 - `YYYY-MM-DD-refactoring-report.md`
 
 ### Document Structure
-
-Include these sections in summary documents:
-
-- **Summary** - Brief overview
-- **Key Accomplishments** - What was completed
-- **Technical Details** - Implementation specifics
-- **Impact** - Effects on codebase/functionality
-- **Next Steps** - Future recommendations (if applicable)
 
 ## Testing Guidelines
 
@@ -68,6 +48,7 @@ Include these sections in summary documents:
 - Test compatibility with Roll20 platform
 - Maintain Bluetooth integration for Pixels dice
 - Ensure proper content script injection and communication
+- Keep logs minimal. Log errors and important events only.
 
 ## Error Handling
 
