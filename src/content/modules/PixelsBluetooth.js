@@ -45,6 +45,12 @@ const getName = prop('_name');
 const getPixelByName = curry((name, pixelList) =>
   find(pipe(getName, propEq(name)), pixelList)
 );
+const getPixelByDeviceId = curry((deviceId, pixelList) =>
+  pixelList.find(pixel => {
+    const pixelDeviceId = pixel.deviceId || pixel._deviceId;
+    return pixelDeviceId === deviceId;
+  })
+);
 const getConnectedPixels = filter(isConnected);
 
 // Helper function to format modifier with proper sign
@@ -56,6 +62,7 @@ const formatModifierSign = modifier => {
 // Pixel factory function - creates a new Pixel die object
 export const createPixel = (name, server, device) => {
   const _name = name;
+  const _deviceId = device.id; // Store the device ID
   let _server = server;
   let _device = device;
   let _notify = null;
@@ -271,6 +278,9 @@ export const createPixel = (name, server, device) => {
     get name() {
       return _name;
     },
+    get deviceId() {
+      return _deviceId;
+    },
     get isConnected() {
       try {
         const gattConnected = _device && _device.gatt && _device.gatt.connected;
@@ -299,9 +309,15 @@ export const createPixel = (name, server, device) => {
     reconnect,
     disconnect,
     handleNotifications,
+    updateActivity() {
+      _lastActivity = Date.now();
+    },
     // Internal properties for compatibility
     get _name() {
       return _name;
+    },
+    get _deviceId() {
+      return _deviceId;
     },
     get _isConnected() {
       return _isConnected;
@@ -344,10 +360,10 @@ const connectToNewPixel = async () => {
       optionalServices: [PIXELS_SERVICE_UUID, PIXELS_LEGACY_SERVICE_UUID],
     });
 
-    const existingPixel = getPixelByName(device.name, pixels);
+    const existingPixel = getPixelByDeviceId(device.id, pixels);
 
     if (existingPixel && isConnected(existingPixel)) {
-      log(`Already connected to ${device.name}`);
+      log(`Already connected to ${device.name} (ID: ${device.id})`);
       return existingPixel;
     }
 
@@ -384,7 +400,7 @@ const connectToNewPixel = async () => {
     }
 
     // Update activity after successful connection
-    pixel._lastActivity = Date.now();
+    pixel.updateActivity();
     pixel.startConnectionMonitoring();
 
     device.addEventListener('gattserverdisconnected', () => {
@@ -600,11 +616,13 @@ if (typeof window !== 'undefined') {
 // Expose for testing
 if (typeof global !== 'undefined') {
   global.createPixel = createPixel;
+  global.getPixelByDeviceId = getPixelByDeviceId;
   global.PixelsBluetooth = {
     connectToPixel,
     disconnectAllPixels,
     getPixels,
     initialize,
     createPixel,
+    getPixelByDeviceId,
   };
 }
