@@ -8,7 +8,7 @@ const dragHandlerModule = require('../../../../src/components/modifierBox/dragHa
 describe('ModifierBox Drag Handler', () => {
   beforeEach(() => {
     resetMocks();
-    
+
     // Set up globals for backward compatibility
     if (dragHandlerModule.default) {
       window.ModifierBoxDragHandler = dragHandlerModule.default;

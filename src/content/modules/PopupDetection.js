@@ -8,7 +8,7 @@
 'use strict';
 
 // Pure function to check if a URL indicates a Roll20 popup window
-export const checkUrlForPopup = (url) => {
+export const checkUrlForPopup = url => {
   if (!url || typeof url !== 'string') {
     return false;
   }

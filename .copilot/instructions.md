@@ -1,6 +1,5 @@
 # Copilot Instructions
 
-
 ## Project Standards
 
 - camelCase for file

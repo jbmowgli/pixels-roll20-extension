@@ -71,7 +71,6 @@ export const setupMessageListener = () => {
           case 'setModifier':
             if (window.pixelsModifier !== msg.modifier) {
               window.pixelsModifier = msg.modifier || '0';
-              console.log(`Updated modifier: ${window.pixelsModifier}`);
 
               if (window.saveModifierSettings) {
                 window.saveModifierSettings(); // Save to localStorage

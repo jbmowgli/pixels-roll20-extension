@@ -19,9 +19,9 @@ global.chrome = {
 global.window = global.window || {};
 
 // Helper function to load modules (both ES modules and legacy IIFE)
-global.loadModule = async (modulePath) => {
+global.loadModule = async modulePath => {
   const fullPath = path.join(__dirname, '../../', modulePath);
-  
+
   try {
     // For ES modules, use dynamic import
     if (modulePath.includes('components/modifierBox/')) {
@@ -40,15 +40,17 @@ global.loadModule = async (modulePath) => {
 };
 
 // Synchronous version for backward compatibility
-global.loadModuleSync = (modulePath) => {
+global.loadModuleSync = modulePath => {
   const fullPath = path.join(__dirname, '../../', modulePath);
   const moduleCode = fs.readFileSync(fullPath, 'utf8');
-  
+
   // Check if it's an ES module by looking for import/export
   if (moduleCode.includes('import ') || moduleCode.includes('export ')) {
-    throw new Error(`Module ${modulePath} is an ES module and requires async loading. Use loadModule() instead.`);
+    throw new Error(
+      `Module ${modulePath} is an ES module and requires async loading. Use loadModule() instead.`
+    );
   }
-  
+
   eval(moduleCode);
 };
 

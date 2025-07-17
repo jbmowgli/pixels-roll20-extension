@@ -6,7 +6,9 @@
 'use strict';
 
 // Generate the modifier box HTML structure
-export function generateModifierBoxHTML(logoUrl = 'assets/images/logo-128.png') {
+export function generateModifierBoxHTML(
+  logoUrl = 'assets/images/logo-128.png'
+) {
   return `
     <div class="pixels-header">
         <span class="pixels-title">

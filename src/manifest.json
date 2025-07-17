@@ -47,10 +47,7 @@
       ]
     }
   ],
-  "host_permissions": [
-    "https://roll20.net/*",
-    "https://app.roll20.net/*"
-  ],
+  "host_permissions": ["https://roll20.net/*", "https://app.roll20.net/*"],
   "web_accessible_resources": [
     {
       "resources": [
@@ -59,10 +56,7 @@
         "components/popup/popup.css",
         "assets/images/*"
       ],
-      "matches": [
-        "https://roll20.net/*",
-        "https://app.roll20.net/*"
-      ]
+      "matches": ["https://roll20.net/*", "https://app.roll20.net/*"]
     }
   ],
   "manifest_version": 3

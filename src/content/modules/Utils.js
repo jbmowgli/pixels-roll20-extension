@@ -10,7 +10,7 @@
 export const log = console.log;
 
 // Helper function to get first element of array safely
-export const getArrayFirstElement = (array) => {
+export const getArrayFirstElement = array => {
   return typeof array === 'undefined' ? undefined : array[0];
 };
 

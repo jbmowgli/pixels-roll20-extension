@@ -64,10 +64,7 @@ export const createRowDragDrop = (
     // Get theme colors if available
     let primaryColor = '#4caf50'; // Default fallback
 
-    if (
-      getThemeColors &&
-      typeof getThemeColors === 'function'
-    ) {
+    if (getThemeColors && typeof getThemeColors === 'function') {
       const colors = getThemeColors();
       if (colors?.primary) {
         primaryColor = colors.primary;

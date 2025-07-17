@@ -11,55 +11,55 @@ import { getThemeColors, onThemeChange } from '../../utils/themeDetector.js';
 let themeObserver = null;
 
 function addModifierBoxStyles() {
-    // Check if CSSLoader is available
-    if (!loadMultipleCSS) {
-      console.error(
-        'CSSLoader utility not found. Loading inline styles as fallback.'
-      );
-      addInlineStyles();
-      return;
-    }
-
-    // Define CSS files to load
-    const cssFiles = [
-      {
-        path: 'components/modifierBox/styles/modifierBox.css',
-        id: 'pixels-modifier-box-base-styles',
-      },
-      {
-        path: 'components/modifierBox/styles/minimized.css',
-        id: 'pixels-modifier-box-minimized-styles',
-      },
-      {
-        path: 'components/modifierBox/styles/lightTheme.css',
-        id: 'pixels-modifier-box-light-theme-styles',
-      },
-    ];
-
-    // Load all CSS files
-    loadMultipleCSS(cssFiles)
-      .then(() => {
-        // CSS files loaded successfully
-      })
-      .catch(error => {
-        console.error(
-          'Failed to load CSS files, falling back to inline styles:',
-          error
-        );
-        addInlineStyles();
-      });
+  // Check if CSSLoader is available
+  if (!loadMultipleCSS) {
+    console.error(
+      'CSSLoader utility not found. Loading inline styles as fallback.'
+    );
+    addInlineStyles();
+    return;
   }
 
-  // Fallback function for inline styles (keeping the original functionality)
-  function addInlineStyles() {
-    const styleId = 'pixels-modifier-box-styles-fallback';
-    if (document.getElementById(styleId)) {
-      return;
-    }
+  // Define CSS files to load
+  const cssFiles = [
+    {
+      path: 'components/modifierBox/styles/modifierBox.css',
+      id: 'pixels-modifier-box-base-styles',
+    },
+    {
+      path: 'components/modifierBox/styles/minimized.css',
+      id: 'pixels-modifier-box-minimized-styles',
+    },
+    {
+      path: 'components/modifierBox/styles/lightTheme.css',
+      id: 'pixels-modifier-box-light-theme-styles',
+    },
+  ];
 
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.textContent = `
+  // Load all CSS files
+  loadMultipleCSS(cssFiles)
+    .then(() => {
+      // CSS files loaded successfully
+    })
+    .catch(error => {
+      console.error(
+        'Failed to load CSS files, falling back to inline styles:',
+        error
+      );
+      addInlineStyles();
+    });
+}
+
+// Fallback function for inline styles (keeping the original functionality)
+function addInlineStyles() {
+  const styleId = 'pixels-modifier-box-styles-fallback';
+  if (document.getElementById(styleId)) {
+    return;
+  }
+
+  const style = document.createElement('style');
+  style.id = styleId;
+  style.textContent = `
             /* Fallback Base Modifier Box Styles */
             #pixels-modifier-box {
                 position: fixed !important;
@@ -81,50 +81,47 @@ function addModifierBoxStyles() {
             /* Additional fallback styles would go here - truncated for brevity */
         `;
 
-    document.head.appendChild(style);
+  document.head.appendChild(style);
+}
+
+function updateTheme(modifierBox) {
+  if (!modifierBox) {
+    return;
   }
 
-  function updateTheme(modifierBox) {
-    if (!modifierBox) {
-      return;
-    }
+  // Get current theme colors
+  const colors = getThemeColors
+    ? getThemeColors()
+    : {
+        theme: 'dark',
+        primary: '#4CAF50',
+        background: '#2b2b2b',
+        text: '#ffffff',
+        input: '#333333',
+        inputBorder: '#555555',
+        button: '#444444',
+        border: '#555555',
+      };
 
-    // Get current theme colors
-    const colors = getThemeColors
-      ? getThemeColors()
-      : {
-          theme: 'dark',
-          primary: '#4CAF50',
-          background: '#2b2b2b',
-          text: '#ffffff',
-          input: '#333333',
-          inputBorder: '#555555',
-          button: '#444444',
-          border: '#555555',
-        };
+  // Apply theme class to body element for CSS rules to work
+  const body = document.body;
+  body.classList.remove('roll20-light-theme', 'roll20-dark-theme');
+  body.classList.add(`roll20-${colors.theme}-theme`);
 
-    // Apply theme class to body element for CSS rules to work
-    const body = document.body;
-    body.classList.remove('roll20-light-theme', 'roll20-dark-theme');
-    body.classList.add(`roll20-${colors.theme}-theme`);
+  console.log(`Applied theme class: roll20-${colors.theme}-theme`);
 
-    console.log(`Applied theme class: roll20-${colors.theme}-theme`);
+  // Let CSS handle the styling now that we have the proper theme class applied
+}
 
-    // Let CSS handle the styling now that we have the proper theme class applied
-    console.log(
-      `Theme update complete. ${colors.theme} theme applied via CSS classes.`
-    );
+function startThemeMonitoring(onThemeChangeCallback) {
+  if (onThemeChange && !themeObserver) {
+    themeObserver = onThemeChange((newTheme, colors) => {
+      if (onThemeChangeCallback) {
+        onThemeChangeCallback(newTheme, colors);
+      }
+    });
   }
-
-  function startThemeMonitoring(onThemeChangeCallback) {
-    if (onThemeChange && !themeObserver) {
-      themeObserver = onThemeChange((newTheme, colors) => {
-        if (onThemeChangeCallback) {
-          onThemeChangeCallback(newTheme, colors);
-        }
-      });
-    }
-  }
+}
 
 function stopThemeMonitoring() {
   if (themeObserver) {
@@ -146,16 +143,12 @@ function forceElementUpdates(modifierBox) {
     return;
   }
 
-  const colors = getThemeColors
-    ? getThemeColors()
-    : { theme: 'dark' };
+  const colors = getThemeColors ? getThemeColors() : { theme: 'dark' };
 
   // Re-apply theme class to body
   const body = document.body;
   body.classList.remove('roll20-light-theme', 'roll20-dark-theme');
   body.classList.add(`roll20-${colors.theme}-theme`);
-
-  console.log(`Force updated theme class: roll20-${colors.theme}-theme`);
 }
 
 // Helper function to reset module state (for testing)

@@ -9,9 +9,7 @@
 import { log, getArrayFirstElement } from './Utils.js';
 
 // Post message to Roll20 chat
-export const postChatMessage = (message) => {
-  log(`Posting message on Roll20: ${message}`);
-
+export const postChatMessage = message => {
   const chat = document.getElementById('textchat-input');
   const txt = getArrayFirstElement(chat?.getElementsByTagName('textarea'));
   const btn = getArrayFirstElement(chat?.getElementsByTagName('button'));

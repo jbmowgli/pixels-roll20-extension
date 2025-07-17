@@ -29,7 +29,10 @@ jest.mock('../../../../src/utils/themeDetector.js', () => ({
 // Import the ES module using require (Babel will transform it)
 const themeManagerModule = require('../../../../src/components/modifierBox/themeManager.js');
 const { loadMultipleCSS } = require('../../../../src/utils/cssLoader.js');
-const { getThemeColors, onThemeChange } = require('../../../../src/utils/themeDetector.js');
+const {
+  getThemeColors,
+  onThemeChange,
+} = require('../../../../src/utils/themeDetector.js');
 
 // Helper function to reset mocks and DOM state
 function resetMocks() {
@@ -42,7 +45,10 @@ function resetMocks() {
   document.body.className = '';
 
   // Reset any global state
-  if (window.ModifierBoxThemeManager && window.ModifierBoxThemeManager.resetState) {
+  if (
+    window.ModifierBoxThemeManager &&
+    window.ModifierBoxThemeManager.resetState
+  ) {
     window.ModifierBoxThemeManager.resetState();
   }
 }
@@ -123,7 +129,8 @@ describe('ModifierBox Theme Manager', () => {
 
     test('should fall back to inline styles when CSSLoader is not available', () => {
       // Create a version of the module where loadMultipleCSS is null
-      const originalLoadMultipleCSS = require('../../../../src/utils/cssLoader.js').loadMultipleCSS;
+      const originalLoadMultipleCSS =
+        require('../../../../src/utils/cssLoader.js').loadMultipleCSS;
       require('../../../../src/utils/cssLoader.js').loadMultipleCSS = null;
 
       window.ModifierBoxThemeManager.addStyles();
@@ -136,7 +143,8 @@ describe('ModifierBox Theme Manager', () => {
       expect(styleElement.textContent).toContain('#pixels-modifier-box');
 
       // Restore original function
-      require('../../../../src/utils/cssLoader.js').loadMultipleCSS = originalLoadMultipleCSS;
+      require('../../../../src/utils/cssLoader.js').loadMultipleCSS =
+        originalLoadMultipleCSS;
     });
 
     test('should fall back to inline styles when CSS loading fails', async () => {
@@ -161,7 +169,7 @@ describe('ModifierBox Theme Manager', () => {
 
       window.ModifierBoxThemeManager.addStyles();
       await new Promise(resolve => setTimeout(resolve, 50));
-      
+
       window.ModifierBoxThemeManager.addStyles();
       await new Promise(resolve => setTimeout(resolve, 50));
 

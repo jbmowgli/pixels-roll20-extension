@@ -2,7 +2,6 @@
 
 // Simple theme detection and CSS loading
 function detectAndApplyTheme() {
-
   if (typeof chrome !== 'undefined' && chrome.tabs) {
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
       if (tabs[0]?.id) {
@@ -36,13 +35,11 @@ function detectAndApplyTheme() {
 }
 
 function executeThemeDetectionScript(tabId) {
-
   if (chrome.scripting) {
     chrome.scripting
       .executeScript({
         target: { tabId: tabId },
         func: () => {
-
           try {
             const roll20Theme = localStorage.getItem('colorTheme');
             if (roll20Theme === 'light') {
@@ -97,7 +94,7 @@ function executeThemeDetectionScript(tabId) {
           applyTheme('dark');
         }
       })
-      .catch(error => {
+      .catch(_error => {
         applyTheme('dark');
       });
   } else {
@@ -106,7 +103,6 @@ function executeThemeDetectionScript(tabId) {
 }
 
 function applyTheme(theme) {
-
   const existingLightTheme = document.getElementById('popup-light-theme');
   if (existingLightTheme) {
     existingLightTheme.remove();
@@ -126,8 +122,7 @@ function applyTheme(theme) {
       }, 2000);
     };
 
-    lightThemeLink.onerror = () => {
-    };
+    lightThemeLink.onerror = () => {};
 
     document.head.appendChild(lightThemeLink);
   } else {
@@ -137,7 +132,6 @@ function applyTheme(theme) {
       document.body.style.border = '';
     }, 2000);
   }
-
 }
 
 function showText(txt) {

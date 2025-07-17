@@ -42,7 +42,6 @@ export const updateModifierSettings = (modifier, modifierName) => {
   window.pixelsModifier = modifier || '0';
   window.pixelsModifierName = modifierName || 'Modifier 1';
   saveModifierSettings();
-  console.log(`Updated modifier settings: ${modifier}, ${modifierName}`);
 };
 
 export const clearAllModifierSettings = () => {

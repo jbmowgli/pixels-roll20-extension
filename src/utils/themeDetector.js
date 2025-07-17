@@ -4,7 +4,7 @@
 'use strict';
 
 // Parse color string to RGB values
-export const parseColor = (colorStr) => {
+export const parseColor = colorStr => {
   if (!colorStr) {
     return null;
   }
@@ -20,9 +20,7 @@ export const parseColor = (colorStr) => {
   }
 
   // Handle rgba() format
-  const rgbaMatch = colorStr.match(
-    /rgba\((\d+),\s*(\d+),\s*(\d+),\s*[\d.]+\)/
-  );
+  const rgbaMatch = colorStr.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*[\d.]+\)/);
   if (rgbaMatch) {
     return {
       r: parseInt(rgbaMatch[1]),
@@ -32,9 +30,7 @@ export const parseColor = (colorStr) => {
   }
 
   // Handle hex format
-  const hexMatch = colorStr.match(
-    /^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i
-  );
+  const hexMatch = colorStr.match(/^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
   if (hexMatch) {
     return {
       r: parseInt(hexMatch[1], 16),
@@ -52,9 +48,7 @@ export const detectTheme = () => {
   try {
     const roll20Theme = localStorage.getItem('colorTheme');
     if (roll20Theme === 'dark' || roll20Theme === 'light') {
-      console.log(
-        `Theme detected from Roll20 localStorage: ${roll20Theme}`
-      );
+      console.log(`Theme detected from Roll20 localStorage: ${roll20Theme}`);
       return roll20Theme;
     } else if (roll20Theme) {
       console.log(
@@ -112,9 +106,7 @@ export const detectTheme = () => {
   }
 
   // Check Roll20's chat container styles as fallback
-  const chatContainer = document.querySelector(
-    '.textchatcontainer, #textchat'
-  );
+  const chatContainer = document.querySelector('.textchatcontainer, #textchat');
   if (chatContainer) {
     const chatStyle = getComputedStyle(chatContainer);
     const chatBg = chatStyle.backgroundColor;
@@ -134,7 +126,6 @@ export const detectTheme = () => {
 // Get Roll20 theme colors
 export const getThemeColors = () => {
   const theme = detectTheme();
-  console.log(`Getting theme colors for detected theme: ${theme}`);
 
   // Define static, clean theme colors
   const colors =
@@ -166,12 +157,11 @@ export const getThemeColors = () => {
           buttonHover: '#e9ecef',
         };
 
-  console.log('Final theme colors:', colors);
   return colors;
 };
 
 // Monitor theme changes
-export const onThemeChange = (callback) => {
+export const onThemeChange = callback => {
   let currentTheme = detectTheme();
 
   // Monitor localStorage changes for Roll20's colorTheme
@@ -181,7 +171,6 @@ export const onThemeChange = (callback) => {
       const newTheme = value;
       if (newTheme !== currentTheme) {
         currentTheme = newTheme;
-        console.log(`Theme changed via localStorage: ${newTheme}`);
         callback(newTheme, getThemeColors());
       }
     }
@@ -197,7 +186,6 @@ export const onThemeChange = (callback) => {
       const newTheme = e.newValue;
       if (newTheme !== currentTheme) {
         currentTheme = newTheme;
-        console.log(`Theme changed via storage event: ${newTheme}`);
         callback(newTheme, getThemeColors());
       }
     }

@@ -6,20 +6,19 @@
 
 'use strict';
 
-import { log } from './Utils.js';
-import { 
-  saveModifierSettings, 
-  loadModifierSettings, 
-  updateModifierSettings, 
-  clearAllModifierSettings 
+import {
+  saveModifierSettings,
+  loadModifierSettings,
+  updateModifierSettings,
+  clearAllModifierSettings,
 } from '../../utils/modifierSettings.js';
 
 // Re-export all functions from modifierSettings for coordination
-export { 
-  saveModifierSettings, 
-  loadModifierSettings, 
-  updateModifierSettings, 
-  clearAllModifierSettings 
+export {
+  saveModifierSettings,
+  loadModifierSettings,
+  updateModifierSettings,
+  clearAllModifierSettings,
 };
 
 // Default export with all functions

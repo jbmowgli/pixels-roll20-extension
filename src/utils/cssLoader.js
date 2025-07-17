@@ -29,9 +29,7 @@ export const loadCSS = (cssPath, id) => {
     }
 
     // For Chrome extensions, we need to get the full URL
-    const fullPath = chrome.runtime
-      ? chrome.runtime.getURL(cssPath)
-      : cssPath;
+    const fullPath = chrome.runtime ? chrome.runtime.getURL(cssPath) : cssPath;
 
     // Fetch the CSS content and inject it
     fetch(fullPath)
@@ -63,7 +61,7 @@ export const loadCSS = (cssPath, id) => {
  * @param {Array} cssFiles - Array of {path, id} objects
  * @returns {Promise} - Resolves when all CSS files are loaded
  */
-export const loadMultipleCSS = (cssFiles) => {
+export const loadMultipleCSS = cssFiles => {
   const promises = cssFiles.map(({ path, id }) => loadCSS(path, id));
   return Promise.all(promises);
 };
@@ -72,7 +70,7 @@ export const loadMultipleCSS = (cssFiles) => {
  * Remove a loaded CSS file
  * @param {string} id - ID of the CSS to remove
  */
-export const removeCSS = (id) => {
+export const removeCSS = id => {
   const element = document.getElementById(id);
   if (element) {
     element.remove();
@@ -86,7 +84,7 @@ export const removeCSS = (id) => {
  * @param {string} id - ID of the CSS to check
  * @returns {boolean} - True if loaded
  */
-export const isLoaded = (id) => {
+export const isLoaded = id => {
   return loadedCSS.has(id);
 };
 

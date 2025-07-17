@@ -5,9 +5,18 @@
 
 'use strict';
 
-import { addStyles, updateTheme as updateThemeFromThemeManager, startThemeMonitoring, stopThemeMonitoring } from './themeManager.js';
+import {
+  addStyles,
+  updateTheme as updateThemeFromThemeManager,
+  startThemeMonitoring,
+  stopThemeMonitoring,
+} from './themeManager.js';
 import { setupDragFunctionality } from './dragHandler.js';
-import { setupModifierRowLogic, updateSelectedModifier as updateSelectedModifierFromRowManager, loadModifierRows } from './rowManager.js';
+import {
+  setupModifierRowLogic,
+  updateSelectedModifier as updateSelectedModifierFromRowManager,
+  loadModifierRows,
+} from './rowManager.js';
 import { setupMinimizeControls, setupClearAllControls } from './uiControls.js';
 
 export function setupModifierBoxComponents(modifierBox, clearAllCallback) {
@@ -40,7 +49,10 @@ export function setupModifierBoxComponents(modifierBox, clearAllCallback) {
 
 function setupStyles() {
   try {
-    if (window.ModifierBoxThemeManager && window.ModifierBoxThemeManager.addStyles) {
+    if (
+      window.ModifierBoxThemeManager &&
+      window.ModifierBoxThemeManager.addStyles
+    ) {
       window.ModifierBoxThemeManager.addStyles();
     } else if (typeof addStyles === 'function') {
       addStyles();
@@ -54,7 +66,10 @@ function setupStyles() {
 
 function setupDragHandling(modifierBox) {
   try {
-    if (window.ModifierBoxDragHandler && window.ModifierBoxDragHandler.setupDragFunctionality) {
+    if (
+      window.ModifierBoxDragHandler &&
+      window.ModifierBoxDragHandler.setupDragFunctionality
+    ) {
       window.ModifierBoxDragHandler.setupDragFunctionality(modifierBox);
     } else if (typeof setupDragFunctionality === 'function') {
       setupDragFunctionality(modifierBox);
@@ -69,7 +84,10 @@ function setupDragHandling(modifierBox) {
 function setupRowManagement(modifierBox) {
   const updateCallback = () => {
     try {
-      if (window.ModifierBoxRowManager && window.ModifierBoxRowManager.updateSelectedModifier) {
+      if (
+        window.ModifierBoxRowManager &&
+        window.ModifierBoxRowManager.updateSelectedModifier
+      ) {
         window.ModifierBoxRowManager.updateSelectedModifier(modifierBox);
       } else if (typeof updateSelectedModifierFromRowManager === 'function') {
         updateSelectedModifierFromRowManager(modifierBox);
@@ -80,8 +98,14 @@ function setupRowManagement(modifierBox) {
   };
 
   try {
-    if (window.ModifierBoxRowManager && window.ModifierBoxRowManager.setupModifierRowLogic) {
-      window.ModifierBoxRowManager.setupModifierRowLogic(modifierBox, updateCallback);
+    if (
+      window.ModifierBoxRowManager &&
+      window.ModifierBoxRowManager.setupModifierRowLogic
+    ) {
+      window.ModifierBoxRowManager.setupModifierRowLogic(
+        modifierBox,
+        updateCallback
+      );
     } else if (typeof setupModifierRowLogic === 'function') {
       setupModifierRowLogic(modifierBox, updateCallback);
     } else {
@@ -92,8 +116,14 @@ function setupRowManagement(modifierBox) {
   }
 
   try {
-    if (window.ModifierBoxRowManager && window.ModifierBoxRowManager.loadModifierRows) {
-      const loaded = window.ModifierBoxRowManager.loadModifierRows(modifierBox, updateCallback);
+    if (
+      window.ModifierBoxRowManager &&
+      window.ModifierBoxRowManager.loadModifierRows
+    ) {
+      const loaded = window.ModifierBoxRowManager.loadModifierRows(
+        modifierBox,
+        updateCallback
+      );
       if (!loaded) {
         // No saved modifier rows found, using default
       }
@@ -118,15 +148,23 @@ function setupUIControls(modifierBox, clearAllCallback) {
 
 function setupThemeManagement(modifierBox) {
   try {
-    if (window.ModifierBoxThemeManager && window.ModifierBoxThemeManager.startThemeMonitoring) {
-      window.ModifierBoxThemeManager.startThemeMonitoring((newTheme, colors) => {
-        window.ModifierBoxThemeManager.updateTheme(modifierBox);
-      });
+    if (
+      window.ModifierBoxThemeManager &&
+      window.ModifierBoxThemeManager.startThemeMonitoring
+    ) {
+      window.ModifierBoxThemeManager.startThemeMonitoring(
+        (_newTheme, _colors) => {
+          window.ModifierBoxThemeManager.updateTheme(modifierBox);
+        }
+      );
     } else if (typeof startThemeMonitoring === 'function') {
-      startThemeMonitoring((newTheme, colors) => {
+      startThemeMonitoring((_newTheme, _colors) => {
         if (typeof updateThemeFromThemeManager === 'function') {
           updateThemeFromThemeManager(modifierBox);
-        } else if (window.ModifierBoxThemeManager && window.ModifierBoxThemeManager.updateTheme) {
+        } else if (
+          window.ModifierBoxThemeManager &&
+          window.ModifierBoxThemeManager.updateTheme
+        ) {
           window.ModifierBoxThemeManager.updateTheme(modifierBox);
         }
       });
@@ -136,7 +174,10 @@ function setupThemeManagement(modifierBox) {
   }
 
   try {
-    if (window.ModifierBoxThemeManager && window.ModifierBoxThemeManager.updateTheme) {
+    if (
+      window.ModifierBoxThemeManager &&
+      window.ModifierBoxThemeManager.updateTheme
+    ) {
       window.ModifierBoxThemeManager.updateTheme(modifierBox);
     } else if (typeof updateThemeFromThemeManager === 'function') {
       updateThemeFromThemeManager(modifierBox);
@@ -146,7 +187,10 @@ function setupThemeManagement(modifierBox) {
   }
 
   try {
-    if (window.ModifierBoxRowManager && window.ModifierBoxRowManager.updateSelectedModifier) {
+    if (
+      window.ModifierBoxRowManager &&
+      window.ModifierBoxRowManager.updateSelectedModifier
+    ) {
       window.ModifierBoxRowManager.updateSelectedModifier(modifierBox);
     } else if (typeof updateSelectedModifierFromRowManager === 'function') {
       updateSelectedModifierFromRowManager(modifierBox);
@@ -185,7 +229,10 @@ function setupPositioning(modifierBox) {
 
 function setupCleanupHandlers() {
   window.addEventListener('beforeunload', () => {
-    if (window.ModifierBoxThemeManager && window.ModifierBoxThemeManager.stopThemeMonitoring) {
+    if (
+      window.ModifierBoxThemeManager &&
+      window.ModifierBoxThemeManager.stopThemeMonitoring
+    ) {
       window.ModifierBoxThemeManager.stopThemeMonitoring();
     } else if (typeof stopThemeMonitoring === 'function') {
       stopThemeMonitoring();
@@ -194,20 +241,25 @@ function setupCleanupHandlers() {
 }
 
 export function checkDependencies() {
-  const hasThemeManager = (window.ModifierBoxThemeManager && 
-     typeof window.ModifierBoxThemeManager.addStyles === 'function');
-     
-  const hasDragHandler = (window.ModifierBoxDragHandler && 
-     typeof window.ModifierBoxDragHandler.setupDragFunctionality === 'function');
-     
-  const hasRowManager = (window.ModifierBoxRowManager && 
-     typeof window.ModifierBoxRowManager.setupModifierRowLogic === 'function');
+  const hasThemeManager =
+    window.ModifierBoxThemeManager &&
+    typeof window.ModifierBoxThemeManager.addStyles === 'function';
+
+  const hasDragHandler =
+    window.ModifierBoxDragHandler &&
+    typeof window.ModifierBoxDragHandler.setupDragFunctionality === 'function';
+
+  const hasRowManager =
+    window.ModifierBoxRowManager &&
+    typeof window.ModifierBoxRowManager.setupModifierRowLogic === 'function';
 
   if (!hasThemeManager || !hasDragHandler || !hasRowManager) {
-    console.error('Required modules not loaded. Make sure all modifier box modules are included.');
+    console.error(
+      'Required modules not loaded. Make sure all modifier box modules are included.'
+    );
     return false;
   }
-  
+
   return true;
 }
 

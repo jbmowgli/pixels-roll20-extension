@@ -10,7 +10,7 @@ describe('ModifierBox Main Module', () => {
     // Reset DOM completely
     document.body.innerHTML = '';
     document.head.innerHTML = '';
-    
+
     // Reset global state
     resetMocks();
 
@@ -60,7 +60,7 @@ describe('ModifierBox Main Module', () => {
       updateSelectedModifier: jest.fn(),
     };
 
-    // Mock HTMLLoader for module loading  
+    // Mock HTMLLoader for module loading
     window.HTMLLoader = {
       loadHTML: jest.fn().mockResolvedValue('<div>Mock HTML</div>'),
       loadTemplate: jest.fn().mockResolvedValue(`
@@ -220,7 +220,7 @@ describe('ModifierBox Main Module', () => {
       if (existingElement) {
         existingElement.remove();
       }
-      
+
       // Reset module state to ensure fresh creation
       if (modifierBoxModule.resetState) {
         modifierBoxModule.resetState();
@@ -354,7 +354,7 @@ describe('ModifierBox Main Module', () => {
       if (existingElement) {
         existingElement.remove();
       }
-      
+
       // Reset module state completely
       if (modifierBoxModule.resetState) {
         modifierBoxModule.resetState();
@@ -421,7 +421,7 @@ describe('ModifierBox Main Module', () => {
       if (existingElement) {
         existingElement.remove();
       }
-      
+
       // Reset module state
       if (modifierBoxModule.resetState) {
         modifierBoxModule.resetState();
@@ -478,7 +478,7 @@ describe('ModifierBox Main Module', () => {
       if (existingElement) {
         existingElement.remove();
       }
-      
+
       // Reset module state
       if (modifierBoxModule.resetState) {
         modifierBoxModule.resetState();

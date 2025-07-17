@@ -65,7 +65,7 @@ export const loadTemplate = (templatePath, id) => {
  * @param {Array} templates - Array of {path, id} objects
  * @returns {Promise} - Resolves when all templates are loaded
  */
-export const loadMultipleTemplates = (templates) => {
+export const loadMultipleTemplates = templates => {
   const promises = templates.map(({ path, id }) => loadTemplate(path, id));
   return Promise.all(promises);
 };
@@ -75,7 +75,7 @@ export const loadMultipleTemplates = (templates) => {
  * @param {string} id - ID of the template to check
  * @returns {boolean} - True if loaded
  */
-export const isLoaded = (id) => {
+export const isLoaded = id => {
   return loadedTemplates.has(id);
 };
 
@@ -84,7 +84,7 @@ export const isLoaded = (id) => {
  * @param {string} id - ID of the template to retrieve
  * @returns {string|null} - The HTML content or null if not loaded
  */
-export const getTemplate = (id) => {
+export const getTemplate = id => {
   return loadedTemplates.get(id) || null;
 };
 

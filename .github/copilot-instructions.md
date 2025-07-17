@@ -22,7 +22,6 @@ This is the **Pixels Roll20 Chrome Extension** project - a browser extension tha
 
 ## Documentation Requirements
 
-
 Examples of documents that should go in `Copilot-Feedback/`:
 
 - Any `.md` files created during development assistance

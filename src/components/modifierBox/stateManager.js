@@ -68,15 +68,17 @@ export function resetState() {
   if (modifierBox && modifierBox.parentNode) {
     modifierBox.parentNode.removeChild(modifierBox);
   }
-  
+
   // Also remove any other modifier boxes that might exist in DOM
-  const existingBoxes = document.querySelectorAll('#pixels-modifier-box, .PIXELS_EXTENSION_BOX_FIND_ME');
+  const existingBoxes = document.querySelectorAll(
+    '#pixels-modifier-box, .PIXELS_EXTENSION_BOX_FIND_ME'
+  );
   existingBoxes.forEach(box => {
     if (box.parentNode) {
       box.parentNode.removeChild(box);
     }
   });
-  
+
   modifierBox = null;
   modifierBoxVisible = false;
   modifierBoxCreated = false;
@@ -110,7 +112,7 @@ export function ensureModifierBoxInDOM(modifierBox) {
   if (!document.body.contains(modifierBox)) {
     document.body.appendChild(modifierBox);
   }
-  
+
   modifierBox.style.setProperty('display', 'block', 'important');
   setModifierBoxVisible(true);
 
