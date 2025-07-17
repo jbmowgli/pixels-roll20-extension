@@ -21,7 +21,6 @@ dist/
 build/
 
 # Extension packaging
-*.zip
 chrome-store-package/
 
 # Specific packaging script outputs

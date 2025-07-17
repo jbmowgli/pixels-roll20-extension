@@ -27,9 +27,23 @@ This project was originally inspired by the [Pixels on Roll20](https://github.co
 
 ## Quick Start
 
-For detailed setup instructions, see **[Installation Guide](docs/INSTALLATION.md)**.
+📦 **[Download Pre-built Extension](pixels-roll20-extension-store.zip)** or see **[Quick Install Guide](docs/QUICK_INSTALL.md)**
 
-**TL;DR**: Load extension in Chrome, go to Roll20, click extension icon, connect dice, roll!
+### Installation (2 minutes)
+1. Download `pixels-roll20-extension-store.zip`
+2. Extract → Load `dist/` folder in `chrome://extensions/`
+3. Go to Roll20 → Click Pixels icon → Connect dice → Roll!
+
+**Alternative**: Build from source - see **[Installation Guide](docs/INSTALLATION.md)**.
+
+## Building from Source
+
+```bash
+git clone https://github.com/your-username/PixelsRoll20ChromeExtension.git
+cd PixelsRoll20ChromeExtension
+npm install
+npm run build:prod  # Creates dist/ folder for Chrome
+```
 
 ## Usage Overview
 

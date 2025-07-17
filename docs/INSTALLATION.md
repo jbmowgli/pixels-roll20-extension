@@ -1,31 +1,136 @@
-# Installation
+# Installation Guide
 
 ## Requirements
 
-- Chrome(ium) browser
+- Chrome(ium) browser (version 88 or later)
 - Bluetooth-enabled computer
 - Pixels dice
 - Roll20 account
 
-## Install Steps
+**Development Only**:
+- Node.js (version 14 or later) - only needed if building from source
 
-### 1. Get the Extension
+## Installation Options
 
-- Download zip from GitHub or clone the repo
-- Extract to a folder if needed
+### Option 1: Pre-built Package (Recommended) ⚡
 
-### 2. Load in Chrome
+**Fastest method**: Download and install the ready-to-use extension in under 2 minutes.
 
-1. Open `chrome://extensions/`
-2. Turn on "Developer mode" (top-right)
-3. Click "Load unpacked"
-4. Select the extension folder (containing `manifest.json`)
+#### Steps:
+1. **Download the Extension**
+   - Download `pixels-roll20-extension-store.zip` from the [latest release](../../releases)
+   - Or get it directly from the repository root
 
-### 3. Test It
+2. **Extract the Package**
+   - Unzip the downloaded file to any folder
+   - You'll see a `dist/` folder containing the built extension
 
-1. Go to a Roll20 game
-2. Click the Pixels icon in Chrome toolbar
-3. You should see "Connect" and "Show Modifier Box" buttons
+3. **Install in Chrome**
+   - Open Chrome and go to `chrome://extensions/`
+   - Toggle "Developer mode" ON (top-right corner)
+   - Click "Load unpacked" button
+   - Navigate to and select the **`dist`** folder (must contain `manifest.json`)
+   - Extension icon should appear in Chrome toolbar
+
+4. **Verify Installation**
+   - Look for the Pixels dice icon in Chrome toolbar
+   - Click it to open the popup interface
+   - Ready to connect your dice!
+
+### Option 2: Build from Source (Developers)
+
+**For developers**: Build the extension yourself from the source code with webpack.
+
+#### Prerequisites:
+```bash
+# Ensure you have Node.js installed
+node --version  # Should be 14 or later
+npm --version   # Should be 6 or later
+```
+
+#### Steps:
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/your-username/PixelsRoll20ChromeExtension.git
+   cd PixelsRoll20ChromeExtension
+   ```
+
+2. **Install Dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Build the Extension with Webpack**
+   ```bash
+   # For development build (faster, includes source maps)
+   npm run build
+
+   # For production build (optimized, minified)
+   npm run build:prod
+   ```
+
+4. **Install in Chrome**
+   - Open Chrome and go to `chrome://extensions/`
+   - Toggle "Developer mode" ON (top-right corner)
+   - Click "Load unpacked" button
+   - Navigate to and select the **`dist`** folder (created by webpack)
+   - Extension icon should appear in Chrome toolbar
+
+## Verification
+
+After installation (either method):
+
+1. **Extension Loaded**: Look for the Pixels dice icon in Chrome toolbar
+2. **Popup Works**: Click the icon - popup should open without errors
+3. **Permissions Granted**: Extension should have all required permissions
+4. **Ready for Roll20**: Navigate to a Roll20 game to test
+
+## Development Setup (Optional)
+
+If you plan to modify the extension or contribute to development:
+
+### Development Commands
+
+```bash
+# Install dependencies
+npm install
+
+# Run tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Lint code
+npm run lint
+npm run lint:fix  # Auto-fix issues
+
+# Format code
+npm run format
+
+# Development builds
+npm run build          # Development build (fast, includes source maps)
+npm run watch          # Development build with auto-rebuild on file changes
+
+# Production builds
+npm run build:prod     # Optimized production build
+npm run build:store    # Full store package (lint + test + build)
+npm run zip:store      # Create zip package from dist/ folder
+```
+
+### Development Workflow
+
+1. **Make Changes**: Edit files in the `src/` directory
+2. **Build**: Run `npm run build` or `npm run watch` (auto-rebuild)
+3. **Reload Extension**: 
+   - Go to `chrome://extensions/`
+   - Click the reload button (🔄) next to the extension
+4. **Test Changes**: Verify functionality in Roll20
+
+1. **Make Changes**: Edit files in the `src/` directory
+2. **Build**: Run `npm run build` to rebuild the `dist/` folder
+3. **Reload Extension**: Click the reload button (🔄) in `chrome://extensions/`
+4. **Test Changes**: Verify your changes work in Roll20
 
 ## First Use
 
@@ -165,23 +270,30 @@ That's it! Roll your dice and they should appear in Roll20 chat.
 
 ## Updating the Extension
 
-### Manual Updates
+### Pre-built Package Updates
 
-#### Git Repository Updates
+1. **Download Latest Version**: Get the newest `pixels-roll20-extension-store.zip` 
+2. **Remove Old Extension**: 
+   - Go to `chrome://extensions/`
+   - Find Pixels Roll20 extension
+   - Click "Remove" button
+3. **Install New Version**: 
+   - Extract new package
+   - Load the `dist/` folder using "Load unpacked"
+4. **Verify Update**: Test that new features/fixes are working
+
+### Source Build Updates
+
+#### Update Source Code
 
 ```bash
 cd PixelsRoll20ChromeExtension
 git pull origin main
+npm install  # Update dependencies if needed
+npm run build:prod  # Rebuild with webpack
 ```
 
-#### File Replacement Updates
-
-1. Download latest version
-2. Replace old files with new ones
-3. Reload extension in Chrome
-4. Test functionality after update
-
-### Reload Extension
+#### Reload Extension in Chrome
 
 1. Go to `chrome://extensions/`
 2. Find Pixels Roll20 extension
