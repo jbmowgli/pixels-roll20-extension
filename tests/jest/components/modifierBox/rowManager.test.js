@@ -2,18 +2,22 @@
  * @jest-environment jsdom
  */
 
-const fs = require('fs');
-const path = require('path');
-
-function loadModule(modulePath) {
-  const fullPath = path.join(__dirname, '../../../../', modulePath);
-  const moduleCode = fs.readFileSync(fullPath, 'utf8');
-  eval(moduleCode);
-}
+// Import the ES module using require (Babel will transform it)
+const rowManagerModule = require('../../../../src/components/modifierBox/rowManager.js');
 
 describe('ModifierBox Row Manager', () => {
   beforeEach(() => {
     resetMocks();
+
+    // Reset module state first (before setting up globals)
+    if (rowManagerModule.resetState) {
+      rowManagerModule.resetState();
+    }
+
+    // Set up globals for backward compatibility
+    if (rowManagerModule.default) {
+      window.ModifierBoxRowManager = rowManagerModule.default;
+    }
 
     // Mock theme manager for force updates
     window.ModifierBoxThemeManager = {
@@ -23,8 +27,6 @@ describe('ModifierBox Row Manager', () => {
     // Set up global variables
     window.pixelsModifierName = 'Test Modifier';
     window.pixelsModifier = '5';
-
-    loadModule('src/components/modifierBox/rowManager.js');
   });
 
   describe('Module Initialization', () => {

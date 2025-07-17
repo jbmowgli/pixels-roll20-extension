@@ -20,7 +20,6 @@ describe('Roll20.js - Comprehensive Tests', () => {
     require('../../src/utils/modifierSettings.js');
     require('../../src/content/modules/Utils.js');
     require('../../src/content/modules/PopupDetection.js');
-    require('../../src/content/modules/ExtensionMessaging.js');
     require('../../src/content/modules/Roll20Integration.js');
     require('../../src/content/modules/StorageManager.js');
     require('../../src/content/modules/ModifierBoxManager.js');

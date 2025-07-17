@@ -4,139 +4,186 @@
  * Handles all Bluetooth connectivity with Pixels dice, including:
  * - Device discovery and connection
  * - Connection monitoring and reconnection
- * - Pixel class definition
+ * - Pixel factory functions
  * - Roll handling and formula processing
  */
 
-'use strict';
+import { curry, pipe, map, filter, find, propEq, prop } from 'ramda';
 
-(function () {
-  const log = window.log || console.log;
-  const postChatMessage = window.postChatMessage || function () {};
-  const sendTextToExtension = window.sendTextToExtension || function () {};
-  const sendStatusToExtension = window.sendStatusToExtension || function () {};
+// Utility functions
+const log = window.log || console.log;
+const postChatMessage = window.postChatMessage || function () {};
+const sendTextToExtension = window.sendTextToExtension || function () {};
+const sendStatusToExtension = window.sendStatusToExtension || function () {};
 
-  // Pixels dice UUIDs from the official Pixels JS SDK
+// Pixels dice UUIDs from the official Pixels JS SDK
 
-  // Modern Pixels dice UUIDs
-  const PIXELS_SERVICE_UUID = 'a6b90001-7a5a-43f2-a962-350c8edc9b5b';
-  const PIXELS_NOTIFY_CHARACTERISTIC = 'a6b90002-7a5a-43f2-a962-350c8edc9b5b';
-  const PIXELS_WRITE_CHARACTERISTIC = 'a6b90003-7a5a-43f2-a962-350c8edc9b5b';
+// Modern Pixels dice UUIDs
+const PIXELS_SERVICE_UUID = 'a6b90001-7a5a-43f2-a962-350c8edc9b5b';
+const PIXELS_NOTIFY_CHARACTERISTIC = 'a6b90002-7a5a-43f2-a962-350c8edc9b5b';
+const _PIXELS_WRITE_CHARACTERISTIC = 'a6b90003-7a5a-43f2-a962-350c8edc9b5b';
 
-  // Legacy Pixels dice UUIDs (for older dice)
-  const PIXELS_LEGACY_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-  const PIXELS_LEGACY_NOTIFY_CHARACTERISTIC =
-    '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-  const PIXELS_LEGACY_WRITE_CHARACTERISTIC =
-    '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+// Legacy Pixels dice UUIDs (for older dice)
+const PIXELS_LEGACY_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const PIXELS_LEGACY_NOTIFY_CHARACTERISTIC =
+  '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const _PIXELS_LEGACY_WRITE_CHARACTERISTIC =
+  '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 
-  // Global pixels array
-  let pixels = [];
+// Global pixels array
+const pixels = [];
 
-  // Roll formulas
-  const pixelsFormulaWithModifier =
-    '&{template:default} {{name=#modifier_name (+#modifier)}} {{Pixel=#face_value}} {{Result=[[#face_value + #modifier]]}}';
-  const pixelsFormulaSimple =
-    '&{template:default} {{name=Pixel Roll}} {{Pixel=#face_value}} {{Result=[[#result]]}}';
+// Roll formulas
+const pixelsFormulaWithModifier =
+  '&{template:default} {{name=#modifier_name (#modifier_sign)}} {{Pixel=#face_value}} {{Result=[[#face_value + #modifier]]}}';
+const pixelsFormulaSimple =
+  '&{template:default} {{name=Pixel Roll}} {{Pixel=#face_value}} {{Result=[[#result]]}}';
 
-  // Pixel class - represents a connected Pixels die
-  class Pixel {
-    constructor(name, server, device) {
-      this._name = name;
-      this._server = server;
-      this._device = device;
-      this._notify = null;
-      this._notificationHandler = null;
-      this._hasMoved = false;
-      this._status = 'Ready';
-      this._isConnected = true;
-      this._connectionMonitor = null;
-      this._lastActivity = Date.now();
+// Functional helpers using Ramda
+const isConnected = prop('_isConnected');
+const getName = prop('_name');
+const getPixelByName = curry((name, pixelList) =>
+  find(pipe(getName, propEq(name)), pixelList)
+);
+const getConnectedPixels = filter(isConnected);
+
+// Helper function to format modifier with proper sign
+const formatModifierSign = modifier => {
+  const num = parseInt(modifier) || 0;
+  return num >= 0 ? `+${num}` : num.toString();
+};
+
+// Pixel factory function - creates a new Pixel die object
+export const createPixel = (name, server, device) => {
+  const _name = name;
+  let _server = server;
+  let _device = device;
+  let _notify = null;
+  let _notificationHandler = null;
+  let _hasMoved = false;
+  let _isConnected = true;
+  let _connectionMonitor = null;
+  let _lastActivity = Date.now();
+  let _face = null;
+
+  // Private methods
+  const setNotifyCharacteristic = notify => {
+    _notify = notify;
+    _notificationHandler = event => handleNotifications(event);
+    _notify.addEventListener(
+      'characteristicvaluechanged',
+      _notificationHandler
+    );
+  };
+
+  const startConnectionMonitoring = () => {
+    if (_connectionMonitor) {
+      clearInterval(_connectionMonitor);
     }
 
-    get isConnected() {
-      return (
-        this._isConnected &&
-        this._server !== null &&
-        this._device &&
-        this._device.gatt.connected
-      );
-    }
-
-    get name() {
-      return this._name;
-    }
-
-    get lastFaceUp() {
-      return this._face;
-    }
-
-    get lastActivity() {
-      return this._lastActivity;
-    }
-
-    setNotifyCharacteristic(notify) {
-      // Remove old listener if it exists
-      if (this._notify && this._notificationHandler) {
-        this._notify.removeEventListener(
-          'characteristicvaluechanged',
-          this._notificationHandler
-        );
+    _connectionMonitor = setInterval(() => {
+      // Only monitor GATT connection state, no timeout-based disconnection
+      // This allows for hours between dice rolls without disconnecting
+      if (_isConnected && _device) {
+        try {
+          // Only disconnect if GATT is actually disconnected, not based on activity timeout
+          if (_device.gatt && !_device.gatt.connected) {
+            log(`Pixel ${_name} GATT connection lost, marking as disconnected`);
+            markDisconnected();
+            // Attempt reconnection after GATT disconnection
+            setTimeout(() => {
+              if (!_isConnected && _device && _pixelSelf) {
+                attemptReconnection(_device, _pixelSelf);
+              }
+            }, 5000);
+          }
+        } catch (error) {
+          // GATT access failed, likely disconnected
+          log(
+            `Pixel ${_name} GATT access failed, marking as disconnected: ${error.message}`
+          );
+          markDisconnected();
+          // Attempt reconnection after GATT failure
+          setTimeout(() => {
+            if (!_isConnected && _device && _pixelSelf) {
+              attemptReconnection(_device, _pixelSelf);
+            }
+          }, 5000);
+        }
       }
+    }, 30000); // Check every 30 seconds - less frequent since we're only checking GATT state
+  };
 
-      this._notify = notify;
-      this._notificationHandler = ev => this.handleNotifications(ev);
+  let _disconnectionTimeout = null;
+  let _pixelSelf = null; // Store reference to self for reconnection
 
-      if (this._notify) {
-        this._notify.addEventListener(
-          'characteristicvaluechanged',
-          this._notificationHandler
-        );
-      }
+  const markDisconnected = () => {
+    // Debounce disconnection to prevent rapid state changes
+    if (_disconnectionTimeout) {
+      clearTimeout(_disconnectionTimeout);
     }
 
-    markDisconnected() {
-      this._isConnected = false;
-      this._server = null;
+    _disconnectionTimeout = setTimeout(() => {
+      if (_isConnected) {
+        // Double-check we still need to disconnect
+        _isConnected = false;
+        _device = null;
+        _server = null;
 
-      // Clean up notification listener
-      if (this._notify && this._notificationHandler) {
-        this._notify.removeEventListener(
-          'characteristicvaluechanged',
-          this._notificationHandler
-        );
-        this._notify = null;
-        this._notificationHandler = null;
-      }
+        // Clean up notification listener
+        if (_notify && _notificationHandler) {
+          try {
+            _notify.removeEventListener(
+              'characteristicvaluechanged',
+              _notificationHandler
+            );
+          } catch (error) {
+            log(
+              `Error removing notification listener for ${_name}: ${error.message}`
+            );
+          }
+          _notify = null;
+          _notificationHandler = null;
+        }
 
-      if (this._connectionMonitor) {
-        clearInterval(this._connectionMonitor);
-        this._connectionMonitor = null;
+        if (_connectionMonitor) {
+          clearInterval(_connectionMonitor);
+          _connectionMonitor = null;
+        }
+        log(`Pixel ${_name} marked as disconnected`);
       }
-      log(`Pixel ${this._name} marked as disconnected`);
+      _disconnectionTimeout = null;
+    }, 1000); // 1 second debounce
+  };
+
+  const reconnect = (server, notify) => {
+    _server = server;
+    _isConnected = true;
+    _lastActivity = Date.now();
+
+    // Clear any pending disconnection timeout
+    if (_disconnectionTimeout) {
+      clearTimeout(_disconnectionTimeout);
+      _disconnectionTimeout = null;
     }
 
-    reconnect(server, notify) {
-      this._server = server;
-      this._isConnected = true;
-      this._lastActivity = Date.now();
-
-      // Set up new notification listener
-      if (notify) {
-        this.setNotifyCharacteristic(notify);
-      }
-
-      log(`Pixel ${this._name} reconnected successfully`);
+    // Set up new notification listener
+    if (notify) {
+      setNotifyCharacteristic(notify);
     }
 
-    disconnect() {
-      this.markDisconnected();
-      this._server?.disconnect();
-      log(`Pixel ${this._name} manually disconnected`);
-    }
+    log(`Pixel ${_name} reconnected successfully`);
+  };
 
-    handleNotifications(event) {
-      this._lastActivity = Date.now(); // Track activity for connection monitoring
+  const disconnect = () => {
+    markDisconnected();
+    _server?.disconnect();
+    log(`Pixel ${_name} manually disconnected`);
+  };
+
+  const handleNotifications = event => {
+    try {
+      _lastActivity = Date.now(); // Track activity for connection monitoring
 
       const value = event.target.value;
       const arr = [];
@@ -145,376 +192,419 @@
         arr.push(`0x${`00${value.getUint8(i).toString(16)}`.slice(-2)}`);
       }
 
-      log(`Pixel notification: ${arr.join(' ')}`);
-
       if (value.getUint8(0) === 3) {
-        this._handleFaceEvent(value.getUint8(1), value.getUint8(2));
-      }
-    }
-
-    _handleFaceEvent(ev, face) {
-      if (!this._hasMoved) {
-        if (ev !== 1) {
-          this._hasMoved = true;
-        }
-      } else if (ev === 1) {
-        this._face = face;
-        const txt = `${this._name}: face up = ${face + 1}`;
-        log(txt);
-
-        // Check if modifier box is visible to determine modifier application
-        const isModifierBoxVisible =
-          window.ModifierBox &&
-          window.ModifierBox.isVisible &&
-          window.ModifierBox.isVisible();
-
-        // Sync modifier values from the modifier box before processing roll (only if visible)
-        if (
-          isModifierBoxVisible &&
-          typeof window.ModifierBox !== 'undefined' &&
-          window.ModifierBox.syncGlobalVars
-        ) {
-          window.ModifierBox.syncGlobalVars();
-        }
-
-        const diceValue = face + 1;
-        const modifier = isModifierBoxVisible
-          ? parseInt(window.pixelsModifier) || 0
-          : 0;
-        const result = diceValue + modifier;
-
-        log(
-          `Dice value: ${diceValue}, Modifier: ${modifier}, Result: ${result}`
-        );
-        log(`pixelsModifierName: "${window.pixelsModifierName}"`);
-        log(`Modifier box visible: ${isModifierBoxVisible}`);
-
-        // Choose formula based on modifier box visibility
-        let formula = isModifierBoxVisible
-          ? pixelsFormulaWithModifier
-          : pixelsFormulaSimple;
-
-        // Add critical hit message if face value is 20
-        if (diceValue === 20 && isModifierBoxVisible) {
-          formula = formula.replace(
-            '{{Pixel=#face_value}}',
-            '{{<span style="color: #ff4444; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">CRITICAL!</span>}} {{Pixel=#face_value}}'
-          );
-        }
-
-        // Add fumble message if face value is 1
-        if (diceValue === 1 && isModifierBoxVisible) {
-          formula = formula.replace(
-            '{{Pixel=#face_value}}',
-            '{{<span style="color: #888888; font-size: 16px; font-style: italic; opacity: 0.7;">FUMBLE!</span>}} {{Pixel=#face_value}}'
-          );
-        }
-
-        log(`Formula before replacement: ${formula}`);
-
-        const message = formula
-          .replaceAll('#modifier_name', window.pixelsModifierName)
-          .replaceAll('#face_value', diceValue.toString())
-          .replaceAll('#pixel_name', this._name)
-          .replaceAll('#modifier', modifier.toString())
-          .replaceAll('#result', result.toString());
-
-        log(`Formula after replacement: ${message}`);
-
-        message.split('\\n').forEach(s => postChatMessage(s));
-
-        sendTextToExtension(txt);
-      }
-    }
-  }
-
-  // Connect to a Pixels die
-  async function connectToPixel() {
-    try {
-      // Try to find both modern and legacy Pixels dice
-      const options = {
-        filters: [
-          { services: [PIXELS_SERVICE_UUID] }, // Modern Pixels dice
-          { services: [PIXELS_LEGACY_SERVICE_UUID] }, // Legacy Pixels dice
-        ],
-      };
-      log(`Requesting Bluetooth Device with ${JSON.stringify(options)}`);
-
-      const device = await navigator.bluetooth.requestDevice(options);
-      log(
-        `User selected Pixel "${device.name}", connected=${
-          device.gatt.connected
-        }`
-      );
-
-      // Add disconnect event listener to handle unexpected disconnections
-      device.addEventListener('gattserverdisconnected', event => {
-        log(`Pixel device disconnected: ${event.target.name}`);
-        handleDeviceDisconnection(event.target);
-      });
-
-      let server, notify;
-      const connect = async () => {
-        console.log(`Connecting to ${device.name}`);
-        server = await device.gatt.connect();
-
-        // Try to detect which type of Pixel this is and use appropriate UUIDs
-        let serviceUuid, notifyUuid, _writeUuid;
-        try {
-          // Try modern UUIDs first
-          await server.getPrimaryService(PIXELS_SERVICE_UUID);
-          serviceUuid = PIXELS_SERVICE_UUID;
-          notifyUuid = PIXELS_NOTIFY_CHARACTERISTIC;
-          _writeUuid = PIXELS_WRITE_CHARACTERISTIC;
-          log('Connected to modern Pixels die');
-        } catch {
-          // Fall back to legacy UUIDs
-          await server.getPrimaryService(PIXELS_LEGACY_SERVICE_UUID);
-          serviceUuid = PIXELS_LEGACY_SERVICE_UUID;
-          notifyUuid = PIXELS_LEGACY_NOTIFY_CHARACTERISTIC;
-          _writeUuid = PIXELS_LEGACY_WRITE_CHARACTERISTIC;
-          log('Connected to legacy Pixels die');
-        }
-
-        const service = await server.getPrimaryService(serviceUuid);
-        notify = await service.getCharacteristic(notifyUuid);
-      };
-
-      // Attempt to connect up to 3 times
-      const maxAttempts = 3;
-      for (let i = maxAttempts - 1; i >= 0; --i) {
-        try {
-          await connect();
-          break;
-        } catch (error) {
-          log(`Error connecting to Pixel: ${error}`);
-          // Wait a bit before trying again
-          if (i) {
-            const delay = 2;
-            log(`Trying again in ${delay} seconds...`);
-            await new Promise(resolve =>
-              setTimeout(() => resolve(), delay * 1000)
-            );
-          }
-        }
-      }
-
-      // Subscribe to notify characteristic
-      if (server && notify) {
-        try {
-          // Check if this device is already connected
-          const existingPixel = pixels.find(p => p.name === device.name);
-          if (existingPixel) {
-            log(
-              `Device ${
-                device.name
-              } is already connected, skipping duplicate connection`
-            );
-            return;
-          }
-
-          const pixel = new Pixel(device.name, server, device);
-          await notify.startNotifications();
-          log('Pixels notifications started!');
-          pixel.setNotifyCharacteristic(notify);
-          sendTextToExtension(`Just connected to ${pixel.name}`);
-          pixels.push(pixel);
-
-          // Update connection status in popup
-          sendStatusToExtension();
-
-          // Start connection monitoring
-          startConnectionMonitoring(pixel);
-        } catch (error) {
-          log(`Error connecting to Pixel notifications: ${error}`);
-          // Handle notification error
-          if (server) {
-            server.disconnect();
-          }
-        }
+        handleFaceEvent(value.getUint8(1), value.getUint8(2));
       }
     } catch (error) {
-      log(`Error during device selection or connection: ${error}`);
-      sendTextToExtension(`Failed to connect to Pixel: ${error.message}`);
+      log(`Notification handling error for ${_name}: ${error.message}`);
+      // Don't mark as disconnected for processing errors
     }
+  };
+
+  const handleFaceEvent = (ev, face) => {
+    if (!_hasMoved) {
+      if (ev !== 1) {
+        _hasMoved = true;
+      }
+    } else if (ev === 1) {
+      _face = face;
+      const txt = `${_name}: face up = ${face + 1}`;
+
+      // Check if modifier box is visible to determine modifier application
+      const isModifierBoxVisible =
+        window.ModifierBox &&
+        window.ModifierBox.isVisible &&
+        window.ModifierBox.isVisible();
+
+      // Sync modifier values from the modifier box before processing roll (only if visible)
+      if (
+        isModifierBoxVisible &&
+        typeof window.ModifierBox !== 'undefined' &&
+        window.ModifierBox.syncGlobalVars
+      ) {
+        window.ModifierBox.syncGlobalVars();
+      }
+
+      const diceValue = face + 1;
+      const modifier = isModifierBoxVisible
+        ? parseInt(window.pixelsModifier) || 0
+        : 0;
+      const result = diceValue + modifier;
+
+      // Choose formula based on modifier box visibility
+      let formula = isModifierBoxVisible
+        ? pixelsFormulaWithModifier
+        : pixelsFormulaSimple;
+
+      // Add critical hit message if face value is 20
+      if (diceValue === 20 && isModifierBoxVisible) {
+        formula = formula.replace(
+          '{{Pixel=#face_value}}',
+          '{{&#128293; <span style="color: #ff4444; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">CRITICAL!</span> &#128293;}} {{Pixel=#face_value}}'
+        );
+      }
+
+      // Add fumble message if face value is 1
+      if (diceValue === 1 && isModifierBoxVisible) {
+        formula = formula.replace(
+          '{{Pixel=#face_value}}',
+          '{{&#128128; <span style="color: #888888; font-size: 16px; font-style: italic; opacity: 0.7;">FUMBLE!</span> &#128128;}} {{Pixel=#face_value}}'
+        );
+      }
+
+      const message = formula
+        .replaceAll('#modifier_name', window.pixelsModifierName)
+        .replaceAll('#modifier_sign', formatModifierSign(modifier))
+        .replaceAll('#face_value', diceValue.toString())
+        .replaceAll('#pixel_name', _name)
+        .replaceAll('#modifier', modifier.toString())
+        .replaceAll('#result', result.toString());
+
+      message.split('\\n').forEach(s => postChatMessage(s));
+
+      sendTextToExtension(txt);
+    }
+  };
+
+  // Public API
+  const pixelAPI = {
+    get name() {
+      return _name;
+    },
+    get isConnected() {
+      try {
+        const gattConnected = _device && _device.gatt && _device.gatt.connected;
+        return _isConnected && _server !== null && _device && gattConnected;
+      } catch (error) {
+        // GATT state might be inconsistent during transitions
+        log(`GATT state check error for ${_name}: ${error.message}`);
+        return false;
+      }
+    },
+    get device() {
+      return _device;
+    },
+    get server() {
+      return _server;
+    },
+    get lastActivity() {
+      return _lastActivity;
+    },
+    get lastFaceUp() {
+      return _face;
+    },
+    setNotifyCharacteristic,
+    startConnectionMonitoring,
+    markDisconnected,
+    reconnect,
+    disconnect,
+    handleNotifications,
+    // Internal properties for compatibility
+    get _name() {
+      return _name;
+    },
+    get _isConnected() {
+      return _isConnected;
+    },
+    get _device() {
+      return _device;
+    },
+    get _server() {
+      return _server;
+    },
+    get _lastActivity() {
+      return _lastActivity;
+    },
+    _reconnectAttempts: 0, // Initialize reconnection attempt counter
+  };
+
+  // Store self-reference for reconnection
+  _pixelSelf = pixelAPI;
+
+  return pixelAPI;
+};
+
+// Main Bluetooth connection logic using functional approach
+const connectToNewPixel = async () => {
+  if (!navigator.bluetooth) {
+    const error = new Error('Bluetooth not supported in this browser');
+    log(error.message);
+    throw error;
   }
 
-  // Handle device disconnection
-  function handleDeviceDisconnection(device) {
-    log(`Handling disconnection for device: ${device.name}`);
+  const filters = [
+    { services: [PIXELS_SERVICE_UUID] },
+    { services: [PIXELS_LEGACY_SERVICE_UUID] },
+    { namePrefix: 'Pixel' },
+  ];
 
-    // Find the pixel in our array
-    const pixelIndex = pixels.findIndex(p => p.name === device.name);
-    if (pixelIndex !== -1) {
-      const pixel = pixels[pixelIndex];
+  try {
+    const device = await navigator.bluetooth.requestDevice({
+      filters: filters,
+      optionalServices: [PIXELS_SERVICE_UUID, PIXELS_LEGACY_SERVICE_UUID],
+    });
+
+    const existingPixel = getPixelByName(device.name, pixels);
+
+    if (existingPixel && isConnected(existingPixel)) {
+      log(`Already connected to ${device.name}`);
+      return existingPixel;
+    }
+
+    const server = await device.gatt.connect();
+    let service, notifyChar;
+
+    // Try modern UUIDs first
+    try {
+      service = await server.getPrimaryService(PIXELS_SERVICE_UUID);
+      notifyChar = await service.getCharacteristic(
+        PIXELS_NOTIFY_CHARACTERISTIC
+      );
+    } catch {
+      // Fall back to legacy UUIDs
+      log('Modern UUIDs failed, trying legacy UUIDs');
+      service = await server.getPrimaryService(PIXELS_LEGACY_SERVICE_UUID);
+      notifyChar = await service.getCharacteristic(
+        PIXELS_LEGACY_NOTIFY_CHARACTERISTIC
+      );
+    }
+
+    await notifyChar.startNotifications();
+
+    let pixel;
+    if (existingPixel) {
+      // Reconnect existing pixel
+      existingPixel.reconnect(server, notifyChar);
+      pixel = existingPixel;
+    } else {
+      // Create new pixel
+      pixel = createPixel(device.name, server, device);
+      pixel.setNotifyCharacteristic(notifyChar);
+      pixels.push(pixel);
+    }
+
+    // Update activity after successful connection
+    pixel._lastActivity = Date.now();
+    pixel.startConnectionMonitoring();
+
+    device.addEventListener('gattserverdisconnected', () => {
+      log(`Device ${device.name} disconnected`);
       pixel.markDisconnected();
 
-      // Update status
-      sendTextToExtension(`Pixel ${device.name} disconnected`);
-      sendStatusToExtension();
-
-      // Attempt to reconnect after a delay
+      // Attempt reconnection after GATT disconnection
       setTimeout(() => {
         attemptReconnection(device, pixel);
-      }, 5000); // Wait 5 seconds before attempting reconnection
-    }
-  }
-
-  // Attempt to reconnect to a disconnected device
-  async function attemptReconnection(device, pixel) {
-    if (!device.gatt.connected) {
-      log(`Attempting to reconnect to ${device.name}`);
-      try {
-        // First, ensure we're disconnected cleanly
-        if (device.gatt.connected) {
-          device.gatt.disconnect();
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-        }
-
-        const server = await device.gatt.connect();
-
-        // Wait a moment for the connection to stabilize
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Verify connection is still active
-        if (!server.connected) {
-          throw new Error('Connection lost immediately after connecting');
-        }
-
-        // Detect which type of Pixel this is and use appropriate UUIDs
-        let service, notifyUuid;
-        try {
-          // Try modern UUIDs first
-          service = await server.getPrimaryService(PIXELS_SERVICE_UUID);
-          notifyUuid = PIXELS_NOTIFY_CHARACTERISTIC;
-          log('Reconnecting to modern Pixels die');
-        } catch {
-          // Fall back to legacy UUIDs
-          service = await server.getPrimaryService(PIXELS_LEGACY_SERVICE_UUID);
-          notifyUuid = PIXELS_LEGACY_NOTIFY_CHARACTERISTIC;
-          log('Reconnecting to legacy Pixels die');
-        }
-        const notify = await service.getCharacteristic(notifyUuid);
-
-        await notify.startNotifications();
-
-        pixel.reconnect(server, notify);
-        sendTextToExtension(`Reconnected to ${pixel.name}`);
-        log(`Successfully reconnected to ${device.name}`);
-
-        // Restart connection monitoring
-        startConnectionMonitoring(pixel);
-
-        // Reset retry count on successful reconnection
-        pixel._reconnectAttempts = 0;
-      } catch (error) {
-        log(`Failed to reconnect to ${device.name}: ${error}`);
-
-        // Implement exponential backoff
-        pixel._reconnectAttempts = (pixel._reconnectAttempts || 0) + 1;
-        const maxAttempts = 5;
-
-        if (pixel._reconnectAttempts < maxAttempts) {
-          const delay = Math.min(
-            5000 * Math.pow(2, pixel._reconnectAttempts - 1),
-            60000
-          ); // Cap at 1 minute
-          log(
-            `Retry ${pixel._reconnectAttempts}/${maxAttempts} in ${delay / 1000} seconds`
-          );
-
-          setTimeout(() => {
-            attemptReconnection(device, pixel);
-          }, delay);
-        } else {
-          log(
-            `Max reconnection attempts reached for ${device.name}. Giving up.`
-          );
-          sendTextToExtension(
-            `Failed to reconnect to ${pixel.name} after ${maxAttempts} attempts`
-          );
-        }
-      }
-    }
-  }
-
-  // Start connection monitoring for a pixel
-  function startConnectionMonitoring(pixel) {
-    // Check connection status every 30 seconds
-    try {
-      pixel._connectionMonitor = setInterval(() => {
-        if (pixel._device && !pixel._device.gatt.connected) {
-          log(`Connection lost detected for ${pixel.name}`);
-          handleDeviceDisconnection(pixel._device);
-          clearInterval(pixel._connectionMonitor);
-        }
-      }, 30000);
-    } catch (error) {
-      console.log('Could not set up connection monitoring:', error);
-    }
-  }
-
-  // Disconnect all pixels
-  function disconnectAllPixels() {
-    log('Manual disconnect requested');
-    pixels.forEach(pixel => {
-      pixel.disconnect();
+      }, 5000);
     });
-    pixels = [];
+
+    log(`Connected to ${device.name}`);
+    sendTextToExtension(`Connected to ${device.name}`);
+
+    return pixel;
+  } catch (error) {
+    log(`Connection failed: ${error.message}`);
+    throw error;
+  }
+};
+
+// Handle device disconnection using functional approach
+const _handleDeviceDisconnection = device => {
+  log(`Handling disconnection for device: ${device.name}`);
+
+  const pixel = getPixelByName(device.name, pixels);
+  if (pixel) {
+    pixel.markDisconnected();
+    sendTextToExtension(`Pixel ${device.name} disconnected`);
     sendStatusToExtension();
+
+    // Attempt to reconnect after a delay
+    setTimeout(() => {
+      attemptReconnection(device, pixel);
+    }, 5000);
+  }
+};
+
+// Attempt to reconnect to a disconnected device
+const attemptReconnection = async (device, pixel) => {
+  try {
+    // Check if device is actually disconnected before attempting reconnection
+    if (device.gatt.connected) {
+      log(`Device ${device.name} is already connected, skipping reconnection`);
+      return;
+    }
+  } catch (error) {
+    log(
+      `Cannot check GATT state for ${device.name}, proceeding with reconnection: ${error.message}`
+    );
   }
 
-  // Get current pixels array
-  function getPixels() {
-    return pixels;
-  }
+  log(`Attempting to reconnect to ${device.name}`);
+  try {
+    // Ensure clean state before reconnecting
+    if (device.gatt.connected) {
+      device.gatt.disconnect();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
 
-  // Set up global connection cleanup - runs every 60 seconds
-  function setupGlobalCleanup() {
+    const server = await device.gatt.connect();
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    if (!server.connected) {
+      throw new Error('Connection lost immediately after connecting');
+    }
+
+    let service, notifyUuid;
     try {
-      setInterval(() => {
-        // Remove permanently disconnected pixels after 5 minutes of inactivity
-        const now = Date.now();
-        const fiveMinutes = 5 * 60 * 1000;
+      service = await server.getPrimaryService(PIXELS_SERVICE_UUID);
+      notifyUuid = PIXELS_NOTIFY_CHARACTERISTIC;
+      log('Reconnecting to modern Pixels die');
+    } catch {
+      service = await server.getPrimaryService(PIXELS_LEGACY_SERVICE_UUID);
+      notifyUuid = PIXELS_LEGACY_NOTIFY_CHARACTERISTIC;
+      log('Reconnecting to legacy Pixels die');
+    }
 
-        pixels = pixels.filter(pixel => {
-          if (!pixel.isConnected && now - pixel.lastActivity > fiveMinutes) {
-            log(`Removing stale pixel connection: ${pixel.name}`);
-            pixel.disconnect(); // Ensure cleanup
-            return false;
-          }
-          return true;
-        });
+    const notify = await service.getCharacteristic(notifyUuid);
+    await notify.startNotifications();
 
-        // Update status if pixels were removed
-        sendStatusToExtension();
-      }, 60000);
-    } catch (error) {
-      console.log('Could not set up global cleanup timer:', error);
+    pixel.reconnect(server, notify);
+    sendTextToExtension(`Reconnected to ${pixel.name}`);
+    log(`Successfully reconnected to ${device.name}`);
+
+    pixel.startConnectionMonitoring();
+    pixel._reconnectAttempts = 0;
+  } catch (error) {
+    log(`Failed to reconnect to ${device.name}: ${error}`);
+
+    pixel._reconnectAttempts = (pixel._reconnectAttempts || 0) + 1;
+    const maxAttempts = 5;
+
+    if (pixel._reconnectAttempts < maxAttempts) {
+      const delay = Math.min(
+        5000 * Math.pow(2, pixel._reconnectAttempts - 1),
+        60000
+      );
+      log(
+        `Retry ${pixel._reconnectAttempts}/${maxAttempts} in ${delay / 1000} seconds`
+      );
+
+      setTimeout(() => {
+        attemptReconnection(device, pixel);
+      }, delay);
+    } else {
+      log(`Max reconnection attempts reached for ${device.name}. Giving up.`);
+      sendTextToExtension(
+        `Failed to reconnect to ${pixel.name} after ${maxAttempts} attempts`
+      );
     }
   }
+};
 
-  // Initialize the module
-  function initialize() {
-    setupGlobalCleanup();
+// Export the main connection function
+export const connectToPixel = connectToNewPixel;
+
+// Disconnect all pixels using functional approach
+export const disconnectAllPixels = () => {
+  const connectedPixels = getConnectedPixels(pixels);
+
+  map(pixel => pixel.disconnect(), connectedPixels);
+  pixels.length = 0; // Clear the array
+
+  log(`Disconnected ${connectedPixels.length} pixels`);
+  sendTextToExtension(`Disconnected ${connectedPixels.length} pixels`);
+  sendStatusToExtension();
+};
+
+// Get pixels list
+export const getPixels = () => pixels;
+
+// Get connected pixels only
+export const getConnectedPixelsList = () => getConnectedPixels(pixels);
+
+// Find pixel by name using functional approach
+export const findPixelByName = getPixelByName;
+
+// Set up global connection cleanup
+const setupGlobalCleanup = () => {
+  try {
+    setInterval(() => {
+      const now = Date.now();
+      const sixHours = 6 * 60 * 60 * 1000; // 6 hours - very conservative cleanup
+
+      const activePixels = filter(pixel => {
+        // Only remove connections that have been disconnected for over 6 hours
+        if (!pixel.isConnected && now - pixel.lastActivity > sixHours) {
+          log(
+            `Removing very stale pixel connection: ${pixel.name} (inactive for ${sixHours / (60 * 60 * 1000)} hours)`
+          );
+          pixel.disconnect();
+          return false;
+        }
+        return true;
+      }, pixels);
+
+      if (activePixels.length !== pixels.length) {
+        pixels.length = 0;
+        pixels.push(...activePixels);
+        sendStatusToExtension();
+      }
+    }, 300000); // Check every 5 minutes instead of 1 minute
+  } catch (error) {
+    console.log('Could not set up global cleanup timer:', error);
   }
+};
 
-  // Export functions to global scope
+// Initialize the module
+export const initialize = () => {
+  log('PixelsBluetooth module initialized with ES modules and Ramda');
+  setupGlobalCleanup();
+
+  // Set up global variables for backwards compatibility
+  window.pixels = pixels;
+
+  return {
+    connectToPixel,
+    disconnectAllPixels,
+    getPixels,
+    getConnectedPixelsList,
+    findPixelByName,
+  };
+};
+
+// Default export for convenience
+export default {
+  connectToPixel,
+  disconnectAllPixels,
+  getPixels,
+  getConnectedPixelsList,
+  findPixelByName,
+  initialize,
+  createPixel,
+};
+
+// Legacy global exports for compatibility (when not using modules)
+if (typeof window !== 'undefined') {
   window.PixelsBluetooth = {
     connectToPixel,
     disconnectAllPixels,
     getPixels,
     initialize,
-    Pixel,
+    createPixel,
   };
 
-  // Legacy exports for compatibility
+  // Legacy individual exports
   window.connectToPixel = connectToPixel;
   window.pixels = pixels;
-  window.Pixel = Pixel;
+}
 
-  // Expose for testing
-  if (typeof global !== 'undefined') {
-    global.Pixel = Pixel;
-  }
-})();
+// Expose for testing
+if (typeof global !== 'undefined') {
+  global.createPixel = createPixel;
+  global.PixelsBluetooth = {
+    connectToPixel,
+    disconnectAllPixels,
+    getPixels,
+    initialize,
+    createPixel,
+  };
+}

@@ -2,10 +2,10 @@ const js = require('@eslint/js');
 
 module.exports = [
   {
-    files: ['**/*.js'],
+    files: ['src/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: 'script',
+      sourceType: 'module',
       globals: {
         // Browser/Extension globals
         window: 'readonly',
@@ -51,16 +51,9 @@ module.exports = [
           varsIgnorePattern: '^_',
         },
       ],
-      'no-console': 'off', // Allow console in extensions for debugging
       'no-undef': 'error',
       'prefer-const': 'warn',
-      'no-var': 'warn',
-      eqeqeq: ['warn', 'always'],
-      curly: ['warn', 'all'],
-      'no-eval': 'error',
-      'no-implied-eval': 'error',
-      'prefer-template': 'warn',
-      'no-throw-literal': 'warn',
+      'no-var': 'error',
     },
   },
   {

@@ -5,7 +5,17 @@
  * This is the main entry point that loads and coordinates all other modules.
  */
 
-'use strict';
+import {
+  initialize as initializePixelsBluetooth,
+  connectToPixel,
+  disconnectAllPixels,
+  getPixels,
+} from './modules/PixelsBluetooth.js';
+import {
+  sendTextToExtension,
+  sendStatusToExtension,
+  setupMessageListener,
+} from '../core/extensionMessaging.js';
 
 if (typeof window.roll20PixelsLoaded === 'undefined') {
   const _roll20PixelsLoaded = true;
@@ -21,16 +31,33 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
     log('Starting Pixels Roll20 extension');
 
     // Initialize the Bluetooth module
-    if (window.PixelsBluetooth) {
-      window.PixelsBluetooth.initialize();
-    }
+    initializePixelsBluetooth();
+
+    // Expose functions to global scope for backwards compatibility
+    window.connectToPixel = connectToPixel;
+    window.disconnectAllPixels = disconnectAllPixels;
+    window.getPixels = getPixels;
+    window.sendTextToExtension = sendTextToExtension;
+    window.sendStatusToExtension = sendStatusToExtension;
+
+    // Set up extension messaging
+    setupMessageListener();
 
     // Set up formulas
     const pixelsFormulaWithModifier =
-      '&{template:default} {{name=#modifier_name}} {{Result=[[#face_value + #modifier]]}}';
+      '&{template:default} {{name=#modifier_name (#modifier_sign)}} {{Result=[[#face_value + #modifier]]}}';
     const _pixelsFormulaSimple =
       '&{template:default} {{name=Result}} {{Pixel Dice=[[#result]]}}';
     const _pixelsFormula = pixelsFormulaWithModifier; // Legacy compatibility
+
+    // Helper function to format modifier with proper sign
+    const formatModifierSign = modifier => {
+      const num = parseInt(modifier) || 0;
+      return num >= 0 ? `+${num}` : num.toString();
+    };
+
+    // Export function to global scope for compatibility
+    window.formatModifierSign = formatModifierSign;
 
     // Only set up message listener if in extension context
     if (
@@ -46,39 +73,54 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
             return;
           }
 
-          log(`Received message from extension: ${msg.action}`);
-          if (msg.action === 'getStatus') {
-            window.sendStatusToExtension();
-          } else if (msg.action === 'setModifier') {
-            handleSetModifierMessage(msg);
-          } else if (msg.action === 'showModifier') {
-            log('Received showModifier message');
-            window.showModifierBox();
-          } else if (msg.action === 'hideModifier') {
-            log('Received hideModifier message');
-            window.hideModifierBox();
-          } else if (msg.action === 'connect') {
-            log('Connect button clicked, attempting to connect to Pixel');
-            try {
-              window.connectToPixel();
-            } catch (error) {
-              log(`Error in connectToPixel: ${error}`);
-              window.sendTextToExtension(`Failed to connect: ${error.message}`);
+          switch (msg.action) {
+            case 'getStatus':
+              window.sendStatusToExtension();
+              break;
+
+            case 'setModifier':
+              handleSetModifierMessage(msg);
+              break;
+
+            case 'showModifier':
+              window.showModifierBox();
+              break;
+
+            case 'hideModifier':
+              window.hideModifierBox();
+              break;
+
+            case 'connect':
+              // Handle connect asynchronously to catch all errors properly
+              (async () => {
+                try {
+                  await connectToPixel();
+                } catch (error) {
+                  log(`Error connecting to Pixel: ${error.message}`);
+                  if (typeof window.sendTextToExtension === 'function') {
+                    window.sendTextToExtension(
+                      `Failed to connect: ${error.message}`
+                    );
+                  }
+                }
+              })();
+              break;
+
+            case 'disconnect':
+              disconnectAllPixels();
+              break;
+
+            case 'getTheme': {
+              // Get current theme from ThemeDetector
+              const theme = window.ThemeDetector
+                ? window.ThemeDetector.detectTheme()
+                : 'dark';
+              sendResponse({ theme: theme });
+              return true; // Keep the message channel open for async response
             }
-          } else if (msg.action === 'disconnect') {
-            log('Manual disconnect requested');
-            if (window.PixelsBluetooth) {
-              window.PixelsBluetooth.disconnectAllPixels();
-            }
-          } else if (msg.action === 'getTheme') {
-            log('Received theme request');
-            // Get current theme from ThemeDetector
-            const theme = window.ThemeDetector
-              ? window.ThemeDetector.detectTheme()
-              : 'dark';
-            log(`Sending theme response: ${theme}`);
-            sendResponse({ theme: theme });
-            return true; // Keep the message channel open for async response
+
+            default:
+              log(`Unknown action received: ${msg.action}`);
           }
         });
       } catch (error) {
@@ -118,9 +160,6 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
               if (currentValue !== '' && currentName !== '') {
                 window.pixelsModifier = currentValue;
                 window.pixelsModifierName = currentName;
-                window.log(
-                  `Synced FROM UI: modifier=${currentValue}, name=${currentName}`
-                );
                 window.saveModifierSettings();
                 return; // Exit early, don't overwrite UI
               }
@@ -133,7 +172,6 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
     // If no meaningful UI data exists, then apply the popup's value
     if (window.pixelsModifier !== msg.modifier) {
       window.pixelsModifier = msg.modifier || '0';
-      window.log(`Updated modifier from popup: ${window.pixelsModifier}`);
       window.saveModifierSettings();
 
       // Only update UI if there's no existing meaningful data
@@ -173,21 +211,16 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
     window.sendStatusToExtension();
 
     // Load modifier settings from localStorage
-    window.log('Loading modifier settings from localStorage...');
     window.loadModifierSettings();
 
     // Show modifier box by default after a delay
-    window.log('Attempting to show modifier box automatically...');
     setTimeout(() => {
       try {
         // Only show modifier box if not in a popup window
         if (!window.isRoll20PopupWindow()) {
           window.showModifierBox();
-          window.log('Modifier box shown successfully on page load');
         } else {
-          window.log(
-            'Skipping automatic modifier box display - this is a Roll20 popup window'
-          );
+          window.log('Skipping modifier box in popup window');
         }
       } catch (error) {
         window.log(`Error showing modifier box: ${error}`);

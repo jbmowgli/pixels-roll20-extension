@@ -1,217 +1,235 @@
 /**
- * Drag and Drop functionality for modifier rows
+ * Drag and Drop functionality  let container = null;
+  let draggedElement = null;
+  let placeholder = null;
+  let    dragHandle = null;// Track drag handle for cleanup
+  let startX = 0;
+  let startY = 0;
+  let isDragging = false;difier rows
  */
 
-class RowDragDrop {
-  constructor(containerSelector, rowSelector, rowManagerInstance) {
-    this.container = null;
-    this.containerSelector = containerSelector;
-    this.rowSelector = rowSelector;
-    this.rowManager = rowManagerInstance;
-    this.draggedElement = null;
-    this.placeholder = null;
-    this.dragHandle = null;
+import { curry, pipe, reduce } from 'ramda';
+import { getThemeColors } from '../../utils/themeDetector.js';
 
-    this.init();
-  }
+// Functional helpers
+const createElement = (tagName, className = '') => {
+  const element = document.createElement(tagName);
+  if (className) element.className = className;
+  return element;
+};
 
-  init() {
-    this.createPlaceholder();
-    this.attachEventListeners();
-  }
+const setStyle = curry((styles, element) => {
+  Object.entries(styles).forEach(([prop, value]) => {
+    element.style.setProperty(prop, value, 'important');
+  });
+  return element;
+});
 
-  createPlaceholder() {
-    this.placeholder = document.createElement('div');
-    this.placeholder.className = 'modifier-row-placeholder';
-    // Simple line - no content needed since it's styled with CSS
-    this.updatePlaceholderTheme();
-  }
+const addClass = curry((className, element) => {
+  element.classList.add(className);
+  return element;
+});
 
-  updatePlaceholderTheme() {
-    if (!this.placeholder) {
-      return;
-    }
+const removeClass = curry((className, element) => {
+  element.classList.remove(className);
+  return element;
+});
+
+const closest = curry((selector, element) => element.closest(selector));
+
+// Factory function to create drag and drop functionality
+export const createRowDragDrop = (
+  containerSelector,
+  rowSelector,
+  rowManagerInstance
+) => {
+  let container = null;
+  let draggedElement = null;
+  let placeholder = null;
+  let _dragHandle = null; // Track drag handle for cleanup
+  let startX = 0;
+  let startY = 0;
+  let isDragging = false;
+
+  // Create placeholder element with theme-aware styling
+  const createPlaceholder = () => {
+    const element = createElement('div', 'modifier-row-placeholder');
+    updatePlaceholderTheme(element);
+    return element;
+  };
+
+  const updatePlaceholderTheme = (placeholderElement = placeholder) => {
+    if (!placeholderElement) return;
 
     // Get theme colors if available
     let primaryColor = '#4caf50'; // Default fallback
 
-    if (
-      window.ThemeDetector &&
-      typeof window.ThemeDetector.getThemeColors === 'function'
-    ) {
-      const colors = window.ThemeDetector.getThemeColors();
-      if (colors && colors.primary) {
+    if (getThemeColors && typeof getThemeColors === 'function') {
+      const colors = getThemeColors();
+      if (colors?.primary) {
         primaryColor = colors.primary;
       }
     }
 
     // Update the placeholder with the theme color
     const gradient = `linear-gradient(90deg, transparent 0%, ${primaryColor} 20%, ${primaryColor} 80%, transparent 100%)`;
-    this.placeholder.style.setProperty('background', gradient, 'important');
-  }
+    setStyle({ background: gradient }, placeholderElement);
+  };
 
-  attachEventListeners() {
+  const attachEventListeners = () => {
     // Use mouse-based drag and drop for better reliability
-    document.addEventListener('mousedown', this.handleMouseDown.bind(this));
-    document.addEventListener('mousemove', this.handleMouseMove.bind(this));
-    document.addEventListener('mouseup', this.handleMouseUp.bind(this));
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
 
     // Prevent text selection during drag
-    document.addEventListener('selectstart', this.preventSelect.bind(this));
-  }
+    document.addEventListener('selectstart', preventSelect);
+  };
 
-  preventSelect(e) {
-    if (this.draggedElement) {
+  const preventSelect = e => {
+    if (draggedElement) {
       e.preventDefault();
     }
-  }
+  };
 
-  handleMouseDown(e) {
-    const dragHandle = e.target.closest('.drag-handle');
-    if (!dragHandle) {
-      return;
-    }
+  const handleMouseDown = e => {
+    const handle = closest('.drag-handle', e.target);
+    if (!handle) return;
 
-    const row = dragHandle.closest(this.rowSelector);
-    if (!row) {
-      return;
-    }
+    const row = closest(rowSelector, handle);
+    if (!row) return;
 
     e.preventDefault(); // Prevent text selection
 
-    this.draggedElement = row;
-    this.container = row.closest(this.containerSelector);
-    this.dragHandle = dragHandle;
+    draggedElement = row;
+    container = closest(containerSelector, row);
+    _dragHandle = handle;
 
     // Store initial mouse position
-    this.startX = e.clientX;
-    this.startY = e.clientY;
-    this.isDragging = false;
+    startX = e.clientX;
+    startY = e.clientY;
+    isDragging = false;
 
     // Change cursor
     document.body.style.cursor = 'grabbing';
-  }
+  };
 
-  handleMouseMove(e) {
-    if (!this.draggedElement) {
-      return;
-    }
+  const handleMouseMove = e => {
+    if (!draggedElement) return;
 
     // Start dragging only after moving a few pixels (prevent accidental drags)
-    const deltaX = Math.abs(e.clientX - this.startX);
-    const deltaY = Math.abs(e.clientY - this.startY);
+    const deltaX = Math.abs(e.clientX - startX);
+    const deltaY = Math.abs(e.clientY - startY);
 
-    if (!this.isDragging && (deltaX > 5 || deltaY > 5)) {
-      this.startDrag();
+    if (!isDragging && (deltaX > 5 || deltaY > 5)) {
+      startDrag();
     }
 
-    if (this.isDragging) {
+    if (isDragging) {
       e.preventDefault();
-      this.updateDragPosition(e);
+      updateDragPosition(e);
     }
-  }
+  };
 
-  startDrag() {
-    if (!this.draggedElement) {
-      return;
-    }
+  const startDrag = () => {
+    if (!draggedElement) return;
 
-    this.isDragging = true;
+    isDragging = true;
 
-    // Add visual feedback
-    this.draggedElement.classList.add('dragging');
-    this.draggedElement.style.opacity = '0.7';
-    this.draggedElement.style.transform = 'rotate(2deg)';
-    this.draggedElement.style.zIndex = '10000';
-  }
+    // Add visual feedback using functional approach
+    pipe(
+      addClass('dragging'),
+      setStyle({
+        opacity: '0.7',
+        transform: 'rotate(2deg)',
+        zIndex: '10000',
+      })
+    )(draggedElement);
+  };
 
-  updateDragPosition(e) {
-    if (!this.draggedElement || !this.container) {
-      return;
-    }
+  const updateDragPosition = e => {
+    if (!draggedElement || !container) return;
 
-    const afterElement = this.getDragAfterElement(this.container, e.clientY);
-    const rows = this.container.querySelectorAll(this.rowSelector);
+    const afterElement = getDragAfterElement(container, e.clientY);
+    const rows = container.querySelectorAll(rowSelector);
 
     // Remove existing placeholder
-    if (this.placeholder.parentNode) {
-      this.placeholder.parentNode.removeChild(this.placeholder);
+    if (placeholder.parentNode) {
+      placeholder.parentNode.removeChild(placeholder);
     }
 
     // Update placeholder theme before showing it
-    this.updatePlaceholderTheme();
+    updatePlaceholderTheme();
 
     if (afterElement === null) {
       // Insert at the end
       const lastRow = Array.from(rows)
-        .filter(row => row !== this.draggedElement)
+        .filter(row => row !== draggedElement)
         .pop();
       if (lastRow) {
-        lastRow.parentNode.insertBefore(this.placeholder, lastRow.nextSibling);
+        lastRow.parentNode.insertBefore(placeholder, lastRow.nextSibling);
       } else {
         // If no other rows, insert at the beginning
-        this.container.appendChild(this.placeholder);
+        container.appendChild(placeholder);
       }
-    } else if (afterElement !== this.draggedElement) {
+    } else if (afterElement !== draggedElement) {
       // Insert before the afterElement
-      afterElement.parentNode.insertBefore(this.placeholder, afterElement);
+      afterElement.parentNode.insertBefore(placeholder, afterElement);
     }
-  }
+  };
 
-  handleMouseUp(_e) {
-    if (!this.draggedElement) {
-      return;
-    }
+  const handleMouseUp = () => {
+    if (!draggedElement) return;
 
     document.body.style.cursor = '';
 
-    if (this.isDragging) {
-      this.completeDrag();
+    if (isDragging) {
+      completeDrag();
     } else {
       // Just cleanup if we didn't actually drag
-      this.cleanup();
+      cleanup();
     }
-  }
+  };
 
-  completeDrag() {
-    if (!this.draggedElement || !this.placeholder.parentNode) {
-      this.cleanup();
+  const completeDrag = () => {
+    if (!draggedElement || !placeholder.parentNode) {
+      cleanup();
       return;
     }
 
     // Insert the dragged element where the placeholder is
-    this.placeholder.parentNode.insertBefore(
-      this.draggedElement,
-      this.placeholder
-    );
+    placeholder.parentNode.insertBefore(draggedElement, placeholder);
 
     // Remove placeholder
-    if (this.placeholder.parentNode) {
-      this.placeholder.parentNode.removeChild(this.placeholder);
+    if (placeholder.parentNode) {
+      placeholder.parentNode.removeChild(placeholder);
     }
 
     // Reindex all rows to maintain correct radio button values
-    if (this.rowManager && typeof this.rowManager.reindexRows === 'function') {
-      const modifierBox = this.container.closest('#pixels-modifier-box');
+    if (
+      rowManagerInstance &&
+      typeof rowManagerInstance.reindexRows === 'function'
+    ) {
+      const modifierBox = closest('#pixels-modifier-box', container);
       if (modifierBox) {
-        this.rowManager.reindexRows(modifierBox);
+        rowManagerInstance.reindexRows(modifierBox);
 
         // Save the new order to localStorage after reindexing
-        if (typeof this.rowManager.saveModifierRows === 'function') {
-          this.rowManager.saveModifierRows(modifierBox);
+        if (typeof rowManagerInstance.saveModifierRows === 'function') {
+          rowManagerInstance.saveModifierRows(modifierBox);
         }
       }
     }
 
-    this.cleanup();
-  }
+    cleanup();
+  };
 
-  getDragAfterElement(container, y) {
+  const getDragAfterElement = (containerElement, y) => {
     const draggableElements = [
-      ...container.querySelectorAll(`${this.rowSelector}:not(.dragging)`),
+      ...containerElement.querySelectorAll(`${rowSelector}:not(.dragging)`),
     ];
 
-    return draggableElements.reduce(
+    return reduce(
       (closest, child) => {
         const box = child.getBoundingClientRect();
         const offset = y - box.top - box.height / 2;
@@ -222,57 +240,77 @@ class RowDragDrop {
           return closest;
         }
       },
-      { offset: Number.NEGATIVE_INFINITY }
+      { offset: Number.NEGATIVE_INFINITY },
+      draggableElements
     ).element;
-  }
+  };
 
-  cleanup() {
-    if (this.draggedElement) {
-      this.draggedElement.style.opacity = '';
-      this.draggedElement.style.transform = '';
-      this.draggedElement.style.zIndex = '';
-      this.draggedElement.classList.remove('dragging');
-      this.draggedElement = null;
+  const cleanup = () => {
+    if (draggedElement) {
+      pipe(
+        setStyle({
+          opacity: '',
+          transform: '',
+          zIndex: '',
+        }),
+        removeClass('dragging')
+      )(draggedElement);
+      draggedElement = null;
     }
 
-    if (this.placeholder.parentNode) {
-      this.placeholder.parentNode.removeChild(this.placeholder);
+    if (placeholder?.parentNode) {
+      placeholder.parentNode.removeChild(placeholder);
     }
 
-    this.dragHandle = null;
-    this.container = null;
-    this.isDragging = false;
-    this.startX = 0;
-    this.startY = 0;
+    _dragHandle = null;
+    container = null;
+    isDragging = false;
+    startX = 0;
+    startY = 0;
 
     // Reset cursor
     document.body.style.cursor = '';
+  };
+
+  // Initialize
+  placeholder = createPlaceholder();
+  attachEventListeners();
+
+  // Public API
+  return {
+    updatePlaceholderTheme: () => updatePlaceholderTheme(),
+    cleanup,
+  };
+};
+
+// Utility functions for drag handles
+export const addDragHandle = row => {
+  // Check if drag handle already exists
+  if (row.querySelector('.drag-handle')) {
+    return;
   }
 
-  // Method to add drag handle to a row
-  static addDragHandle(row) {
-    // Check if drag handle already exists
-    if (row.querySelector('.drag-handle')) {
-      return;
-    }
+  const dragHandle = createElement('div', 'drag-handle');
+  dragHandle.title = 'Drag to reorder';
+  dragHandle.innerHTML = '⋮⋮';
 
-    const dragHandle = document.createElement('div');
-    dragHandle.className = 'drag-handle';
-    dragHandle.title = 'Drag to reorder';
-    dragHandle.innerHTML = '⋮⋮';
+  // Insert at the beginning of the row
+  row.insertBefore(dragHandle, row.firstChild);
+};
 
-    // Insert at the beginning of the row
-    row.insertBefore(dragHandle, row.firstChild);
+export const removeDragHandle = row => {
+  const dragHandle = row.querySelector('.drag-handle');
+  if (dragHandle) {
+    dragHandle.remove();
   }
+};
 
-  // Method to remove drag handle from a row
-  static removeDragHandle(row) {
-    const dragHandle = row.querySelector('.drag-handle');
-    if (dragHandle) {
-      dragHandle.remove();
-    }
-  }
+// Export for backwards compatibility
+export const RowDragDrop = createRowDragDrop;
+
+// Export for use in other modules (legacy support)
+if (typeof window !== 'undefined') {
+  window.RowDragDrop = createRowDragDrop;
+  window.addDragHandle = addDragHandle;
+  window.removeDragHandle = removeDragHandle;
 }
-
-// Export for use in other modules
-window.RowDragDrop = RowDragDrop;
