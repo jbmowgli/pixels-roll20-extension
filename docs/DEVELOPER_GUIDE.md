@@ -5,6 +5,7 @@
 ### Requirements
 
 - Chrome(ium) browser with Developer Mode
+- Node.js 16+ and npm (for building from source)
 - Code editor (VS Code, Sublime, etc.)
 - Basic JavaScript knowledge
 
@@ -15,30 +16,73 @@ For complete setup instructions, see the **[Installation Guide](INSTALLATION.md)
 **Quick developer setup:**
 
 1. Clone/download the repository
-2. Follow INSTALLATION.md steps to load the extension
-3. Enable Developer Mode in chrome://extensions/
-4. Use "Reload" button when making changes
+2. Install dependencies: `npm install`
+3. Build the extension: `npm run build` or `npm run build:prod`
+4. Load the `dist/` folder in Chrome Developer Mode
+5. Use "Reload" button when making changes
+
+### Build Commands
+
+```bash
+# Development build (with source maps)
+npm run build
+
+# Production build (optimized)
+npm run build:prod
+
+# Watch mode for development
+npm run watch
+
+# Build for Chrome Web Store
+npm run build:store
+
+# Create store package
+npm run zip:store
+```
 
 ### Key Files
 
-- `src/content/roll20.js` - Main coordinator (modular architecture)
+**Main Entry Point:**
+- `src/content/roll20.js` - Main coordinator (ES module architecture)
+
+**Core Modules (ES Modules):**
 - `src/content/modules/` - Core functionality modules:
   - `Utils.js` - Common utilities and logging
   - `PopupDetection.js` - Popup detection logic
-  - `ExtensionMessaging.js` - Chrome extension messaging
   - `Roll20Integration.js` - Roll20 chat integration
   - `StorageManager.js` - Chrome storage management
   - `ModifierBoxManager.js` - Modifier box lifecycle
-  - `PixelsBluetooth.js` - Bluetooth dice connection
-- `src/components/modifierBox/` - Modifier box UI components
+  - `PixelsBluetooth.js` - Bluetooth dice connection with multi-device support
+
+**UI Components (ES Modules):**
+- `src/components/modifierBox/` - Modifier box UI components:
+  - `modifierBox.js` - Main modifier box UI
+  - `themeManager.js` - Theme adaptation
+  - `rowManager.js` - Row management
+  - `dragHandler.js` - Drag functionality
+  - `dragDropManager.js` - Drag & drop coordination
+
+**Shared Utilities (ES Modules):**
 - `src/utils/` - Shared utilities:
   - `modifierSettings.js` - Modifier storage utilities
   - `themeDetector.js` - Theme detection
   - `cssLoader.js` - Dynamic CSS loading
   - `htmlLoader.js` - Dynamic HTML loading
+
+**Build Output:**
+- `dist/` - Webpack build output (load this folder in Chrome)
 - `manifest.json` - Extension configuration
 
 ## Development
+
+### Architecture Overview
+
+The extension uses a modern **ES module architecture** with webpack for building:
+
+- **ES Modules**: All components use modern import/export syntax
+- **Webpack Build**: Bundles modules for browser compatibility
+- **Multi-Device Support**: Bluetooth connection supports multiple dice simultaneously
+- **Theme Adaptation**: Automatic light/dark theme detection and UI adaptation
 
 ### Testing
 
@@ -48,38 +92,77 @@ For complete setup instructions, see the **[Installation Guide](INSTALLATION.md)
 npm test
 ```
 
-**Integration Testing**: Use test files for component testing:
+**Integration Testing**: The extension has comprehensive test coverage:
 
-```html
-<!-- Basic modifier box test -->
-<script src="src/utils/modifierSettings.js"></script>
-<script src="src/utils/themeDetector.js"></script>
-<script src="src/components/modifierBox/modifierBox.js"></script>
+```bash
+# Run all tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run tests in watch mode
+npm run test:watch
 ```
 
-**Manual Testing**: Load extension in development mode and test on Roll20.
+**Manual Testing**: 
+1. Build the extension: `npm run build`
+2. Load `dist/` folder in Chrome Developer Mode
+3. Test on Roll20 with real Pixels dice
 
 ### Debugging
 
-- Background script: chrome://extensions/ → "Inspect views"
-- Content scripts: F12 on Roll20 page
-- Popup: Right-click extension icon → "Inspect popup"
+- **Background script**: chrome://extensions/ → "Inspect views"
+- **Content scripts**: F12 on Roll20 page → Console tab
+- **Popup**: Right-click extension icon → "Inspect popup"
+- **Build issues**: Check webpack output in terminal
+- **Module errors**: Check browser console for import/export errors
+
+### Hot Reload Development
+
+For faster development:
+
+```bash
+# Terminal 1: Start webpack in watch mode
+npm run watch
+
+# Terminal 2: Load dist/ in Chrome, then reload extension when files change
+```
 
 ## Code Guidelines
 
-### JavaScript
+### JavaScript (ES Modules)
 
 ```javascript
-'use strict';
+// ES Module imports/exports
+import { ThemeDetector } from '../utils/themeDetector.js';
+import { CSSLoader } from '../utils/cssLoader.js';
 
-// Use camelCase for variables
-let modifierValue = 0;
+// Export functions and classes
+export class ModifierBox {
+  constructor() {
+    // Use camelCase for variables
+    this.modifierValue = 0;
+  }
+}
 
-// Use PascalCase for classes
-class ModifierBox {}
+// Export default for main classes
+export default ModifierBox;
 
 // Use UPPER_CASE for constants
 const PIXELS_SERVICE_UUID = 'service-uuid';
+```
+
+### Webpack Configuration
+
+The project uses webpack for building:
+
+```javascript
+// webpack.config.js handles:
+// - ES module compilation
+// - File copying (manifest.json, assets)
+// - Development/production builds
+// - Source maps for debugging
 ```
 
 ### CSS
@@ -204,62 +287,84 @@ npm test
 
 Current test coverage focuses on:
 
-- ✅ ModifierBox UI components and interactions
-- ✅ Roll20 message handling and Chrome extension communication
-- ✅ Error handling and edge cases
-- ✅ Bluetooth connection error scenarios
-- ✅ DOM interaction safety
-- ✅ Extension lifecycle management
+- ✅ **ModifierBox UI**: Components and interactions (ES modules)
+- ✅ **Roll20 Integration**: Message handling and Chrome extension communication
+- ✅ **Error Handling**: Edge cases and error scenarios
+- ✅ **Bluetooth Connection**: Multi-device connection scenarios
+- ✅ **DOM Interaction**: Safe DOM manipulation and event handling
+- ✅ **Extension Lifecycle**: Background script and content script coordination
+- ✅ **Theme Adaptation**: Light/dark theme switching
+- ✅ **Storage Management**: Chrome storage operations
 
-Advanced test suites are available but may have some failures due to complex mocking requirements:
+Test architecture includes:
 
-- `tests/jest/roll20.test.js` - Comprehensive Roll20 integration tests
-- `tests/jest/BluetoothConnection.test.js` - Detailed Bluetooth connection tests
-- `tests/jest/ExtensionMessaging.test.js` - Extension messaging system tests
-- `tests/jest/ChatIntegration.test.js` - Roll20 chat integration tests
-- `tests/jest/Pixel.test.js` - Pixel dice class tests
-
-### Test Architecture
-
-The tests use a robust mocking strategy:
-
-- Chrome extension APIs are mocked with proper error handling
-- Bluetooth APIs are mocked to simulate connection scenarios
-- DOM interactions are safely mocked to prevent errors
-- ModifierBox components are tested with realistic HTML structures
+- **ES Module Testing**: All tests use modern import/export syntax
+- **Comprehensive Mocking**: Chrome APIs, Bluetooth APIs, DOM interactions
+- **Multi-Device Testing**: Bluetooth connection with multiple dice
+- **Theme Testing**: Light/dark theme adaptation
+- **Error Boundary Testing**: Robust error handling validation
 
 ## Packaging for Distribution
 
 ### Chrome Web Store Package
 
-To create a clean package for Chrome Web Store submission:
+The extension includes automated packaging for the Chrome Web Store:
+
+```bash
+# Build and create store package
+npm run build:store
+npm run zip:store
+
+# This creates: pixels-roll20-extension-store.zip
+```
+
+Alternative packaging scripts:
 
 ```bash
 # Unix/macOS/Linux
-./package-for-store.sh
+./scripts/package-for-store.sh
 
 # Windows PowerShell
-./package-for-store.ps1
+./tools/package-for-store.ps1
 ```
 
-This creates `PixelsRoll20Extension-v1.0.0.zip` with only the necessary files for store submission.
+### Build Output Structure
 
-### Manual Package
+The webpack build creates:
 
-For manual distribution or testing:
+```
+dist/
+├── manifest.json          # Extension manifest
+├── background/            # Background scripts
+├── content/              # Content scripts (bundled)
+├── components/           # UI components (bundled)
+├── assets/              # Images and icons
+└── popup/               # Extension popup
+```
 
-1. Create a zip file with these folders/files:
-   - `src/` (all source code)
-   - `assets/` (icons and images)
-   - `manifest.json`
-   - `LICENSE`
-   - Essential docs: `docs/USER_GUIDE.md`, `docs/INSTALLATION.md`, etc.
+### Distribution Files
 
-2. Exclude development files:
-   - `node_modules/`
-   - `tests/`
-   - `.git/`
-   - Development config files
+**For Chrome Web Store:**
+- Use `pixels-roll20-extension-store.zip` (created by `npm run zip:store`)
+- Contains only production files, no source code
+
+**For Manual Distribution:**
+- Include `dist/` folder contents
+- Add documentation: `docs/USER_GUIDE.md`, `docs/INSTALLATION.md`
+- Include `LICENSE` and `README.md`
+
+### Development vs Production
+
+**Development (`npm run build`):**
+- Source maps included
+- Verbose webpack output
+- Faster build times
+
+**Production (`npm run build:prod`):**
+- Optimized and minified
+- No source maps
+- Smaller bundle size
+- Used for store packaging
 
 ## Contributing
 
@@ -273,10 +378,21 @@ For manual distribution or testing:
 
 ### Testing Checklist
 
-- [ ] Extension loads without errors
-- [ ] Modifier box works in light/dark themes
-- [ ] Bluetooth connection works
-- [ ] No console errors
-- [ ] UI is responsive
+- [ ] **Extension loads**: `npm run build` → load `dist/` in Chrome
+- [ ] **No build errors**: Check webpack output
+- [ ] **No console errors**: Check browser console
+- [ ] **Modifier box works**: Test in light/dark themes
+- [ ] **Multi-device Bluetooth**: Connect multiple dice simultaneously
+- [ ] **Responsive UI**: Test with different screen sizes
+- [ ] **All tests pass**: `npm test` returns 100% pass rate
 
-That's it! The codebase is pretty straightforward once you get familiar with the structure.
+### Multi-Device Testing
+
+The extension now supports multiple dice connections:
+
+- Test connecting 2+ dice simultaneously
+- Verify each die maintains independent connection
+- Check that all dice send rolls to Roll20 chat
+- Ensure proper device identification and management
+
+That's it! The codebase uses modern ES modules with webpack for a clean, maintainable architecture.

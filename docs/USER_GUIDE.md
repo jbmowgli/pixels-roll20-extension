@@ -4,6 +4,14 @@
 
 The Pixels Roll20 Chrome Extension connects your physical Pixels dice to Roll20 via Bluetooth, allowing your physical dice rolls to appear automatically in the Roll20 chat with optional modifier support.
 
+### Key Features
+
+- **Multi-Device Support**: Connect multiple Pixels dice simultaneously
+- **Automatic Roll Detection**: Physical dice rolls appear in Roll20 chat
+- **Modifier Management**: Add/edit/remove modifiers with a floating UI
+- **Theme Adaptation**: Automatically matches Roll20's light/dark theme
+- **Reliable Connection**: Robust Bluetooth connection management with device identification
+
 ## Getting Started
 
 ### Installation and Setup
@@ -18,6 +26,17 @@ For complete installation instructions, see the **[Installation Guide](INSTALLAT
 2. **Click Connect**: Press "Connect to Pixel" in the extension popup
 3. **Select Device**: Choose your dice from the Bluetooth device list
 4. **Confirm Connection**: You should see connection status in the popup
+
+### Connecting Multiple Dice
+
+The extension supports connecting multiple dice simultaneously:
+
+1. **Connect First Die**: Follow the steps above
+2. **Connect Additional Dice**: Click "Connect to Pixel" again
+3. **Select Each Die**: Each die will appear as a separate device
+4. **Manage Connections**: Each die maintains its own connection status
+
+**Note**: Each die is identified by its unique device ID, so you can connect multiple dice of the same type without conflicts.
 
 ## Using the Modifier Box
 

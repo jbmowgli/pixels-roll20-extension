@@ -18,9 +18,16 @@ Try these first:
 
 ### Bluetooth Problems
 
+**Single Device Issues:**
 - **No devices found?** → Roll dice to wake them, check Bluetooth is on
 - **Won't connect?** → Make sure dice aren't connected to other devices
 - **Keeps disconnecting?** → Keep dice close to computer, check battery
+
+**Multiple Device Issues:**
+- **Can't connect second die?** → Make sure first die is fully connected before adding second
+- **Dice interfering with each other?** → Each die uses unique device ID, interference unlikely
+- **Some dice not responding?** → Check individual connection status in popup
+- **Mixed connection states?** → Try reconnecting all dice one by one
 
 ### Roll20 Issues
 
@@ -33,9 +40,15 @@ Try these first:
 
 ### Dice Issues
 
+**Single Die:**
 - **Not responding?** → Charge dice, try rolling gently to wake
 - **Wrong values?** → Check modifier settings, reconnect if needed
 - **LED not working?** → Dice might be in sleep mode, roll to activate
+
+**Multiple Dice:**
+- **Only one die working?** → Check connection status for each die in popup
+- **Dice sending duplicate rolls?** → Each die should have unique device ID
+- **Inconsistent behavior?** → Try disconnecting all dice and reconnecting one by one
 
 ## Still Having Issues?
 
