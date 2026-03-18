@@ -33,8 +33,17 @@ export const sendTextToExtension = txt => {
 };
 
 export const sendStatusToExtension = () => {
-  const connectedPixels = filter(p => p.isConnected, window.pixels || []);
-  const totalPixels = (window.pixels || []).length;
+  const pixels = window.pixels || [];
+
+  // Verify actual GATT state for each pixel, not just cached _isConnected
+  const connectedPixels = filter(p => {
+    try {
+      return p.isConnected && p.device && p.device.gatt && p.device.gatt.connected;
+    } catch {
+      return false;
+    }
+  }, pixels);
+  const totalPixels = pixels.length;
 
   if (totalPixels === 0) {
     sendTextToExtension('No Pixel connected');

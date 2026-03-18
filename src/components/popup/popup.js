@@ -163,8 +163,10 @@ chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
     // Request initial status from the content script
     sendMessage({ action: 'getStatus' });
 
-    // Don't automatically override modifier values on popup initialization
-    // Let the content script sync FROM the UI instead of overwriting it
+    // Poll status every 5 seconds while popup is open to catch silent state changes
+    setInterval(() => {
+      sendMessage({ action: 'getStatus' });
+    }, 5000);
   }
 });
 
