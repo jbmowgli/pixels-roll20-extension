@@ -401,3 +401,67 @@
   min-width: 24px !important;
   padding: 0 !important;
 }
+
+/* Advantage/Disadvantage Footer */
+#pixels-modifier-box .pixels-advantage-footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  padding: 8px 16px !important;
+  border-top: 1px solid #555555 !important;
+  background-color: #2b2b2b !important;
+  border-radius: 0 0 7px 7px !important;
+  flex-shrink: 0 !important;
+}
+
+#pixels-modifier-box .pixels-advantage-label {
+  font-size: 12px !important;
+  color: #aaaaaa !important;
+  font-weight: bold !important;
+}
+
+#pixels-modifier-box .pixels-advantage-buttons {
+  display: flex !important;
+  gap: 4px !important;
+}
+
+#pixels-modifier-box .advantage-btn {
+  padding: 3px 10px !important;
+  border-radius: 4px !important;
+  border: 1px solid #555555 !important;
+  font-size: 12px !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+  color: #aaaaaa !important;
+  background-color: #333333 !important;
+  transition: all 0.2s ease !important;
+}
+
+#pixels-modifier-box .advantage-btn:hover {
+  border-color: #888888 !important;
+  color: #ffffff !important;
+}
+
+#pixels-modifier-box .advantage-btn.active[data-type='normal'] {
+  background-color: #444444 !important;
+  border-color: #888888 !important;
+  color: #ffffff !important;
+}
+
+#pixels-modifier-box .advantage-btn.active[data-type='advantage'] {
+  background-color: #1b5e20 !important;
+  border-color: #4caf50 !important;
+  color: #4caf50 !important;
+}
+
+#pixels-modifier-box .advantage-btn.active[data-type='disadvantage'] {
+  background-color: #b71c1c !important;
+  border-color: #f44336 !important;
+  color: #f44336 !important;
+}
+
+/* Hide footer when minimized */
+#pixels-modifier-box.minimized .pixels-advantage-footer {
+  display: none !important;
+}

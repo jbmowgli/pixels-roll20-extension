@@ -23,6 +23,8 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
   // Global modifier variables (accessed by modifierBox.js)
   window.pixelsModifier = '0';
   window.pixelsModifierName = 'Modifier 1';
+  // Roll type: 'normal' | 'advantage' | 'disadvantage'
+  window.pixelsRollType = 'normal';
 
   // Initialize modules and set up message handling
   function initializeExtension() {

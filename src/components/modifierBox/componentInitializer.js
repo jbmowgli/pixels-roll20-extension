@@ -17,7 +17,11 @@ import {
   updateSelectedModifier as updateSelectedModifierFromRowManager,
   loadModifierRows,
 } from './rowManager.js';
-import { setupMinimizeControls, setupClearAllControls } from './uiControls.js';
+import {
+  setupMinimizeControls,
+  setupAdvantageControls,
+  setupClearAllControls,
+} from './uiControls.js';
 
 export function setupModifierBoxComponents(modifierBox, clearAllCallback) {
   if (!modifierBox) {
@@ -140,6 +144,7 @@ function setupRowManagement(modifierBox) {
 
 function setupUIControls(modifierBox, clearAllCallback) {
   setupMinimizeControls(modifierBox);
+  setupAdvantageControls(modifierBox);
 
   if (clearAllCallback) {
     setupClearAllControls(modifierBox, clearAllCallback);

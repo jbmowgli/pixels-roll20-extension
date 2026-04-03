@@ -66,6 +66,32 @@ function restoreModifierBox(modifierBox, minimizeBtn) {
   minimizeBtn.title = 'Minimize';
 }
 
+export function setupAdvantageControls(modifierBox) {
+  if (!modifierBox) return;
+  const buttons = modifierBox.querySelectorAll('.advantage-btn');
+  if (!buttons.length) return;
+
+  // Restore persisted roll type
+  const saved = localStorage.getItem('pixels_roll_type') || 'normal';
+  window.pixelsRollType = saved;
+  buttons.forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.type === saved)
+  );
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const type = btn.dataset.type;
+      window.pixelsRollType = type;
+      localStorage.setItem('pixels_roll_type', type);
+      buttons.forEach(b =>
+        b.classList.toggle('active', b.dataset.type === type)
+      );
+    });
+  });
+}
+
 export function setupClearAllControls(modifierBox, clearAllCallback) {
   if (!modifierBox) {
     console.error('setupClearAllControls: modifierBox is required');
@@ -92,6 +118,7 @@ export function setupClearAllControls(modifierBox, clearAllCallback) {
 
 const UIControls = {
   setupMinimizeControls,
+  setupAdvantageControls,
   setupClearAllControls,
 };
 

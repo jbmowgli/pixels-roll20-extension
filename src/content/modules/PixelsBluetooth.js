@@ -121,6 +121,9 @@ export const createPixel = (name, server, device) => {
     }, 30000); // Check every 30 seconds - less frequent since we're only checking GATT state
   };
 
+  let _pendingAdvantageRoll = null; // first roll value when waiting for second
+  let _advantageTimeout = null; // timer to cancel if no second roll arrives
+
   let _disconnectionTimeout = null;
   let _pixelSelf = null; // Store reference to self for reconnection
 
@@ -215,7 +218,7 @@ export const createPixel = (name, server, device) => {
       }
     } else if (ev === 1) {
       _face = face;
-      const txt = `${_name}: face up = ${face + 1}`;
+      const diceValue = face + 1;
 
       // Check if modifier box is visible to determine modifier application
       const isModifierBoxVisible =
@@ -232,44 +235,121 @@ export const createPixel = (name, server, device) => {
         window.ModifierBox.syncGlobalVars();
       }
 
-      const diceValue = face + 1;
-      const modifier = isModifierBoxVisible
-        ? parseInt(window.pixelsModifier) || 0
-        : 0;
-      const result = diceValue + modifier;
+      const rollType = window.pixelsRollType || 'normal';
 
-      // Choose formula based on modifier box visibility
-      let formula = isModifierBoxVisible
-        ? pixelsFormulaWithModifier
-        : pixelsFormulaSimple;
+      if (rollType === 'advantage' || rollType === 'disadvantage') {
+        if (_pendingAdvantageRoll === null) {
+          // ── ROLL 1: buffer and wait for roll 2 ──
+          _pendingAdvantageRoll = diceValue;
+          sendTextToExtension(
+            `${_name}: Roll 1 = ${diceValue} — waiting for roll 2…`
+          );
 
-      // Add critical hit message if face value is 20
-      if (diceValue === 20 && isModifierBoxVisible) {
-        formula = formula.replace(
-          '{{Pixel=#face_value}}',
-          '{{&#128293; <span style="color: #ff4444; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">CRITICAL!</span> &#128293;}} {{Pixel=#face_value}}'
-        );
+          // Cancel if no second roll arrives within 15 seconds
+          _advantageTimeout = setTimeout(() => {
+            _pendingAdvantageRoll = null;
+            _advantageTimeout = null;
+            sendTextToExtension(
+              `${_name}: Timed out waiting for roll 2 — roll cancelled`
+            );
+          }, 15000);
+        } else {
+          // ── ROLL 2: compute and post result ──
+          clearTimeout(_advantageTimeout);
+          _advantageTimeout = null;
+
+          const roll1 = _pendingAdvantageRoll;
+          const roll2 = diceValue;
+          _pendingAdvantageRoll = null;
+
+          const usedValue =
+            rollType === 'advantage'
+              ? Math.max(roll1, roll2)
+              : Math.min(roll1, roll2);
+
+          const modifier = isModifierBoxVisible
+            ? parseInt(window.pixelsModifier) || 0
+            : 0;
+          const result = usedValue + modifier;
+
+          const rollLabel =
+            rollType === 'advantage' ? 'Advantage' : 'Disadvantage';
+          const usedArrow = rollType === 'advantage' ? '&#9650;' : '&#9660;';
+
+          let formula = isModifierBoxVisible
+            ? `&{template:default} {{name=#modifier_name (#modifier_sign) - ${rollLabel}}} {{Roll 1=[[#roll1]]}} {{Roll 2=[[#roll2]]}} {{${usedArrow} Used=[[#used_value]]}} {{Result=[[#used_value + #modifier]]}}`
+            : `&{template:default} {{name=Pixel Roll - ${rollLabel}}} {{Roll 1=[[#roll1]]}} {{Roll 2=[[#roll2]]}} {{${usedArrow} Used=[[#used_value]]}} {{Result=[[#result]]}}`;
+
+          // Critical/fumble on the used value
+          if (usedValue === 20 && isModifierBoxVisible) {
+            formula = formula.replace(
+              '{{Roll 1',
+              '{{&#128293; <span style="color: #ff4444; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">CRITICAL!</span> &#128293;}} {{Roll 1'
+            );
+          }
+          if (usedValue === 1 && isModifierBoxVisible) {
+            formula = formula.replace(
+              '{{Roll 1',
+              '{{&#128128; <span style="color: #888888; font-size: 16px; font-style: italic; opacity: 0.7;">FUMBLE!</span> &#128128;}} {{Roll 1'
+            );
+          }
+
+          const message = formula
+            .replaceAll('#modifier_name', window.pixelsModifierName)
+            .replaceAll('#modifier_sign', formatModifierSign(modifier))
+            .replaceAll('#roll1', roll1.toString())
+            .replaceAll('#roll2', roll2.toString())
+            .replaceAll('#used_value', usedValue.toString())
+            .replaceAll('#modifier', modifier.toString())
+            .replaceAll('#result', result.toString());
+
+          message.split('\\n').forEach(s => postChatMessage(s));
+
+          sendTextToExtension(
+            `${_name}: ${rollLabel} ${roll1} vs ${roll2} → used ${usedValue} + ${modifier} = ${result}`
+          );
+        }
+      } else {
+        // ── NORMAL single roll (original logic) ──
+        const txt = `${_name}: face up = ${diceValue}`;
+
+        const modifier = isModifierBoxVisible
+          ? parseInt(window.pixelsModifier) || 0
+          : 0;
+        const result = diceValue + modifier;
+
+        let formula = isModifierBoxVisible
+          ? pixelsFormulaWithModifier
+          : pixelsFormulaSimple;
+
+        // Add critical hit message if face value is 20
+        if (diceValue === 20 && isModifierBoxVisible) {
+          formula = formula.replace(
+            '{{Pixel=#face_value}}',
+            '{{&#128293; <span style="color: #ff4444; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">CRITICAL!</span> &#128293;}} {{Pixel=#face_value}}'
+          );
+        }
+
+        // Add fumble message if face value is 1
+        if (diceValue === 1 && isModifierBoxVisible) {
+          formula = formula.replace(
+            '{{Pixel=#face_value}}',
+            '{{&#128128; <span style="color: #888888; font-size: 16px; font-style: italic; opacity: 0.7;">FUMBLE!</span> &#128128;}} {{Pixel=#face_value}}'
+          );
+        }
+
+        const message = formula
+          .replaceAll('#modifier_name', window.pixelsModifierName)
+          .replaceAll('#modifier_sign', formatModifierSign(modifier))
+          .replaceAll('#face_value', diceValue.toString())
+          .replaceAll('#pixel_name', _name)
+          .replaceAll('#modifier', modifier.toString())
+          .replaceAll('#result', result.toString());
+
+        message.split('\\n').forEach(s => postChatMessage(s));
+
+        sendTextToExtension(txt);
       }
-
-      // Add fumble message if face value is 1
-      if (diceValue === 1 && isModifierBoxVisible) {
-        formula = formula.replace(
-          '{{Pixel=#face_value}}',
-          '{{&#128128; <span style="color: #888888; font-size: 16px; font-style: italic; opacity: 0.7;">FUMBLE!</span> &#128128;}} {{Pixel=#face_value}}'
-        );
-      }
-
-      const message = formula
-        .replaceAll('#modifier_name', window.pixelsModifierName)
-        .replaceAll('#modifier_sign', formatModifierSign(modifier))
-        .replaceAll('#face_value', diceValue.toString())
-        .replaceAll('#pixel_name', _name)
-        .replaceAll('#modifier', modifier.toString())
-        .replaceAll('#result', result.toString());
-
-      message.split('\\n').forEach(s => postChatMessage(s));
-
-      sendTextToExtension(txt);
     }
   };
 

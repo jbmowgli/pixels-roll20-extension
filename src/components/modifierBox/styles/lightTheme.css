@@ -97,3 +97,32 @@
     transparent 70%
   ) !important;
 }
+
+/* Light Theme: Advantage/Disadvantage Footer */
+.roll20-light-theme #pixels-modifier-box .pixels-advantage-footer {
+  background-color: #f8f9fa !important;
+  border-top-color: #dddddd !important;
+}
+
+.roll20-light-theme #pixels-modifier-box .pixels-advantage-label {
+  color: #666666 !important;
+}
+
+.roll20-light-theme #pixels-modifier-box .advantage-btn {
+  color: #555555 !important;
+  background-color: #ffffff !important;
+  border-color: #cccccc !important;
+}
+
+.roll20-light-theme #pixels-modifier-box .advantage-btn:hover {
+  background-color: #e9ecef !important;
+  color: #333333 !important;
+}
+
+.roll20-light-theme
+  #pixels-modifier-box
+  .advantage-btn.active[data-type='normal'] {
+  background-color: #e9ecef !important;
+  border-color: #666666 !important;
+  color: #333333 !important;
+}

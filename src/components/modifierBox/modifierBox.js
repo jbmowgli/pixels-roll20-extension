@@ -227,6 +227,14 @@ function createModifierBoxFallback() {
                     <button class="remove-row-btn" type="button">×</button>
                 </div>
             </div>
+            <div class="pixels-advantage-footer">
+                <span class="pixels-advantage-label">Roll:</span>
+                <div class="pixels-advantage-buttons">
+                    <button class="advantage-btn active" data-type="normal" title="Single roll">Normal</button>
+                    <button class="advantage-btn" data-type="advantage" title="Roll twice, take higher (Advantage)">Adv</button>
+                    <button class="advantage-btn" data-type="disadvantage" title="Roll twice, take lower (Disadvantage)">Dis</button>
+                </div>
+            </div>
             <div class="pixels-resize-handle"></div>
         `;
 
