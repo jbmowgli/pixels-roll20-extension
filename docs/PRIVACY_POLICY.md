@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last Updated: July 8, 2025**
+**Last Updated: June 23, 2026**
 
 ## Overview
 
@@ -15,7 +15,7 @@ The Pixels Roll20 Integration extension ("the Extension") is designed to connect
 - Connects to Pixels dice via Bluetooth (local connection only)
 - Reads dice roll results from connected devices
 - Injects roll results into Roll20 chat
-- Stores modifier settings locally in your browser session
+- Stores modifier settings and saved profiles locally in your browser's extension storage
 
 ### What the Extension Does NOT Do:
 
@@ -64,13 +64,18 @@ The Extension requests the following permissions:
 
 The Extension stores the following data locally on your device:
 
-### Modifier Settings
+### Modifier Settings and Profiles
 
-- **Data**: Modifier box configuration (names, values, positions)
-- **Location**: Chrome's local storage (sync.storage)
-- **Purpose**: Remember your modifier preferences
-- **Sharing**: Synced across your Chrome browsers if signed in
-- **Control**: Can be cleared via Chrome settings
+- **Data**: Modifier box configuration (names, values, order) and any named profiles you save
+- **Location**: Chrome's extension storage. Profiles are written to both `chrome.storage.local` and `chrome.storage.sync`; the active-profile marker and the minimized/full-size state are stored in `chrome.storage.local` only (per-device)
+- **Purpose**: Remember your modifier preferences and let you switch between saved setups
+- **Sharing**: Profiles sync across your browsers if your browser supports and is signed into extension sync (e.g. Chrome, Edge). Browsers that do not propagate extension sync (e.g. Brave, Opera) keep the data on-device only. No data is sent to us or any third party
+- **Control**: Can be cleared via Chrome settings, deleted per-profile in the popup, or exported/imported as a local JSON file that never leaves your device unless you share it
+
+### Profile Import/Export
+
+- **Export** writes your saved profiles to a JSON file you choose to download; **Import** reads a JSON file you select
+- These files are handled entirely on your device — the Extension does not upload, transmit, or otherwise access them beyond the local read/write you initiate
 
 ### Theme Preferences
 

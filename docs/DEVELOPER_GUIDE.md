@@ -43,9 +43,11 @@ npm run zip:store
 ### Key Files
 
 **Main Entry Point:**
+
 - `src/content/roll20.js` - Main coordinator (ES module architecture)
 
 **Core Modules (ES Modules):**
+
 - `src/content/modules/` - Core functionality modules:
   - `Utils.js` - Common utilities and logging
   - `PopupDetection.js` - Popup detection logic
@@ -55,6 +57,7 @@ npm run zip:store
   - `PixelsBluetooth.js` - Bluetooth dice connection with multi-device support
 
 **UI Components (ES Modules):**
+
 - `src/components/modifierBox/` - Modifier box UI components:
   - `modifierBox.js` - Main modifier box UI
   - `themeManager.js` - Theme adaptation
@@ -63,13 +66,16 @@ npm run zip:store
   - `dragDropManager.js` - Drag & drop coordination
 
 **Shared Utilities (ES Modules):**
+
 - `src/utils/` - Shared utilities:
   - `modifierSettings.js` - Modifier storage utilities
+  - `profileStorage.js` - Saved profiles + minimize state (chrome.storage dual-write)
   - `themeDetector.js` - Theme detection
   - `cssLoader.js` - Dynamic CSS loading
   - `htmlLoader.js` - Dynamic HTML loading
 
 **Build Output:**
+
 - `dist/` - Webpack build output (load this folder in Chrome)
 - `manifest.json` - Extension configuration
 
@@ -105,7 +111,8 @@ npm run test:coverage
 npm run test:watch
 ```
 
-**Manual Testing**: 
+**Manual Testing**:
+
 1. Build the extension: `npm run build`
 2. Load `dist/` folder in Chrome Developer Mode
 3. Test on Roll20 with real Pixels dice
@@ -250,11 +257,27 @@ chrome.tabs.sendMessage(tabId, {
 });
 ```
 
+### Content-Script Actions
+
+The content script (`roll20.js`) handles these `action` messages: `getStatus`,
+`setModifier`, `showModifier`, `hideModifier`, `connect`, `disconnect`,
+`getTheme`, and the profile actions:
+
+- **`getCurrentRows`** — responds with the current popout rows
+  (`{ rows, selectedIndex }`), serialized from the live box or the persisted
+  rows when the box is hidden. Used by the popup to capture state for a profile.
+- **`applyProfile`** — applies a profile's rows to the popout (showing it if
+  needed) and persists the result; responds `{ success }`.
+
+Profile persistence itself lives in `src/utils/profileStorage.js` and is
+accessed directly from both the popup and the content script — it does not go
+through message passing.
+
 ## Testing
 
 The project includes comprehensive Jest test coverage for all major components:
 
-### Working Tests (141 tests passing)
+### Working Tests (212 tests passing)
 
 **ModifierBox Tests (96 tests)**
 
@@ -345,10 +368,12 @@ dist/
 ### Distribution Files
 
 **For Chrome Web Store:**
+
 - Use `pixels-roll20-extension-store.zip` (created by `npm run zip:store`)
 - Contains only production files, no source code
 
 **For Manual Distribution:**
+
 - Include `dist/` folder contents
 - Add documentation: `docs/USER_GUIDE.md`, `docs/INSTALLATION.md`
 - Include `LICENSE` and `README.md`
@@ -356,11 +381,13 @@ dist/
 ### Development vs Production
 
 **Development (`npm run build`):**
+
 - Source maps included
 - Verbose webpack output
 - Faster build times
 
 **Production (`npm run build:prod`):**
+
 - Optimized and minified
 - No source maps
 - Smaller bundle size
