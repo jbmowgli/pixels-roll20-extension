@@ -279,7 +279,7 @@ body {
 .profile-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background-color: #1a1a1a;
   border: 1px solid #444444;
   border-radius: 4px;
@@ -320,7 +320,7 @@ body {
   color: #ffffff;
   border: 1px solid #555555;
   border-radius: 4px;
-  padding: 5px 10px;
+  padding: 5px 8px;
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
