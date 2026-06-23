@@ -13,7 +13,7 @@
 2. **Open Chrome** and go to: `chrome://extensions/`
 3. **Turn on Developer mode** (toggle in top-right corner)
 4. **Click "Load unpacked"** button
-5. **Select the `dist/` folder** from the extracted files
+5. **Select the extracted files**
 6. ✅ **Pixels icon appears** in Chrome toolbar!
 
 ## First Use
