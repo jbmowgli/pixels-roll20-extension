@@ -106,11 +106,30 @@ function addModifierRow(modifierBox, updateSelectedModifierCallback) {
   content.appendChild(newRow);
   rowCounter++;
 
+  // Auto-select the new row so it becomes the active modifier
+  const newRadio = newRow.querySelector('.modifier-radio');
+  if (newRadio) {
+    newRadio.checked = true;
+  }
+
   // Update event listeners for all rows
   updateEventListeners(modifierBox, updateSelectedModifierCallback);
 
+  // Sync the new selection (setting `checked` programmatically does not fire
+  // the change listener that normally updates the active modifier)
+  if (updateSelectedModifierCallback) {
+    updateSelectedModifierCallback();
+  }
+
   // Save the updated state to localStorage
   saveModifierRows(modifierBox);
+
+  // Move focus to the new row's name field, selecting its text for quick edit
+  const newNameInput = newRow.querySelector('.modifier-name');
+  if (newNameInput) {
+    newNameInput.focus();
+    newNameInput.select();
+  }
 
   // Force theme updates on the new elements
   if (

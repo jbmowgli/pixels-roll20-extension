@@ -197,6 +197,26 @@ describe('ModifierBox Row Manager', () => {
       expect(removeBtn.textContent).toBe('×');
     });
 
+    test('should auto-select the new row and focus its name field', () => {
+      const content = mockModifierBox.querySelector('.pixels-content');
+
+      window.ModifierBoxRowManager.addModifierRow(
+        mockModifierBox,
+        mockCallback
+      );
+
+      const newRow = content.lastElementChild;
+      const radio = newRow.querySelector('.modifier-radio');
+      const nameInput = newRow.querySelector('.modifier-name');
+
+      // New row becomes the selected/active modifier
+      expect(radio.checked).toBe(true);
+      // Selection change is propagated to the caller
+      expect(mockCallback).toHaveBeenCalled();
+      // Cursor moves to the new row's name field
+      expect(document.activeElement).toBe(nameInput);
+    });
+
     test('should increment row counter', () => {
       const initialCounter = window.ModifierBoxRowManager.getRowCounter();
 
