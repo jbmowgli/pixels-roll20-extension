@@ -90,6 +90,68 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
               window.hideModifierBox();
               break;
 
+            case 'getCurrentRows': {
+              // Return the current popout rows (names/order/values) for the
+              // popup to save as a profile. Prefer the live DOM; fall back to
+              // persisted rows so this works even when the box is hidden.
+              let rowsData = null;
+              const box = window.ModifierBox?.getElement?.();
+              if (box && window.ModifierBoxRowManager?.serializeRows) {
+                rowsData = window.ModifierBoxRowManager.serializeRows(box);
+              }
+              if (!rowsData || !rowsData.rows || rowsData.rows.length === 0) {
+                try {
+                  const stored = localStorage.getItem('pixels_modifier_rows');
+                  if (stored) {
+                    const parsed = JSON.parse(stored);
+                    rowsData = {
+                      rows: parsed.rows || [],
+                      selectedIndex:
+                        typeof parsed.selectedIndex === 'number'
+                          ? parsed.selectedIndex
+                          : -1,
+                    };
+                  }
+                } catch (e) {
+                  log(`Could not read stored rows: ${e.message}`);
+                }
+              }
+              sendResponse(rowsData || { rows: [], selectedIndex: -1 });
+              break;
+            }
+
+            case 'applyProfile': {
+              // Apply a saved profile's rows to the popout, creating/showing it
+              // first if necessary. Responds asynchronously.
+              (async () => {
+                try {
+                  // Ensure the box exists and is visible before applying.
+                  if (window.ModifierBox?.show) {
+                    await window.ModifierBox.show();
+                  }
+                  const box = window.ModifierBox?.getElement?.();
+                  const cb = () => {
+                    if (window.ModifierBox?.updateSelectedModifier) {
+                      window.ModifierBox.updateSelectedModifier();
+                    }
+                  };
+                  const ok =
+                    box && window.ModifierBoxRowManager?.applyProfileRows
+                      ? window.ModifierBoxRowManager.applyProfileRows(
+                          box,
+                          msg.profile,
+                          cb
+                        )
+                      : false;
+                  sendResponse({ success: Boolean(ok) });
+                } catch (e) {
+                  log(`Error applying profile: ${e.message}`);
+                  sendResponse({ success: false, error: e.message });
+                }
+              })();
+              return true; // keep the message channel open for async response
+            }
+
             case 'connect':
               // Handle connect asynchronously to catch all errors properly
               (async () => {

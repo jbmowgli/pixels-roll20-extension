@@ -49,8 +49,11 @@ window.ModifierBoxRowManager = {
   updateSelectedModifier: updateSelectedModifier,
   clearModifierState: clearModifierState,
   reindexRows: reindexRows,
+  serializeRows: serializeRows,
+  applyRows: applyRows,
   saveModifierRows: saveModifierRows,
   loadModifierRows: loadModifierRows,
+  applyProfileRows: applyProfileRows,
   clearStoredModifierRows: clearStoredModifierRows,
   resetAllRows: resetAllRows,
   getRowCounter: () => rowCounter,
@@ -341,6 +344,39 @@ function updateSelectedModifier(modifierBox) {
   }
 }
 
+// Pure serialization of the current rows in their DOM order (preserves
+// drag-and-drop order). Returns { rows: [{ name, value, originalIndex }],
+// selectedIndex }. Shared by localStorage persistence and profile saving.
+function serializeRows(modifierBox) {
+  const rowsData = [];
+  let selectedIndex = -1;
+
+  if (!modifierBox) {
+    return { rows: rowsData, selectedIndex };
+  }
+
+  const rows = modifierBox.querySelectorAll('.modifier-row');
+  rows.forEach((row, domIndex) => {
+    const radio = row.querySelector('.modifier-radio');
+    const nameInput = row.querySelector('.modifier-name');
+    const valueInput = row.querySelector('.modifier-value');
+
+    if (nameInput && valueInput) {
+      rowsData.push({
+        name: nameInput.value || 'Modifier',
+        value: valueInput.value || '0',
+        originalIndex: radio ? radio.value : domIndex.toString(), // Store original index for reference
+      });
+
+      if (radio && radio.checked) {
+        selectedIndex = domIndex; // Use DOM index for selection
+      }
+    }
+  });
+
+  return { rows: rowsData, selectedIndex };
+}
+
 // Function to save all modifier rows to localStorage
 function saveModifierRows(modifierBox) {
   if (!modifierBox) {
@@ -348,32 +384,11 @@ function saveModifierRows(modifierBox) {
   }
 
   try {
-    const rows = modifierBox.querySelectorAll('.modifier-row');
-    const rowsData = [];
-    let selectedIndex = -1;
-
-    // Capture rows in their current DOM order (preserves drag-and-drop order)
-    rows.forEach((row, domIndex) => {
-      const radio = row.querySelector('.modifier-radio');
-      const nameInput = row.querySelector('.modifier-name');
-      const valueInput = row.querySelector('.modifier-value');
-
-      if (nameInput && valueInput) {
-        rowsData.push({
-          name: nameInput.value || 'Modifier',
-          value: valueInput.value || '0',
-          originalIndex: radio ? radio.value : domIndex.toString(), // Store original index for reference
-        });
-
-        if (radio && radio.checked) {
-          selectedIndex = domIndex; // Use DOM index for selection
-        }
-      }
-    });
+    const { rows, selectedIndex } = serializeRows(modifierBox);
 
     const modifierState = {
-      rows: rowsData,
-      selectedIndex: selectedIndex,
+      rows,
+      selectedIndex,
       rowCounter: rowCounter,
       lastUpdated: Date.now(),
     };
@@ -382,6 +397,73 @@ function saveModifierRows(modifierBox) {
   } catch (error) {
     console.error('Error saving modifier rows:', error);
   }
+}
+
+// Rebuild the modifier rows in the DOM from serialized data
+// ({ rows: [{ name, value }], selectedIndex }). Shared by localStorage loading
+// and profile applying. Returns true on success.
+function applyRows(modifierBox, data, updateSelectedModifierCallback) {
+  if (!modifierBox || !data || !Array.isArray(data.rows)) {
+    return false;
+  }
+
+  const content = modifierBox.querySelector('.pixels-content');
+  if (!content) {
+    return false;
+  }
+
+  // Ensure the row counter stays ahead of the rebuilt indices so future rows
+  // get unique values (rows are reindexed 0..n-1 on rebuild).
+  rowCounter = Math.max(rowCounter, data.rows.length);
+
+  // Remove all existing modifier rows
+  const existingRows = content.querySelectorAll('.modifier-row');
+  existingRows.forEach(row => row.remove());
+
+  // Recreate rows from the supplied data
+  data.rows.forEach((rowData, index) => {
+    const newRow = document.createElement('div');
+    newRow.className = 'modifier-row';
+    newRow.innerHTML = `
+          <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
+          <input type="radio" name="modifier-select" value="${index}" class="modifier-radio" id="mod-${index}">
+          <input type="text" class="modifier-name" placeholder="Modifier" value="${rowData.name}" data-index="${index}">
+          <input type="number" class="modifier-value" value="${rowData.value}" min="-99" max="99" data-index="${index}">
+          <button class="remove-row-btn" type="button">×</button>
+        `;
+
+    content.appendChild(newRow);
+  });
+
+  // Restore selected row
+  if (data.selectedIndex >= 0 && data.selectedIndex < data.rows.length) {
+    const selectedRadio = modifierBox.querySelector(
+      `input[name="modifier-select"][value="${data.selectedIndex}"]`
+    );
+    if (selectedRadio) {
+      selectedRadio.checked = true;
+    }
+  }
+
+  // Update event listeners for all rows
+  updateEventListeners(modifierBox, updateSelectedModifierCallback);
+
+  // Update the selected modifier to sync global variables
+  if (updateSelectedModifierCallback) {
+    updateSelectedModifierCallback();
+  }
+
+  // Force theme updates on the restored elements
+  if (
+    window.ModifierBoxThemeManager &&
+    window.ModifierBoxThemeManager.forceElementUpdates
+  ) {
+    window.ModifierBoxThemeManager.forceElementUpdates(modifierBox);
+  } else if (forceElementUpdates) {
+    forceElementUpdates(modifierBox);
+  }
+
+  return true;
 }
 
 // Function to load modifier rows from localStorage
@@ -406,67 +488,33 @@ function loadModifierRows(modifierBox, updateSelectedModifierCallback) {
       rowCounter = modifierState.rowCounter;
     }
 
-    // Clear existing rows
-    const content = modifierBox.querySelector('.pixels-content');
-    if (!content) {
-      return false;
-    }
-
-    // Remove all existing modifier rows
-    const existingRows = content.querySelectorAll('.modifier-row');
-    existingRows.forEach(row => row.remove());
-
-    // Recreate rows from stored data
-    modifierState.rows.forEach((rowData, index) => {
-      const newRow = document.createElement('div');
-      newRow.className = 'modifier-row';
-      newRow.innerHTML = `
-          <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
-          <input type="radio" name="modifier-select" value="${index}" class="modifier-radio" id="mod-${index}">
-          <input type="text" class="modifier-name" placeholder="Modifier" value="${rowData.name}" data-index="${index}">
-          <input type="number" class="modifier-value" value="${rowData.value}" min="-99" max="99" data-index="${index}">
-          <button class="remove-row-btn" type="button">×</button>
-        `;
-
-      content.appendChild(newRow);
-    });
-
-    // Restore selected row
-    if (
-      modifierState.selectedIndex >= 0 &&
-      modifierState.selectedIndex < modifierState.rows.length
-    ) {
-      const selectedRadio = modifierBox.querySelector(
-        `input[name="modifier-select"][value="${modifierState.selectedIndex}"]`
-      );
-      if (selectedRadio) {
-        selectedRadio.checked = true;
-      }
-    }
-
-    // Update event listeners for all rows
-    updateEventListeners(modifierBox, updateSelectedModifierCallback);
-
-    // Update the selected modifier to sync global variables
-    if (updateSelectedModifierCallback) {
-      updateSelectedModifierCallback();
-    }
-
-    // Force theme updates on the restored elements
-    if (
-      window.ModifierBoxThemeManager &&
-      window.ModifierBoxThemeManager.forceElementUpdates
-    ) {
-      window.ModifierBoxThemeManager.forceElementUpdates(modifierBox);
-    } else if (forceElementUpdates) {
-      forceElementUpdates(modifierBox);
-    }
-
-    return true;
+    return applyRows(
+      modifierBox,
+      modifierState,
+      updateSelectedModifierCallback
+    );
   } catch (error) {
     console.error('Error loading modifier rows:', error);
     return false;
   }
+}
+
+// Apply a saved profile's rows to the modifier box and persist the result to
+// localStorage so the restored state survives a reload. Returns true on success.
+function applyProfileRows(
+  modifierBox,
+  profile,
+  updateSelectedModifierCallback
+) {
+  const applied = applyRows(
+    modifierBox,
+    profile,
+    updateSelectedModifierCallback
+  );
+  if (applied) {
+    saveModifierRows(modifierBox);
+  }
+  return applied;
 }
 
 // Function to clear stored modifier rows
@@ -535,8 +583,11 @@ export { updateEventListeners };
 export { updateSelectedModifier };
 export { clearModifierState };
 export { reindexRows };
+export { serializeRows };
+export { applyRows };
 export { saveModifierRows };
 export { loadModifierRows };
+export { applyProfileRows };
 export { clearStoredModifierRows };
 export { resetAllRows };
 export const getRowCounter = () => rowCounter;
@@ -556,8 +607,11 @@ export default {
   updateSelectedModifier,
   clearModifierState,
   reindexRows,
+  serializeRows,
+  applyRows,
   saveModifierRows,
   loadModifierRows,
+  applyProfileRows,
   clearStoredModifierRows,
   resetAllRows,
   getRowCounter,
@@ -574,8 +628,11 @@ if (typeof window !== 'undefined') {
     updateSelectedModifier,
     clearModifierState,
     reindexRows,
+    serializeRows,
+    applyRows,
     saveModifierRows,
     loadModifierRows,
+    applyProfileRows,
     clearStoredModifierRows,
     resetAllRows,
     getRowCounter,

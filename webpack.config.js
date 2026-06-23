@@ -13,6 +13,7 @@ module.exports = {
 
     // Utility modules
     'utils/modifierSettings': './src/utils/modifierSettings.js',
+    'utils/profileStorage': './src/utils/profileStorage.js',
     'utils/themeDetector': './src/utils/themeDetector.js',
     'utils/cssLoader': './src/utils/cssLoader.js',
     'utils/htmlLoader': './src/utils/htmlLoader.js',
