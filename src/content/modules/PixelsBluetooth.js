@@ -26,12 +26,15 @@ const _PIXELS_WRITE_CHARACTERISTIC = 'a6b90003-7a5a-43f2-a962-350c8edc9b5b';
 // Legacy Pixels dice UUIDs (for older dice)
 const PIXELS_LEGACY_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const PIXELS_LEGACY_NOTIFY_CHARACTERISTIC =
-  '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+  '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
 const _PIXELS_LEGACY_WRITE_CHARACTERISTIC =
   '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 
 // Global pixels array
 const pixels = [];
+
+// Reconnection strategy: 'unknown' until first attempt, then 'watch' or 'poll'
+let reconnectionStrategy = 'unknown';
 
 // Roll formulas
 const pixelsFormulaWithModifier =
@@ -93,32 +96,30 @@ export const createPixel = (name, server, device) => {
       // This allows for hours between dice rolls without disconnecting
       if (_isConnected && _device) {
         try {
-          // Only disconnect if GATT is actually disconnected, not based on activity timeout
           if (_device.gatt && !_device.gatt.connected) {
             log(`Pixel ${_name} GATT connection lost, marking as disconnected`);
+            const deviceRef = _device; // Capture before markDisconnected
             markDisconnected();
-            // Attempt reconnection after GATT disconnection
             setTimeout(() => {
-              if (!_isConnected && _device && _pixelSelf) {
-                attemptReconnection(_device, _pixelSelf);
+              if (!_isConnected && deviceRef && _pixelSelf) {
+                attemptReconnection(deviceRef, _pixelSelf);
               }
             }, 5000);
           }
         } catch (error) {
-          // GATT access failed, likely disconnected
           log(
             `Pixel ${_name} GATT access failed, marking as disconnected: ${error.message}`
           );
+          const deviceRef = _device;
           markDisconnected();
-          // Attempt reconnection after GATT failure
           setTimeout(() => {
-            if (!_isConnected && _device && _pixelSelf) {
-              attemptReconnection(_device, _pixelSelf);
+            if (!_isConnected && deviceRef && _pixelSelf) {
+              attemptReconnection(deviceRef, _pixelSelf);
             }
           }, 5000);
         }
       }
-    }, 30000); // Check every 30 seconds - less frequent since we're only checking GATT state
+    }, 30000);
   };
 
   let _disconnectionTimeout = null;
@@ -132,9 +133,8 @@ export const createPixel = (name, server, device) => {
 
     _disconnectionTimeout = setTimeout(() => {
       if (_isConnected) {
-        // Double-check we still need to disconnect
         _isConnected = false;
-        _device = null;
+        // Keep _device alive for reconnection (gatt.connect, watchAdvertisements)
         _server = null;
 
         // Clean up notification listener
@@ -158,15 +158,20 @@ export const createPixel = (name, server, device) => {
           _connectionMonitor = null;
         }
         log(`Pixel ${_name} marked as disconnected`);
+        sendStatusToExtension();
       }
       _disconnectionTimeout = null;
     }, 1000); // 1 second debounce
   };
 
-  const reconnect = (server, notify) => {
+  const reconnect = (server, notify, device) => {
     _server = server;
     _isConnected = true;
     _lastActivity = Date.now();
+
+    if (device) {
+      _device = device;
+    }
 
     // Clear any pending disconnection timeout
     if (_disconnectionTimeout) {
@@ -180,12 +185,20 @@ export const createPixel = (name, server, device) => {
     }
 
     log(`Pixel ${_name} reconnected successfully`);
+    sendStatusToExtension();
   };
 
   const disconnect = () => {
     markDisconnected();
     _server?.disconnect();
     log(`Pixel ${_name} manually disconnected`);
+  };
+
+  // Permanent removal — nulls _device so it can't be reconnected
+  const destroy = () => {
+    disconnect();
+    _device = null;
+    log(`Pixel ${_name} destroyed`);
   };
 
   const handleNotifications = event => {
@@ -308,6 +321,7 @@ export const createPixel = (name, server, device) => {
     markDisconnected,
     reconnect,
     disconnect,
+    destroy,
     handleNotifications,
     updateActivity() {
       _lastActivity = Date.now();
@@ -332,6 +346,7 @@ export const createPixel = (name, server, device) => {
       return _lastActivity;
     },
     _reconnectAttempts: 0, // Initialize reconnection attempt counter
+    _hasDisconnectListener: false,
   };
 
   // Store self-reference for reconnection
@@ -403,15 +418,19 @@ const connectToNewPixel = async () => {
     pixel.updateActivity();
     pixel.startConnectionMonitoring();
 
-    device.addEventListener('gattserverdisconnected', () => {
-      log(`Device ${device.name} disconnected`);
-      pixel.markDisconnected();
+    // Only add disconnect listener if not already registered
+    if (!pixel._hasDisconnectListener) {
+      device.addEventListener('gattserverdisconnected', () => {
+        log(`Device ${device.name} disconnected`);
+        pixel.markDisconnected();
 
-      // Attempt reconnection after GATT disconnection
-      setTimeout(() => {
-        attemptReconnection(device, pixel);
-      }, 5000);
-    });
+        // Attempt reconnection after GATT disconnection
+        setTimeout(() => {
+          attemptReconnection(device, pixel);
+        }, 5000);
+      });
+      pixel._hasDisconnectListener = true;
+    }
 
     log(`Connected to ${device.name}`);
     sendTextToExtension(`Connected to ${device.name}`);
@@ -440,57 +459,98 @@ const _handleDeviceDisconnection = device => {
   }
 };
 
-// Attempt to reconnect to a disconnected device
-const attemptReconnection = async (device, pixel) => {
+// Core GATT reconnection — connects to device and sets up services/notifications
+const performGattReconnection = async (device, pixel) => {
+  // Ensure clean state before reconnecting
   try {
-    // Check if device is actually disconnected before attempting reconnection
-    if (device.gatt.connected) {
-      log(`Device ${device.name} is already connected, skipping reconnection`);
-      return;
-    }
-  } catch (error) {
-    log(
-      `Cannot check GATT state for ${device.name}, proceeding with reconnection: ${error.message}`
-    );
-  }
-
-  log(`Attempting to reconnect to ${device.name}`);
-  try {
-    // Ensure clean state before reconnecting
     if (device.gatt.connected) {
       device.gatt.disconnect();
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
+  } catch {
+    // GATT state might be inaccessible, continue anyway
+  }
 
-    const server = await device.gatt.connect();
-    await new Promise(resolve => setTimeout(resolve, 500));
+  const server = await device.gatt.connect();
+  await new Promise(resolve => setTimeout(resolve, 500));
 
-    if (!server.connected) {
-      throw new Error('Connection lost immediately after connecting');
+  if (!server.connected) {
+    throw new Error('Connection lost immediately after connecting');
+  }
+
+  let service, notifyUuid;
+  try {
+    service = await server.getPrimaryService(PIXELS_SERVICE_UUID);
+    notifyUuid = PIXELS_NOTIFY_CHARACTERISTIC;
+    log('Reconnecting to modern Pixels die');
+  } catch {
+    service = await server.getPrimaryService(PIXELS_LEGACY_SERVICE_UUID);
+    notifyUuid = PIXELS_LEGACY_NOTIFY_CHARACTERISTIC;
+    log('Reconnecting to legacy Pixels die');
+  }
+
+  const notify = await service.getCharacteristic(notifyUuid);
+  await notify.startNotifications();
+
+  pixel.reconnect(server, notify, device);
+  sendTextToExtension(`Reconnected to ${pixel.name}`);
+  log(`Successfully reconnected to ${device.name}`);
+
+  pixel.startConnectionMonitoring();
+  pixel._reconnectAttempts = 0;
+};
+
+// Watch-based reconnection — uses watchAdvertisements() for instant reconnection
+const attemptWatchReconnection = (device, pixel) => {
+  return new Promise((resolve, reject) => {
+    const abortController = new AbortController();
+
+    device.addEventListener(
+      'advertisementreceived',
+      async () => {
+        abortController.abort();
+        try {
+          await performGattReconnection(device, pixel);
+          resolve('watch');
+        } catch (error) {
+          reject(error);
+        }
+      },
+      { once: true }
+    );
+
+    device
+      .watchAdvertisements({ signal: abortController.signal })
+      .catch(error => {
+        if (error.name !== 'AbortError') {
+          reject(error);
+        }
+      });
+
+    // Race timeout — if no advertisement in 10s, watchAdvertisements isn't working
+    setTimeout(() => {
+      abortController.abort();
+      reject(new Error('watchAdvertisements timeout'));
+    }, 10000);
+  });
+};
+
+// Poll-based reconnection — exponential backoff GATT connect attempts
+const attemptPollReconnection = async (device, pixel) => {
+  try {
+    // Check if device is actually disconnected
+    if (device.gatt && device.gatt.connected) {
+      log(`Device ${device.name} is already connected, skipping reconnection`);
+      return;
     }
+  } catch {
+    // GATT state inaccessible, proceed with reconnection
+  }
 
-    let service, notifyUuid;
-    try {
-      service = await server.getPrimaryService(PIXELS_SERVICE_UUID);
-      notifyUuid = PIXELS_NOTIFY_CHARACTERISTIC;
-      log('Reconnecting to modern Pixels die');
-    } catch {
-      service = await server.getPrimaryService(PIXELS_LEGACY_SERVICE_UUID);
-      notifyUuid = PIXELS_LEGACY_NOTIFY_CHARACTERISTIC;
-      log('Reconnecting to legacy Pixels die');
-    }
-
-    const notify = await service.getCharacteristic(notifyUuid);
-    await notify.startNotifications();
-
-    pixel.reconnect(server, notify);
-    sendTextToExtension(`Reconnected to ${pixel.name}`);
-    log(`Successfully reconnected to ${device.name}`);
-
-    pixel.startConnectionMonitoring();
-    pixel._reconnectAttempts = 0;
+  try {
+    await performGattReconnection(device, pixel);
   } catch (error) {
-    log(`Failed to reconnect to ${device.name}: ${error}`);
+    log(`Poll reconnection failed for ${device.name}: ${error}`);
 
     pixel._reconnectAttempts = (pixel._reconnectAttempts || 0) + 1;
     const maxAttempts = 5;
@@ -505,13 +565,49 @@ const attemptReconnection = async (device, pixel) => {
       );
 
       setTimeout(() => {
-        attemptReconnection(device, pixel);
+        attemptPollReconnection(device, pixel);
       }, delay);
     } else {
       log(`Max reconnection attempts reached for ${device.name}. Giving up.`);
       sendTextToExtension(
         `Failed to reconnect to ${pixel.name} after ${maxAttempts} attempts`
       );
+      sendStatusToExtension();
+    }
+  }
+};
+
+// Attempt to reconnect to a disconnected device using dual-path strategy
+const attemptReconnection = async (device, pixel) => {
+  if (!device) {
+    log('Cannot reconnect: device reference is null');
+    return;
+  }
+
+  log(`Attempting to reconnect to ${device.name} (strategy: ${reconnectionStrategy})`);
+
+  if (reconnectionStrategy === 'watch') {
+    // Known working — go straight to watch
+    try {
+      await attemptWatchReconnection(device, pixel);
+    } catch {
+      log(`Watch reconnection failed for ${device.name}, falling back to poll`);
+      attemptPollReconnection(device, pixel);
+    }
+  } else if (reconnectionStrategy === 'poll') {
+    // Known that watch doesn't work — go straight to poll
+    attemptPollReconnection(device, pixel);
+  } else {
+    // Unknown — race watch vs timeout to detect platform support
+    log('Detecting reconnection strategy (watch vs poll)...');
+    try {
+      await attemptWatchReconnection(device, pixel);
+      reconnectionStrategy = 'watch';
+      log('Reconnection strategy set to: watch (watchAdvertisements works)');
+    } catch {
+      reconnectionStrategy = 'poll';
+      log('Reconnection strategy set to: poll (watchAdvertisements unavailable)');
+      attemptPollReconnection(device, pixel);
     }
   }
 };
@@ -553,7 +649,7 @@ const setupGlobalCleanup = () => {
           log(
             `Removing very stale pixel connection: ${pixel.name} (inactive for ${sixHours / (60 * 60 * 1000)} hours)`
           );
-          pixel.disconnect();
+          pixel.destroy();
           return false;
         }
         return true;
@@ -570,6 +666,45 @@ const setupGlobalCleanup = () => {
   }
 };
 
+// Attempt silent reconnection to previously-permitted devices
+const reconnectKnownDevices = async () => {
+  if (!navigator.bluetooth || !navigator.bluetooth.getDevices) {
+    log('getDevices() not available, skipping silent reconnection');
+    return;
+  }
+
+  try {
+    const devices = await navigator.bluetooth.getDevices();
+    if (devices.length === 0) {
+      log('No previously-permitted Bluetooth devices found');
+      return;
+    }
+
+    log(`Found ${devices.length} previously-permitted device(s), attempting reconnection`);
+
+    for (const device of devices) {
+      // Skip if already connected
+      const existingPixel = getPixelByDeviceId(device.id, pixels);
+      if (existingPixel && isConnected(existingPixel)) {
+        continue;
+      }
+
+      // Create or reuse pixel entry
+      let pixel = existingPixel;
+      if (!pixel) {
+        pixel = createPixel(device.name || 'Unknown Pixel', null, device);
+        pixel._isConnected = false;
+        pixels.push(pixel);
+      }
+
+      // Attempt reconnection using dual-path strategy
+      attemptReconnection(device, pixel);
+    }
+  } catch (error) {
+    log(`Silent reconnection failed: ${error.message}`);
+  }
+};
+
 // Initialize the module
 export const initialize = () => {
   log('PixelsBluetooth module initialized with ES modules and Ramda');
@@ -577,6 +712,9 @@ export const initialize = () => {
 
   // Set up global variables for backwards compatibility
   window.pixels = pixels;
+
+  // Attempt to reconnect previously-permitted devices
+  reconnectKnownDevices();
 
   return {
     connectToPixel,
