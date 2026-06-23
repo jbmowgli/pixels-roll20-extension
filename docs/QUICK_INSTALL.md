@@ -6,14 +6,13 @@
 
 ### Step 1: Download
 - **[📦 Download pixels-roll20-extension-store.zip](../pixels-roll20-extension-store.zip)**
-- Or get the latest from [Releases](../../releases)
 
 ### Step 2: Extract & Install
 1. **Extract** the zip file anywhere on your computer
 2. **Open Chrome** and go to: `chrome://extensions/`
 3. **Turn on Developer mode** (toggle in top-right corner)
 4. **Click "Load unpacked"** button
-5. **Select the extracted files**
+5. **Select the extracted folder**
 6. ✅ **Pixels icon appears** in Chrome toolbar!
 
 ## First Use
