@@ -1,5 +1,11 @@
 'use strict';
 
+import {
+  getProfiles,
+  saveProfile,
+  deleteProfile,
+} from '../../utils/profileStorage.js';
+
 // Simple theme detection and CSS loading
 function detectAndApplyTheme() {
   if (typeof chrome !== 'undefined' && chrome.tabs) {
@@ -147,6 +153,117 @@ function sendMessage(data, responseCallback) {
   });
 }
 
+// --- Profiles ---------------------------------------------------------------
+
+// Render the list of saved profiles with Load/Delete controls.
+async function renderProfiles() {
+  const list = document.getElementById('profileList');
+  const empty = document.getElementById('profileEmpty');
+  if (!list) {
+    return;
+  }
+
+  let profiles = {};
+  try {
+    profiles = await getProfiles();
+  } catch {
+    profiles = {};
+  }
+
+  const names = Object.keys(profiles).sort((a, b) => a.localeCompare(b));
+  list.innerHTML = '';
+
+  if (names.length === 0) {
+    if (empty) {
+      empty.style.display = 'block';
+    }
+    return;
+  }
+  if (empty) {
+    empty.style.display = 'none';
+  }
+
+  names.forEach(name => {
+    const li = document.createElement('li');
+    li.className = 'profile-item';
+
+    const label = document.createElement('span');
+    label.className = 'profile-item-name';
+    label.textContent = name;
+    label.title = name;
+
+    const loadBtn = document.createElement('button');
+    loadBtn.className = 'profile-item-btn load';
+    loadBtn.textContent = 'Load';
+    loadBtn.onclick = () => loadProfile(name);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'profile-item-btn delete';
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.onclick = () => removeProfile(name);
+
+    li.appendChild(label);
+    li.appendChild(loadBtn);
+    li.appendChild(deleteBtn);
+    list.appendChild(li);
+  });
+}
+
+// Save the current popout's rows as a named profile.
+function saveCurrentProfile() {
+  const input = document.getElementById('profileName');
+  const name = input ? input.value.trim() : '';
+  if (!name) {
+    showText('Enter a profile name to save.');
+    return;
+  }
+
+  sendMessage({ action: 'getCurrentRows' }, rows => {
+    if (chrome.runtime.lastError || !rows || !Array.isArray(rows.rows)) {
+      showText('Open Roll20 to save the current popout.');
+      return;
+    }
+    saveProfile(name, rows)
+      .then(() => {
+        if (input) {
+          input.value = '';
+        }
+        showText(`Saved profile "${name}".`);
+        renderProfiles();
+      })
+      .catch(() => showText('Failed to save profile.'));
+  });
+}
+
+// Apply a saved profile to the popout in the active Roll20 tab.
+function loadProfile(name) {
+  getProfiles().then(profiles => {
+    const profile = profiles[name];
+    if (!profile) {
+      showText('Profile not found.');
+      renderProfiles();
+      return;
+    }
+    sendMessage({ action: 'applyProfile', profile }, resp => {
+      if (chrome.runtime.lastError || !resp || !resp.success) {
+        showText('Open Roll20 to load a profile.');
+        return;
+      }
+      showText(`Loaded profile "${name}".`);
+    });
+  });
+}
+
+// Delete a saved profile.
+function removeProfile(name) {
+  deleteProfile(name)
+    .then(() => {
+      showText(`Deleted profile "${name}".`);
+      renderProfiles();
+    })
+    .catch(() => showText('Failed to delete profile.'));
+}
+
 // Listen on messages from injected JS
 chrome.runtime.onMessage.addListener((request, _sender, _sendResponse) => {
   if (request.action === 'showText') {
@@ -189,6 +306,21 @@ document.addEventListener('DOMContentLoaded', () => {
   if (hideModifierBtn) {
     hideModifierBtn.onclick = () => sendMessage({ action: 'hideModifier' });
   }
+
+  // Profiles UI
+  const saveProfileBtn = document.getElementById('saveProfile');
+  if (saveProfileBtn) {
+    saveProfileBtn.onclick = saveCurrentProfile;
+  }
+  const profileNameInput = document.getElementById('profileName');
+  if (profileNameInput) {
+    profileNameInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        saveCurrentProfile();
+      }
+    });
+  }
+  renderProfiles();
 
   detectAndApplyTheme();
 });

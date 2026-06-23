@@ -29,6 +29,7 @@
       ],
       "js": [
         "utils/modifierSettings.js",
+        "utils/profileStorage.js",
         "utils/themeDetector.js",
         "utils/cssLoader.js",
         "utils/htmlLoader.js",

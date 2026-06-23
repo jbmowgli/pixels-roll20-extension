@@ -23,12 +23,68 @@ export function setupMinimizeControls(modifierBox) {
 
     const isCurrentlyMinimized = modifierBox.classList.contains('minimized');
 
-    if (!isCurrentlyMinimized) {
-      minimizeModifierBox(modifierBox, minimizeBtn);
-    } else {
-      restoreModifierBox(modifierBox, minimizeBtn);
-    }
+    // Toggle, then persist the new state so it survives a reload.
+    applyMinimizedState(modifierBox, !isCurrentlyMinimized);
+    persistMinimizedState(!isCurrentlyMinimized);
   });
+}
+
+// Persist the minimized flag (per-device preference) via the storage wrapper.
+function persistMinimizedState(minimized) {
+  try {
+    if (
+      typeof window !== 'undefined' &&
+      window.PixelsProfileStorage &&
+      typeof window.PixelsProfileStorage.setMinimized === 'function'
+    ) {
+      window.PixelsProfileStorage.setMinimized(minimized);
+    }
+  } catch (error) {
+    console.error('Error persisting minimized state:', error);
+  }
+}
+
+// Apply the minimized/restored visual state without persisting. Used both by
+// the toggle handler and by the restore-on-load path in the initializer.
+export function applyMinimizedState(modifierBox, minimized) {
+  if (!modifierBox) {
+    console.error('applyMinimizedState: modifierBox is required');
+    return;
+  }
+
+  const minimizeBtn = modifierBox.querySelector('.pixels-minimize');
+  if (!minimizeBtn) {
+    console.error('Minimize button not found!');
+    return;
+  }
+
+  if (minimized) {
+    minimizeModifierBox(modifierBox, minimizeBtn);
+  } else {
+    restoreModifierBox(modifierBox, minimizeBtn);
+  }
+}
+
+// Read the persisted minimized flag and apply it to the box. Async because the
+// storage wrapper is Promise-based.
+export async function restoreMinimizedState(modifierBox) {
+  if (!modifierBox) {
+    return;
+  }
+  try {
+    if (
+      typeof window !== 'undefined' &&
+      window.PixelsProfileStorage &&
+      typeof window.PixelsProfileStorage.getMinimized === 'function'
+    ) {
+      const minimized = await window.PixelsProfileStorage.getMinimized();
+      if (minimized) {
+        applyMinimizedState(modifierBox, true);
+      }
+    }
+  } catch (error) {
+    console.error('Error restoring minimized state:', error);
+  }
 }
 
 function minimizeModifierBox(modifierBox, minimizeBtn) {
@@ -93,6 +149,8 @@ export function setupClearAllControls(modifierBox, clearAllCallback) {
 const UIControls = {
   setupMinimizeControls,
   setupClearAllControls,
+  applyMinimizedState,
+  restoreMinimizedState,
 };
 
 export default UIControls;
