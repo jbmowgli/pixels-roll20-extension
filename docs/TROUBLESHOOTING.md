@@ -19,11 +19,13 @@ Try these first:
 ### Bluetooth Problems
 
 **Single Device Issues:**
+
 - **No devices found?** → Roll dice to wake them, check Bluetooth is on
 - **Won't connect?** → Make sure dice aren't connected to other devices
 - **Keeps disconnecting?** → Keep dice close to computer, check battery
 
 **Multiple Device Issues:**
+
 - **Can't connect second die?** → Make sure first die is fully connected before adding second
 - **Dice interfering with each other?** → Each die uses unique device ID, interference unlikely
 - **Some dice not responding?** → Check individual connection status in popup
@@ -36,16 +38,26 @@ Try these first:
 - **Modifier box missing?** → Click "Show Modifier Box" in popup
 - **Can't close modifier box?** → Use "Hide Modifier Box" button in popup
 - **Box disappeared?** → It may be minimized (click "−" again) or hidden via popup
+- **Box keeps opening minimized?** → The minimized state is remembered between sessions; click "−" to restore and it will reopen full-size
 - **Wrong display format?** → Box visibility affects chat format (detailed vs simple)
+
+### Profile Issues
+
+- **"Open Roll20 to save/load…"?** → Profile actions talk to the modifier box on the active Roll20 tab; make sure a Roll20 game page is the active tab
+- **Profiles not syncing to another computer?** → Extension sync only propagates on Chrome and Edge. On Brave, Opera, and Vivaldi the sync API exists but does not carry extension data — use **Export** on one machine and **Import** on the other
+- **Import created "Name (2)"?** → That's expected: imports never overwrite an existing profile, so a name clash is kept under a new name
+- **Saved over the wrong profile?** → Saving by an existing name asks for confirmation first; "Update ↻" overwrites whichever profile is currently active
 
 ### Dice Issues
 
 **Single Die:**
+
 - **Not responding?** → Charge dice, try rolling gently to wake
 - **Wrong values?** → Check modifier settings, reconnect if needed
 - **LED not working?** → Dice might be in sleep mode, roll to activate
 
 **Multiple Dice:**
+
 - **Only one die working?** → Check connection status for each die in popup
 - **Dice sending duplicate rolls?** → Each die should have unique device ID
 - **Inconsistent behavior?** → Try disconnecting all dice and reconnecting one by one

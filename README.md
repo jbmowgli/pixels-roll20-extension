@@ -10,7 +10,7 @@ This project was originally inspired by the [Pixels on Roll20](https://github.co
 
 - Complete rewrite with modular architecture (7 focused modules)
 - Advanced modifier box with drag/drop, theming, and persistence
-- Comprehensive test suite (180+ automated tests)
+- Comprehensive test suite (210+ automated tests)
 - Modern Manifest V3 Chrome extension
 - Professional documentation and publication readiness
 - Extensive UI enhancements and error handling
@@ -21,6 +21,9 @@ This project was originally inspired by the [Pixels on Roll20](https://github.co
 - Physical rolls appear instantly in Roll20 chat
 - Floating modifier box with custom values
 - Drag and resize interface
+- Save, load, and update named modifier **profiles**
+- Import/export profiles to a JSON file (portable across browsers)
+- Remembers minimized/full-size state between sessions
 - Supports both modern and legacy Pixels dice
 - Auto theme matching (light/dark)
 - Multi-dice support
@@ -30,6 +33,7 @@ This project was originally inspired by the [Pixels on Roll20](https://github.co
 📦 **[Download Pre-built Extension](pixels-roll20-extension-store.zip)** or see **[Quick Install Guide](docs/QUICK_INSTALL.md)**
 
 ### Installation (2 minutes)
+
 1. Download `pixels-roll20-extension-store.zip`
 2. Extract → Load `dist/` folder in `chrome://extensions/`
 3. Go to Roll20 → Click Pixels icon → Connect dice → Roll!
@@ -50,7 +54,10 @@ npm run build:prod  # Creates dist/ folder for Chrome
 - **Connect dice**: Click extension icon → "Connect"
 - **Show/hide modifier box**: Use popup buttons (only way to fully close)
 - **Add modifiers**: Click "Add" in the modifier box
-- **Minimize box**: Click "−" button to temporarily hide
+- **Minimize box**: Click "−" button to collapse (the state is remembered between sessions)
+- **Save a profile**: In the popup, type a name → "Save" to store the current modifiers
+- **Load/Update a profile**: Click "Load" on a saved profile; use "Update ↻" to overwrite the active profile with the current setup
+- **Import/Export**: Back up or move profiles between browsers via the popup's Export/Import buttons
 - **Roll dice**: Physical rolls automatically appear in chat
 
 ### Chat Display Behavior
@@ -70,7 +77,7 @@ npm run build:prod  # Creates dist/ folder for Chrome
 ## Technical Notes
 
 - **Modular Architecture**: Clean, maintainable codebase with focused modules
-- **Comprehensive Testing**: 180+ automated tests ensuring reliability
+- **Comprehensive Testing**: 210+ automated tests ensuring reliability
 - **Chrome Extension Manifest V3** compliant for modern browser support
 - **Bluetooth Web API** for direct dice communication
 - **Roll20 Integration** via chat injection and macro system

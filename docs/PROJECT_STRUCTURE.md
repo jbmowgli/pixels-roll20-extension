@@ -41,6 +41,7 @@ PixelsRoll20ChromeExtension/
 │   │       └── options.js        # Options logic
 │   └── utils/                    # Shared utilities
 │       ├── modifierSettings.js   # Modifier settings persistence (localStorage)
+│       ├── profileStorage.js     # Profiles + minimize state (chrome.storage dual-write)
 │       ├── themeDetector.js      # Roll20 theme detection module
 │       ├── cssLoader.js          # CSS loading utility
 │       └── htmlLoader.js         # HTML template loading utility
@@ -52,6 +53,8 @@ PixelsRoll20ChromeExtension/
 ├── tests/                        # Test infrastructure
 │   └── jest/                     # Jest unit tests
 │       ├── setup.js              # Test environment setup
+│       ├── utils/                # Utility tests
+│       │   └── profileStorage.test.js # Profiles dual-write/merge/import-export
 │       ├── ModifierBox/          # ModifierBox component tests
 │       │   ├── index.test.js     # Main component tests
 │       │   ├── themeManager.test.js # Theme management tests
@@ -198,6 +201,12 @@ The Roll20 integration has been refactored into focused, single-responsibility m
   - Save/load/update/clear operations for modifier settings
   - Global scope exports for backward compatibility
   - Feature-based naming (focuses on what it does, not storage mechanism)
+- **profileStorage.js**: Saved profiles and minimize-state persistence using `chrome.storage`
+  - Dual-write of profiles to `chrome.storage.local` and `chrome.storage.sync`; reads prefer sync and merge per-profile by `savedAt` (last-write-wins)
+  - Sync quota failures degrade gracefully to local (local is the source of truth)
+  - Active-profile marker and minimized flag stored in `chrome.storage.local` only (per-device)
+  - Import/export helpers; imports keep both on name collision (rename, never overwrite)
+  - Shared by the popup (direct import) and the content script (`window.PixelsProfileStorage`)
 - **themeDetector.js**: Roll20 theme detection and monitoring
   - Automatic theme detection (light/dark)
   - Real-time theme change monitoring
@@ -261,7 +270,7 @@ The Roll20 integration has been refactored into focused, single-responsibility m
    - **Theme detection**: Update `themeDetector.js` for UI adaptation
    - **Loaders**: Update CSS/HTML loading utilities as needed
 4. **Testing**: Use comprehensive Jest test suite
-   - **Unit Testing**: Run `npm test` for automated Jest tests (180 tests)
+   - **Unit Testing**: Run `npm test` for automated Jest tests (212 tests)
    - **Coverage**: Run `npm run test:coverage` for test coverage reports
    - **Watch Mode**: Run `npm run test:watch` for development
    - **Manual Testing**: Use `test.html` and `test-resize.html` for browser testing
@@ -280,6 +289,7 @@ The extension uses a modular architecture that loads files directly from their o
 // manifest.json content_scripts.js array:
 [
   'src/utils/modifierSettings.js', // Settings persistence
+  'src/utils/profileStorage.js', // Profiles + minimize state (chrome.storage)
   'src/utils/themeDetector.js', // Theme detection
   'src/utils/cssLoader.js', // CSS loading utility
   'src/utils/htmlLoader.js', // HTML loading utility
@@ -317,7 +327,7 @@ This modular approach provides:
 
 The project includes robust Jest test coverage with pre-commit validation:
 
-### Working Test Suites (180 tests passing)
+### Working Test Suites (212 tests passing)
 
 - **ModifierBox Components**: Component-specific tests covering UI, themes, drag & drop, row management
 - **Roll20 Integration**: Comprehensive tests covering messaging, Bluetooth, error handling using modular system
@@ -382,7 +392,7 @@ The project follows consistent **camelCase** naming for files and directories:
 ### Code Quality Standards
 
 - **Prettier**: Automatic code formatting enforced via pre-commit hooks
-- **Jest**: Comprehensive unit testing with 180 stable tests
+- **Jest**: Comprehensive unit testing with 212 stable tests
 - **ESLint**: Code quality and consistency (integrated with Jest)
 - **Git Hooks**: Pre-commit validation prevents broken commits
 - **Modular Architecture**: Clean separation of concerns with focused modules
@@ -433,7 +443,7 @@ npm run format:check        # Check formatting without writing
 
 ### Project Health
 
-- ✅ **180 tests passing** with comprehensive coverage
+- ✅ **212 tests passing** with comprehensive coverage
 - ✅ **Pre-commit hooks** enforcing code quality
 - ✅ **Modular architecture** with focused, single-responsibility modules
 - ✅ **Consistent naming** following camelCase conventions and feature-based utilities

@@ -9,6 +9,8 @@ The Pixels Roll20 Chrome Extension connects your physical Pixels dice to Roll20 
 - **Multi-Device Support**: Connect multiple Pixels dice simultaneously
 - **Automatic Roll Detection**: Physical dice rolls appear in Roll20 chat
 - **Modifier Management**: Add/edit/remove modifiers with a floating UI
+- **Profiles**: Save, load, and update named sets of modifiers, and import/export them to a file
+- **Persistent Layout**: Remembers the box's minimized/full-size state between sessions
 - **Theme Adaptation**: Automatically matches Roll20's light/dark theme
 - **Reliable Connection**: Robust Bluetooth connection management with device identification
 
@@ -73,7 +75,40 @@ The modifier box is a floating interface that lets you add modifiers to your dic
 
 - **Move**: Drag the header to reposition the box
 - **Resize**: Drag the resize handle in the bottom-right corner
-- **Minimize**: Click "−" to temporarily hide (click again to restore)
+- **Minimize**: Click "−" to collapse the box (click again to restore)
+
+> **Note**: The minimized/full-size state is remembered between sessions. If you leave Roll20 with the box minimized, it will reappear minimized next time — independent of any saved profile.
+
+## Saving and Loading Profiles
+
+Profiles let you store a complete set of modifiers (their names, order, values, and which one is selected) and switch between them — for example, one profile per character or per encounter type. Profiles are managed from the **extension popup**, under **Saved Profiles**.
+
+### Saving a Profile
+
+1. Set up the modifiers you want in the modifier box
+2. Open the extension popup and type a name in the **Profile name** field
+3. Click **Save**
+
+The saved profile becomes the **active** profile (shown in the banner at the top of the section and marked with a ● in the list). Saving over an existing name asks for confirmation first.
+
+### Loading a Profile
+
+- Click **Load** next to any saved profile. The modifier box updates immediately (and is shown if it was hidden), and that profile becomes active.
+
+### Updating the Active Profile
+
+- After loading a profile and tweaking your modifiers, click **Update ↻** in the active-profile banner to overwrite that profile with the current setup. No need to retype the name.
+
+### Deleting a Profile
+
+- Click **Delete** next to a profile to remove it. If it was the active profile, the active marker is cleared.
+
+### Import and Export
+
+Profiles sync automatically across devices on browsers that support extension sync (Chrome, Edge). On browsers that don't propagate extension sync (Brave, Opera, Vivaldi), use import/export to move them manually:
+
+- **Export**: Click **Export** to download all profiles as a `.json` file.
+- **Import**: Click **Import**, choose a previously exported `.json` file, and the profiles are merged in. If an imported name matches an existing profile, the import is kept under a new name (e.g. `Combat (2)`) so nothing is overwritten.
 
 ## Rolling Dice
 

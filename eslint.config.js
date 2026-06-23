@@ -25,6 +25,7 @@ module.exports = [
         Blob: 'readonly',
         URL: 'readonly',
         FileReader: 'readonly',
+        AbortController: 'readonly',
 
         // Extension-specific globals
         postChatMessage: 'readonly',
