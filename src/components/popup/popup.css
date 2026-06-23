@@ -212,6 +212,31 @@ body {
   color: #cccccc;
 }
 
+.active-profile-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #1f3147;
+  border: 1px solid #4a9eff;
+  border-radius: 4px;
+  padding: 6px 8px 6px 10px;
+}
+
+.active-profile-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: #cfe3ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.active-profile-label #activeProfileName {
+  font-weight: bold;
+  color: #ffffff;
+}
+
 .profile-save-row {
   display: flex;
   gap: 8px;
@@ -261,6 +286,10 @@ body {
   padding: 6px 8px 6px 10px;
 }
 
+.profile-item.active {
+  border-color: #4a9eff;
+}
+
 .profile-item-name {
   flex: 1;
   min-width: 0;
@@ -269,6 +298,20 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.profile-item .active-dot {
+  color: #4a9eff;
+  margin-right: 4px;
+}
+
+.profile-io-row {
+  display: flex;
+  gap: 8px;
+}
+
+.profile-io-row .secondary-button {
+  flex: 1;
 }
 
 .profile-item-btn {

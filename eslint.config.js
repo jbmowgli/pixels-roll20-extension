@@ -22,6 +22,9 @@ module.exports = [
         fetch: 'readonly',
         getComputedStyle: 'readonly',
         MutationObserver: 'readonly',
+        Blob: 'readonly',
+        URL: 'readonly',
+        FileReader: 'readonly',
 
         // Extension-specific globals
         postChatMessage: 'readonly',

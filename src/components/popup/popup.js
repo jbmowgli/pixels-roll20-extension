@@ -4,6 +4,10 @@ import {
   getProfiles,
   saveProfile,
   deleteProfile,
+  getActiveProfile,
+  setActiveProfile,
+  exportProfiles,
+  importProfiles,
 } from '../../utils/profileStorage.js';
 
 // Simple theme detection and CSS loading
@@ -155,7 +159,7 @@ function sendMessage(data, responseCallback) {
 
 // --- Profiles ---------------------------------------------------------------
 
-// Render the list of saved profiles with Load/Delete controls.
+// Render the saved-profile list, the active-profile banner, and active marker.
 async function renderProfiles() {
   const list = document.getElementById('profileList');
   const empty = document.getElementById('profileEmpty');
@@ -164,11 +168,19 @@ async function renderProfiles() {
   }
 
   let profiles = {};
+  let active = null;
   try {
-    profiles = await getProfiles();
+    [profiles, active] = await Promise.all([getProfiles(), getActiveProfile()]);
   } catch {
     profiles = {};
+    active = null;
   }
+
+  // Active profile is only meaningful while it still exists.
+  if (active && !(active in profiles)) {
+    active = null;
+  }
+  renderActiveBanner(active);
 
   const names = Object.keys(profiles).sort((a, b) => a.localeCompare(b));
   list.innerHTML = '';
@@ -185,12 +197,18 @@ async function renderProfiles() {
 
   names.forEach(name => {
     const li = document.createElement('li');
-    li.className = 'profile-item';
+    li.className = name === active ? 'profile-item active' : 'profile-item';
 
     const label = document.createElement('span');
     label.className = 'profile-item-name';
-    label.textContent = name;
     label.title = name;
+    if (name === active) {
+      const dot = document.createElement('span');
+      dot.className = 'active-dot';
+      dot.textContent = '●';
+      label.appendChild(dot);
+    }
+    label.appendChild(document.createTextNode(name));
 
     const loadBtn = document.createElement('button');
     loadBtn.className = 'profile-item-btn load';
@@ -209,7 +227,33 @@ async function renderProfiles() {
   });
 }
 
-// Save the current popout's rows as a named profile.
+// Show/hide the "Active: <name>" banner with its Update button.
+function renderActiveBanner(active) {
+  const banner = document.getElementById('activeProfileBanner');
+  const nameEl = document.getElementById('activeProfileName');
+  if (!banner || !nameEl) {
+    return;
+  }
+  if (active) {
+    nameEl.textContent = active;
+    banner.style.display = 'flex';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+// Fetch the current popout rows from the active Roll20 tab, then run `next`.
+function withCurrentRows(next) {
+  sendMessage({ action: 'getCurrentRows' }, rows => {
+    if (chrome.runtime.lastError || !rows || !Array.isArray(rows.rows)) {
+      showText('Open Roll20 to read the current popout.');
+      return;
+    }
+    next(rows);
+  });
+}
+
+// Save the current popout's rows as a named profile (confirm before overwrite).
 function saveCurrentProfile() {
   const input = document.getElementById('profileName');
   const name = input ? input.value.trim() : '';
@@ -218,24 +262,47 @@ function saveCurrentProfile() {
     return;
   }
 
-  sendMessage({ action: 'getCurrentRows' }, rows => {
-    if (chrome.runtime.lastError || !rows || !Array.isArray(rows.rows)) {
-      showText('Open Roll20 to save the current popout.');
+  getProfiles().then(profiles => {
+    if (
+      name in profiles &&
+      !window.confirm(`Profile "${name}" already exists. Overwrite it?`)
+    ) {
       return;
     }
-    saveProfile(name, rows)
-      .then(() => {
-        if (input) {
-          input.value = '';
-        }
-        showText(`Saved profile "${name}".`);
-        renderProfiles();
-      })
-      .catch(() => showText('Failed to save profile.'));
+    withCurrentRows(rows => {
+      saveProfile(name, rows)
+        .then(() => setActiveProfile(name))
+        .then(() => {
+          if (input) {
+            input.value = '';
+          }
+          showText(`Saved profile "${name}".`);
+          renderProfiles();
+        })
+        .catch(() => showText('Failed to save profile.'));
+    });
   });
 }
 
-// Apply a saved profile to the popout in the active Roll20 tab.
+// Overwrite the active profile with the current popout state.
+function updateActiveProfile() {
+  getActiveProfile().then(active => {
+    if (!active) {
+      showText('No active profile to update.');
+      return;
+    }
+    withCurrentRows(rows => {
+      saveProfile(active, rows)
+        .then(() => {
+          showText(`Updated profile "${active}".`);
+          renderProfiles();
+        })
+        .catch(() => showText('Failed to update profile.'));
+    });
+  });
+}
+
+// Apply a saved profile to the popout and mark it active.
 function loadProfile(name) {
   getProfiles().then(profiles => {
     const profile = profiles[name];
@@ -249,19 +316,80 @@ function loadProfile(name) {
         showText('Open Roll20 to load a profile.');
         return;
       }
-      showText(`Loaded profile "${name}".`);
+      setActiveProfile(name).then(() => {
+        showText(`Loaded profile "${name}".`);
+        renderProfiles();
+      });
     });
   });
 }
 
-// Delete a saved profile.
+// Delete a saved profile; clear active if it was the one removed.
 function removeProfile(name) {
-  deleteProfile(name)
+  Promise.all([deleteProfile(name), getActiveProfile()])
+    .then(([, active]) => {
+      if (active === name) {
+        return setActiveProfile('');
+      }
+      return undefined;
+    })
     .then(() => {
       showText(`Deleted profile "${name}".`);
       renderProfiles();
     })
     .catch(() => showText('Failed to delete profile.'));
+}
+
+// Export all profiles to a downloaded JSON file.
+function exportProfilesToFile() {
+  exportProfiles()
+    .then(bundle => {
+      if (!bundle.profiles || Object.keys(bundle.profiles).length === 0) {
+        showText('No profiles to export.');
+        return;
+      }
+      const blob = new Blob([JSON.stringify(bundle, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const stamp = new Date().toISOString().slice(0, 10);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pixels-roll20-profiles-${stamp}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showText('Exported profiles.');
+    })
+    .catch(() => showText('Failed to export profiles.'));
+}
+
+// Import profiles from a chosen JSON file, merging (keep-both on name clash).
+function importProfilesFromFile(file) {
+  if (!file) {
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    let bundle;
+    try {
+      bundle = JSON.parse(reader.result);
+    } catch {
+      showText('Could not read that file (invalid JSON).');
+      return;
+    }
+    importProfiles(bundle)
+      .then(result => {
+        if (result.error || result.imported === 0) {
+          showText('No profiles found to import.');
+          return;
+        }
+        showText(`Imported ${result.imported} profile(s).`);
+        renderProfiles();
+      })
+      .catch(() => showText('Failed to import profiles.'));
+  };
+  reader.onerror = () => showText('Could not read that file.');
+  reader.readAsText(file);
 }
 
 // Listen on messages from injected JS
@@ -318,6 +446,23 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.key === 'Enter') {
         saveCurrentProfile();
       }
+    });
+  }
+  const updateProfileBtn = document.getElementById('updateProfile');
+  if (updateProfileBtn) {
+    updateProfileBtn.onclick = updateActiveProfile;
+  }
+  const exportBtn = document.getElementById('exportProfiles');
+  if (exportBtn) {
+    exportBtn.onclick = exportProfilesToFile;
+  }
+  const importBtn = document.getElementById('importProfiles');
+  const importFile = document.getElementById('importFile');
+  if (importBtn && importFile) {
+    importBtn.onclick = () => importFile.click();
+    importFile.addEventListener('change', () => {
+      importProfilesFromFile(importFile.files[0]);
+      importFile.value = ''; // allow re-importing the same file
     });
   }
   renderProfiles();

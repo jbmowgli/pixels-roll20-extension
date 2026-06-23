@@ -37,6 +37,24 @@
         <!-- Profiles -->
         <div class="profiles-section">
           <div class="section-label">Saved Profiles</div>
+
+          <div
+            id="activeProfileBanner"
+            class="active-profile-banner"
+            style="display: none"
+          >
+            <span class="active-profile-label"
+              >Active: <span id="activeProfileName"></span
+            ></span>
+            <button
+              id="updateProfile"
+              class="profile-item-btn"
+              title="Save current popout into the active profile"
+            >
+              Update ↻
+            </button>
+          </div>
+
           <div class="profile-save-row">
             <input
               id="profileName"
@@ -52,6 +70,17 @@
           <ul id="profileList" class="profile-list"></ul>
           <div id="profileEmpty" class="text-small text-muted">
             No saved profiles yet.
+          </div>
+
+          <div class="profile-io-row">
+            <button id="exportProfiles" class="secondary-button">Export</button>
+            <button id="importProfiles" class="secondary-button">Import</button>
+            <input
+              id="importFile"
+              type="file"
+              accept="application/json,.json"
+              style="display: none"
+            />
           </div>
         </div>
       </div>

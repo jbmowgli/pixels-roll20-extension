@@ -157,4 +157,82 @@ describe('profileStorage', () => {
       expect(await profileStorage.saveProfile('X', { rows: [] })).toBe(false);
     });
   });
+
+  describe('active profile', () => {
+    test('set then get returns the name; local only', async () => {
+      const ok = await profileStorage.setActiveProfile('Combat');
+      expect(ok).toBe(true);
+      expect(local._store.pixels_active_profile).toBe('Combat');
+      expect(sync._store.pixels_active_profile).toBeUndefined();
+      expect(await profileStorage.getActiveProfile()).toBe('Combat');
+    });
+
+    test('defaults to null and clears to null', async () => {
+      expect(await profileStorage.getActiveProfile()).toBeNull();
+      await profileStorage.setActiveProfile('Combat');
+      await profileStorage.setActiveProfile('');
+      expect(await profileStorage.getActiveProfile()).toBeNull();
+    });
+  });
+
+  describe('uniqueName', () => {
+    test('returns the base name when free', () => {
+      expect(profileStorage.uniqueName('A', new Set())).toBe('A');
+    });
+
+    test('appends an incrementing suffix on collision', () => {
+      const names = new Set(['A', 'A (2)']);
+      expect(profileStorage.uniqueName('A', names)).toBe('A (3)');
+    });
+  });
+
+  describe('exportProfiles / importProfiles', () => {
+    test('exportProfiles returns a typed bundle of all profiles', async () => {
+      await profileStorage.saveProfile('Combat', {
+        rows: [{ name: 'Rage', value: '2' }],
+        selectedIndex: 0,
+      });
+
+      const bundle = await profileStorage.exportProfiles();
+
+      expect(bundle.type).toBe('pixels-roll20-profiles');
+      expect(bundle.version).toBe(1);
+      expect(bundle.profiles.Combat).toBeDefined();
+    });
+
+    test('importProfiles keeps both on name collision (rename)', async () => {
+      await profileStorage.saveProfile('Combat', {
+        rows: [{ name: 'original', value: '0' }],
+        selectedIndex: 0,
+      });
+
+      const result = await profileStorage.importProfiles({
+        type: 'pixels-roll20-profiles',
+        profiles: {
+          Combat: {
+            rows: [{ name: 'imported', value: '9' }],
+            selectedIndex: 0,
+          },
+        },
+      });
+
+      expect(result.imported).toBe(1);
+
+      const profiles = await profileStorage.getProfiles();
+      // Original is untouched, the import landed under a renamed key.
+      expect(profiles.Combat.rows[0].name).toBe('original');
+      expect(profiles['Combat (2)'].rows[0].name).toBe('imported');
+    });
+
+    test('importProfiles skips invalid entries and reports an invalid bundle', async () => {
+      const skipResult = await profileStorage.importProfiles({
+        profiles: { Bad: { notRows: true } },
+      });
+      expect(skipResult.imported).toBe(0);
+      expect(skipResult.skipped).toBe(1);
+
+      const badResult = await profileStorage.importProfiles({ nope: true });
+      expect(badResult.error).toBe('invalid');
+    });
+  });
 });

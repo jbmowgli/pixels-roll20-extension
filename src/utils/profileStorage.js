@@ -20,6 +20,8 @@
 
 const PROFILES_KEY = 'pixels_profiles';
 const MINIMIZED_KEY = 'pixels_minimized';
+const ACTIVE_KEY = 'pixels_active_profile';
+const EXPORT_TYPE = 'pixels-roll20-profiles';
 
 // Resolve a chrome.storage area ('local' | 'sync'), or null if it is not
 // available in this context (e.g. test environment without a storage mock).
@@ -157,16 +159,103 @@ async function setMinimized(value) {
   return writeArea('local', MINIMIZED_KEY, Boolean(value));
 }
 
+// Active profile — which saved profile is currently loaded. Per-device, stored
+// in local only. Returns null when none is active.
+async function getActiveProfile() {
+  const value = await readArea('local', ACTIVE_KEY);
+  return typeof value === 'string' && value ? value : null;
+}
+
+async function setActiveProfile(name) {
+  return writeArea('local', ACTIVE_KEY, typeof name === 'string' ? name : '');
+}
+
+// Build a serializable bundle of all profiles for export to a file.
+async function exportProfiles() {
+  const profiles = await getProfiles();
+  return {
+    type: EXPORT_TYPE,
+    version: 1,
+    exportedAt: Date.now(),
+    profiles,
+  };
+}
+
+// Return a name not already present in `existingNames` (a Set), appending
+// " (2)", " (3)", ... as needed. Implements the keep-both import strategy.
+function uniqueName(base, existingNames) {
+  if (!existingNames.has(base)) {
+    return base;
+  }
+  let n = 2;
+  let candidate = `${base} (${n})`;
+  while (existingNames.has(candidate)) {
+    n += 1;
+    candidate = `${base} (${n})`;
+  }
+  return candidate;
+}
+
+// Merge an exported bundle into the saved profiles. On name collision the
+// incoming profile is kept under a renamed key (never overwrites existing).
+// Returns { imported, skipped }.
+async function importProfiles(bundle) {
+  const incoming =
+    bundle && bundle.profiles && typeof bundle.profiles === 'object'
+      ? bundle.profiles
+      : null;
+  if (!incoming) {
+    return { imported: 0, skipped: 0, error: 'invalid' };
+  }
+
+  const profiles = await getProfiles();
+  const names = new Set(Object.keys(profiles));
+  let imported = 0;
+  let skipped = 0;
+
+  Object.entries(incoming).forEach(([name, profile]) => {
+    if (!profile || !Array.isArray(profile.rows)) {
+      skipped += 1;
+      return;
+    }
+    const finalName = uniqueName(name, names);
+    profiles[finalName] = {
+      rows: profile.rows,
+      selectedIndex: Number.isInteger(profile.selectedIndex)
+        ? profile.selectedIndex
+        : -1,
+      savedAt: Date.now(),
+    };
+    names.add(finalName);
+    imported += 1;
+  });
+
+  if (imported > 0) {
+    await Promise.all([
+      writeArea('local', PROFILES_KEY, profiles),
+      writeArea('sync', PROFILES_KEY, profiles),
+    ]);
+  }
+
+  return { imported, skipped };
+}
+
 const ProfileStorage = {
   getProfiles,
   saveProfile,
   deleteProfile,
   getMinimized,
   setMinimized,
+  getActiveProfile,
+  setActiveProfile,
+  exportProfiles,
+  importProfiles,
   // Exposed for tests
   mergeProfiles,
+  uniqueName,
   PROFILES_KEY,
   MINIMIZED_KEY,
+  ACTIVE_KEY,
 };
 
 export {
@@ -175,9 +264,15 @@ export {
   deleteProfile,
   getMinimized,
   setMinimized,
+  getActiveProfile,
+  setActiveProfile,
+  exportProfiles,
+  importProfiles,
   mergeProfiles,
+  uniqueName,
   PROFILES_KEY,
   MINIMIZED_KEY,
+  ACTIVE_KEY,
 };
 
 export default ProfileStorage;
