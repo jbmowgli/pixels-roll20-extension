@@ -44,8 +44,8 @@ function hasLastError() {
   try {
     return Boolean(
       typeof chrome !== 'undefined' &&
-        chrome.runtime &&
-        chrome.runtime.lastError
+      chrome.runtime &&
+      chrome.runtime.lastError
     );
   } catch {
     return false;
@@ -181,6 +181,22 @@ async function exportProfiles() {
   };
 }
 
+// Build an export bundle containing a single profile by name. Returns null if
+// the profile does not exist. Same shape as exportProfiles so it imports back
+// identically.
+async function exportProfile(name) {
+  const profiles = await getProfiles();
+  if (!name || !(name in profiles)) {
+    return null;
+  }
+  return {
+    type: EXPORT_TYPE,
+    version: 1,
+    exportedAt: Date.now(),
+    profiles: { [name]: profiles[name] },
+  };
+}
+
 // Return a name not already present in `existingNames` (a Set), appending
 // " (2)", " (3)", ... as needed. Implements the keep-both import strategy.
 function uniqueName(base, existingNames) {
@@ -249,6 +265,7 @@ const ProfileStorage = {
   getActiveProfile,
   setActiveProfile,
   exportProfiles,
+  exportProfile,
   importProfiles,
   // Exposed for tests
   mergeProfiles,
@@ -267,6 +284,7 @@ export {
   getActiveProfile,
   setActiveProfile,
   exportProfiles,
+  exportProfile,
   importProfiles,
   mergeProfiles,
   uniqueName,

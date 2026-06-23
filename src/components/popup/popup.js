@@ -7,6 +7,7 @@ import {
   getActiveProfile,
   setActiveProfile,
   exportProfiles,
+  exportProfile,
   importProfiles,
 } from '../../utils/profileStorage.js';
 
@@ -215,6 +216,12 @@ async function renderProfiles() {
     loadBtn.textContent = 'Load';
     loadBtn.onclick = () => loadProfile(name);
 
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'profile-item-btn export';
+    exportBtn.textContent = 'Export';
+    exportBtn.title = `Export "${name}" to a file`;
+    exportBtn.onclick = () => exportSingleProfile(name);
+
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'profile-item-btn delete';
     deleteBtn.textContent = 'Delete';
@@ -222,6 +229,7 @@ async function renderProfiles() {
 
     li.appendChild(label);
     li.appendChild(loadBtn);
+    li.appendChild(exportBtn);
     li.appendChild(deleteBtn);
     list.appendChild(li);
   });
@@ -340,6 +348,30 @@ function removeProfile(name) {
     .catch(() => showText('Failed to delete profile.'));
 }
 
+// Trigger a download of a bundle as a JSON file.
+function downloadBundle(bundle, filename) {
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], {
+    type: 'application/json',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Make a filesystem-safe slug from a profile name.
+function slugify(name) {
+  return (
+    name
+      .trim()
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase() || 'profile'
+  );
+}
+
 // Export all profiles to a downloaded JSON file.
 function exportProfilesToFile() {
   exportProfiles()
@@ -348,19 +380,26 @@ function exportProfilesToFile() {
         showText('No profiles to export.');
         return;
       }
-      const blob = new Blob([JSON.stringify(bundle, null, 2)], {
-        type: 'application/json',
-      });
-      const url = URL.createObjectURL(blob);
       const stamp = new Date().toISOString().slice(0, 10);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `pixels-roll20-profiles-${stamp}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      showText('Exported profiles.');
+      downloadBundle(bundle, `pixels-roll20-profiles-${stamp}.json`);
+      showText('Exported all profiles.');
     })
     .catch(() => showText('Failed to export profiles.'));
+}
+
+// Export a single profile to a downloaded JSON file.
+function exportSingleProfile(name) {
+  exportProfile(name)
+    .then(bundle => {
+      if (!bundle) {
+        showText('Profile not found.');
+        renderProfiles();
+        return;
+      }
+      downloadBundle(bundle, `pixels-roll20-profile-${slugify(name)}.json`);
+      showText(`Exported profile "${name}".`);
+    })
+    .catch(() => showText('Failed to export profile.'));
 }
 
 // Import profiles from a chosen JSON file, merging (keep-both on name clash).

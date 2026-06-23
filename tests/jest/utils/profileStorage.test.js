@@ -200,6 +200,44 @@ describe('profileStorage', () => {
       expect(bundle.profiles.Combat).toBeDefined();
     });
 
+    test('exportProfile returns a bundle with only the named profile', async () => {
+      await profileStorage.saveProfile('Combat', {
+        rows: [{ name: 'Rage', value: '2' }],
+        selectedIndex: 0,
+      });
+      await profileStorage.saveProfile('Social', {
+        rows: [],
+        selectedIndex: -1,
+      });
+
+      const bundle = await profileStorage.exportProfile('Combat');
+
+      expect(bundle.type).toBe('pixels-roll20-profiles');
+      expect(Object.keys(bundle.profiles)).toEqual(['Combat']);
+    });
+
+    test('exportProfile returns null for an unknown profile', async () => {
+      expect(await profileStorage.exportProfile('Nope')).toBeNull();
+    });
+
+    test('a single-profile export imports back identically', async () => {
+      await profileStorage.saveProfile('Combat', {
+        rows: [{ name: 'Rage', value: '2' }],
+        selectedIndex: 0,
+      });
+      const bundle = await profileStorage.exportProfile('Combat');
+
+      // Fresh store
+      local = makeArea();
+      sync = makeArea();
+      chrome.storage = { local, sync };
+
+      const result = await profileStorage.importProfiles(bundle);
+      expect(result.imported).toBe(1);
+      const profiles = await profileStorage.getProfiles();
+      expect(profiles.Combat.rows[0].name).toBe('Rage');
+    });
+
     test('importProfiles keeps both on name collision (rename)', async () => {
       await profileStorage.saveProfile('Combat', {
         rows: [{ name: 'original', value: '0' }],
