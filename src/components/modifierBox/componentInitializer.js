@@ -17,7 +17,11 @@ import {
   updateSelectedModifier as updateSelectedModifierFromRowManager,
   loadModifierRows,
 } from './rowManager.js';
-import { setupMinimizeControls, setupClearAllControls } from './uiControls.js';
+import {
+  setupMinimizeControls,
+  setupClearAllControls,
+  restoreMinimizedState,
+} from './uiControls.js';
 
 export function setupModifierBoxComponents(modifierBox, clearAllCallback) {
   if (!modifierBox) {
@@ -144,6 +148,10 @@ function setupUIControls(modifierBox, clearAllCallback) {
   if (clearAllCallback) {
     setupClearAllControls(modifierBox, clearAllCallback);
   }
+
+  // Restore the persisted minimized/full-size state (independent of profiles).
+  // Fire-and-forget: the storage read is async and applies once it resolves.
+  restoreMinimizedState(modifierBox);
 }
 
 function setupThemeManagement(modifierBox) {

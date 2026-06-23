@@ -197,6 +197,146 @@ body {
   background-color: #3a8eef;
 }
 
+/* Profiles Section */
+.profiles-section {
+  border-top: 1px solid #444444;
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.section-label {
+  font-size: 13px;
+  font-weight: bold;
+  color: #cccccc;
+}
+
+.active-profile-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #1f3147;
+  border: 1px solid #4a9eff;
+  border-radius: 4px;
+  padding: 6px 8px 6px 10px;
+}
+
+.active-profile-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: #cfe3ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.active-profile-label #activeProfileName {
+  font-weight: bold;
+  color: #ffffff;
+}
+
+.profile-save-row {
+  display: flex;
+  gap: 8px;
+}
+
+.profile-input {
+  flex: 1;
+  min-width: 0;
+  background-color: #1a1a1a;
+  border: 1px solid #444444;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 13px;
+  padding: 8px 10px;
+}
+
+.profile-input::placeholder {
+  color: #777777;
+}
+
+.profile-input:focus {
+  outline: 2px solid #4a9eff;
+  outline-offset: 0;
+}
+
+.profile-save-btn {
+  flex-shrink: 0;
+  padding: 8px 16px;
+}
+
+.profile-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #1a1a1a;
+  border: 1px solid #444444;
+  border-radius: 4px;
+  padding: 6px 8px 6px 10px;
+}
+
+.profile-item.active {
+  border-color: #4a9eff;
+}
+
+.profile-item-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-item .active-dot {
+  color: #4a9eff;
+  margin-right: 4px;
+}
+
+.profile-io-row {
+  display: flex;
+  gap: 8px;
+}
+
+.profile-io-row .secondary-button {
+  flex: 1;
+}
+
+.profile-item-btn {
+  flex-shrink: 0;
+  background-color: #404040;
+  color: #ffffff;
+  border: 1px solid #555555;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.profile-item-btn:hover {
+  background-color: #4a4a4a;
+  border-color: #666666;
+}
+
+.profile-item-btn.delete:hover {
+  background-color: #5a2a2a;
+  border-color: #f87171;
+  color: #f87171;
+}
+
 /* Status indicators */
 .status-connected {
   color: #4ade80 !important;

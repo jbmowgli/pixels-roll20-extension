@@ -922,6 +922,82 @@ describe('ModifierBox Row Manager', () => {
     // ...existing code...
   });
 
+  describe('serializeRows / applyRows', () => {
+    test('serializeRows captures names, values and selection in DOM order', () => {
+      const box = createMockModifierBox();
+
+      const data = window.ModifierBoxRowManager.serializeRows(box);
+
+      expect(data.rows).toEqual([
+        { name: 'Modifier 1', value: '0', originalIndex: '0' },
+      ]);
+      expect(data.selectedIndex).toBe(0);
+    });
+
+    test('serializeRows handles a null box', () => {
+      const data = window.ModifierBoxRowManager.serializeRows(null);
+      expect(data).toEqual({ rows: [], selectedIndex: -1 });
+    });
+
+    test('applyRows rebuilds the rows and restores selection', () => {
+      const box = createMockModifierBox();
+
+      const ok = window.ModifierBoxRowManager.applyRows(
+        box,
+        {
+          rows: [
+            { name: 'Bless', value: '1' },
+            { name: 'Rage', value: '2' },
+          ],
+          selectedIndex: 1,
+        },
+        null
+      );
+
+      expect(ok).toBe(true);
+
+      const rows = box.querySelectorAll('.modifier-row');
+      expect(rows.length).toBe(2);
+      expect(rows[0].querySelector('.modifier-name').value).toBe('Bless');
+      expect(rows[1].querySelector('.modifier-name').value).toBe('Rage');
+
+      const checked = box.querySelector(
+        'input[name="modifier-select"]:checked'
+      );
+      expect(checked.value).toBe('1');
+    });
+
+    test('applyRows is a round-trip with serializeRows', () => {
+      const box = createMockModifierBox();
+      window.ModifierBoxRowManager.applyRows(
+        box,
+        {
+          rows: [
+            { name: 'A', value: '3' },
+            { name: 'B', value: '-1' },
+          ],
+          selectedIndex: 0,
+        },
+        null
+      );
+
+      const data = window.ModifierBoxRowManager.serializeRows(box);
+      expect(data.rows.map(r => r.name)).toEqual(['A', 'B']);
+      expect(data.rows.map(r => r.value)).toEqual(['3', '-1']);
+      expect(data.selectedIndex).toBe(0);
+    });
+
+    test('applyRows returns false for invalid input', () => {
+      const box = createMockModifierBox();
+      expect(window.ModifierBoxRowManager.applyRows(box, null, null)).toBe(
+        false
+      );
+      expect(
+        window.ModifierBoxRowManager.applyRows(box, { rows: 'nope' }, null)
+      ).toBe(false);
+    });
+  });
+
   // Helper function to create a mock modifier box
   function createMockModifierBox() {
     const box = document.createElement('div');
