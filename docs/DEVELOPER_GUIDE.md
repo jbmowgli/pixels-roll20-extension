@@ -341,14 +341,12 @@ npm run zip:store
 # This creates: pixels-roll20-extension-store.zip
 ```
 
-Alternative packaging scripts:
+Or run the full packaging script (lint + test + production build + zip):
 
 ```bash
-# Unix/macOS/Linux
-./scripts/package-for-store.sh
-
-# Windows PowerShell
-./tools/package-for-store.ps1
+npm run package:store
+# equivalently: ./scripts/package-for-store.sh
+# (on Windows, run it via Git Bash or WSL)
 ```
 
 ### Build Output Structure
