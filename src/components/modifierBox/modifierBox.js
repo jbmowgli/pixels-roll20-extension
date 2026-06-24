@@ -162,7 +162,7 @@ async function createModifierBox() {
     }
 
     const htmlTemplate = await loadTemplate(
-      'src/components/modifierBox/modifierBox.html',
+      'components/modifierBox/modifierBox.html',
       'modifierBox'
     );
 

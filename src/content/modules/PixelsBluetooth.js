@@ -355,6 +355,63 @@ export const createPixel = (name, server, device) => {
   return pixelAPI;
 };
 
+// Resolve the Pixels notify characteristic from a connected GATT server.
+// Tries the known modern/legacy service + characteristic UUIDs first, then
+// falls back to discovering any notifiable characteristic within the service.
+// This keeps connection working across firmware variants where the notify
+// characteristic UUID differs, or when getCharacteristic() races GATT
+// discovery and reports the characteristic as missing.
+const findNotifyCharacteristic = async server => {
+  const candidates = [
+    { service: PIXELS_SERVICE_UUID, notify: PIXELS_NOTIFY_CHARACTERISTIC },
+    {
+      service: PIXELS_LEGACY_SERVICE_UUID,
+      notify: PIXELS_LEGACY_NOTIFY_CHARACTERISTIC,
+    },
+  ];
+
+  for (const { service: serviceUuid, notify: notifyUuid } of candidates) {
+    let service;
+    try {
+      service = await server.getPrimaryService(serviceUuid);
+    } catch {
+      continue; // This service isn't present on this die; try the next one.
+    }
+
+    // Preferred path: the known notify characteristic UUID.
+    try {
+      return await service.getCharacteristic(notifyUuid);
+    } catch {
+      log(
+        `Notify characteristic ${notifyUuid} not found in service ${serviceUuid}; discovering characteristics`
+      );
+    }
+
+    // Fallback: enumerate the service and pick the first notifiable one.
+    // getCharacteristics() forces a full discovery of the service, which also
+    // recovers from cases where getCharacteristic() missed the attribute.
+    const characteristics = await service.getCharacteristics();
+    const notifiable = characteristics.find(
+      c => c.properties && c.properties.notify
+    );
+    if (notifiable) {
+      log(
+        `Using discovered notify characteristic ${notifiable.uuid} in service ${serviceUuid}`
+      );
+      return notifiable;
+    }
+    log(
+      `Service ${serviceUuid} has no notifiable characteristic (found: ${characteristics
+        .map(c => c.uuid)
+        .join(', ')})`
+    );
+  }
+
+  throw new Error(
+    'No Pixels notify characteristic found on device. The die may use an unsupported firmware or service UUID.'
+  );
+};
+
 // Main Bluetooth connection logic using functional approach
 const connectToNewPixel = async () => {
   if (!navigator.bluetooth) {
@@ -383,22 +440,7 @@ const connectToNewPixel = async () => {
     }
 
     const server = await device.gatt.connect();
-    let service, notifyChar;
-
-    // Try modern UUIDs first
-    try {
-      service = await server.getPrimaryService(PIXELS_SERVICE_UUID);
-      notifyChar = await service.getCharacteristic(
-        PIXELS_NOTIFY_CHARACTERISTIC
-      );
-    } catch {
-      // Fall back to legacy UUIDs
-      log('Modern UUIDs failed, trying legacy UUIDs');
-      service = await server.getPrimaryService(PIXELS_LEGACY_SERVICE_UUID);
-      notifyChar = await service.getCharacteristic(
-        PIXELS_LEGACY_NOTIFY_CHARACTERISTIC
-      );
-    }
+    const notifyChar = await findNotifyCharacteristic(server);
 
     await notifyChar.startNotifications();
 
@@ -478,18 +520,7 @@ const performGattReconnection = async (device, pixel) => {
     throw new Error('Connection lost immediately after connecting');
   }
 
-  let service, notifyUuid;
-  try {
-    service = await server.getPrimaryService(PIXELS_SERVICE_UUID);
-    notifyUuid = PIXELS_NOTIFY_CHARACTERISTIC;
-    log('Reconnecting to modern Pixels die');
-  } catch {
-    service = await server.getPrimaryService(PIXELS_LEGACY_SERVICE_UUID);
-    notifyUuid = PIXELS_LEGACY_NOTIFY_CHARACTERISTIC;
-    log('Reconnecting to legacy Pixels die');
-  }
-
-  const notify = await service.getCharacteristic(notifyUuid);
+  const notify = await findNotifyCharacteristic(server);
   await notify.startNotifications();
 
   pixel.reconnect(server, notify, device);
@@ -584,7 +615,9 @@ const attemptReconnection = async (device, pixel) => {
     return;
   }
 
-  log(`Attempting to reconnect to ${device.name} (strategy: ${reconnectionStrategy})`);
+  log(
+    `Attempting to reconnect to ${device.name} (strategy: ${reconnectionStrategy})`
+  );
 
   if (reconnectionStrategy === 'watch') {
     // Known working — go straight to watch
@@ -606,7 +639,9 @@ const attemptReconnection = async (device, pixel) => {
       log('Reconnection strategy set to: watch (watchAdvertisements works)');
     } catch {
       reconnectionStrategy = 'poll';
-      log('Reconnection strategy set to: poll (watchAdvertisements unavailable)');
+      log(
+        'Reconnection strategy set to: poll (watchAdvertisements unavailable)'
+      );
       attemptPollReconnection(device, pixel);
     }
   }
@@ -680,7 +715,9 @@ const reconnectKnownDevices = async () => {
       return;
     }
 
-    log(`Found ${devices.length} previously-permitted device(s), attempting reconnection`);
+    log(
+      `Found ${devices.length} previously-permitted device(s), attempting reconnection`
+    );
 
     for (const device of devices) {
       // Skip if already connected
