@@ -77,7 +77,7 @@ npm run zip:store
 **Build Output:**
 
 - `dist/` - Webpack build output (load this folder in Chrome)
-- `manifest.json` - Extension configuration
+- `src/manifest.json` - Extension manifest source (copied into `dist/` by the build)
 
 ## Development
 

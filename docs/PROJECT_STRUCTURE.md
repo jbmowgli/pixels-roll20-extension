@@ -7,6 +7,7 @@ This document outlines the organization of the Pixels Roll20 Chrome Extension pr
 ```
 PixelsRoll20ChromeExtension/
 ├── src/                          # Source code
+│   ├── manifest.json            # Chrome extension manifest (copied to dist/ on build)
 │   ├── background/               # Background script
 │   │   └── background.js         # Extension background script
 │   ├── content/                  # Content scripts (injected into Roll20)
@@ -81,7 +82,6 @@ PixelsRoll20ChromeExtension/
 │   └── pre-commit              # Pre-commit hook script
 ├── coverage/                    # Test coverage reports (gitignored)
 ├── node_modules/               # Dependencies (gitignored)
-├── manifest.json               # Chrome extension manifest
 ├── package.json                # NPM configuration and scripts
 ├── package-lock.json           # NPM dependency lock file
 ├── .prettierrc                 # Prettier configuration
@@ -97,7 +97,7 @@ PixelsRoll20ChromeExtension/
 
 ### Core Extension Files
 
-- **manifest.json**: Chrome extension configuration and permissions
+- **src/manifest.json**: Chrome extension configuration and permissions (copied to `dist/manifest.json` at build time)
 - **README.md**: Project documentation and setup instructions
 - **LICENSE**: Project license information
 
@@ -260,7 +260,7 @@ The Roll20 integration has been refactored into focused, single-responsibility m
 1. **Content Scripts**: Modify files in `src/content/` for Roll20 integration features
    - **Modular components**: Update focused modules in `src/content/modules/`
    - **Main coordinator**: Update orchestration logic in `src/content/roll20.js`
-   - **Module order**: Ensure proper loading sequence in `manifest.json`
+   - **Module order**: Ensure proper loading sequence in `src/manifest.json`
 2. **UI Components**: Update component files in `src/components/` for interface changes
    - **ModifierBox**: Update component files in `src/components/modifierBox/`
    - **Popup**: Update extension interface in `src/components/popup/`
@@ -442,7 +442,7 @@ npm run format:check        # Check formatting without writing
 
 ### Key Configuration Files
 
-- **manifest.json**: Chrome extension configuration
+- **src/manifest.json**: Chrome extension configuration
 - **package.json**: NPM scripts and dependencies
 - **.prettierrc**: Code formatting rules
 - **.husky/pre-commit**: Git hook for quality checks
