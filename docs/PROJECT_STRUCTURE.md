@@ -281,31 +281,38 @@ The Roll20 integration has been refactored into focused, single-responsibility m
 
 ## Build Process
 
-The extension uses a modular architecture that loads files directly from their organized locations with camelCase naming conventions. No build step is required - the manifest.json references all modules in the correct loading order:
+The extension is bundled with webpack. Source lives in `src/` as ES modules; the build (`npm run build`) compiles each entry into a standalone file under `dist/`, which is what you load as an unpacked extension or package for the store. `src/manifest.json` is copied to `dist/manifest.json` at build time.
+
+```bash
+npm run build         # development build → dist/
+npm run build:prod    # minified production build → dist/
+npm run package:store # lint + test + production build + zip
+```
 
 ### Module Loading Order
+
+Content scripts are injected in the order defined by `src/manifest.json` (paths are relative to the built `dist/` root):
 
 ```javascript
 // manifest.json content_scripts.js array:
 [
-  'src/utils/modifierSettings.js', // Settings persistence
-  'src/utils/profileStorage.js', // Profiles + minimize state (chrome.storage)
-  'src/utils/themeDetector.js', // Theme detection
-  'src/utils/cssLoader.js', // CSS loading utility
-  'src/utils/htmlLoader.js', // HTML loading utility
-  'src/components/modifierBox/themeManager.js',
-  'src/components/modifierBox/dragHandler.js',
-  'src/components/modifierBox/rowManager.js',
-  'src/components/modifierBox/dragDrop.js',
-  'src/components/modifierBox/modifierBox.js',
-  'src/content/modules/Utils.js', // Core utilities
-  'src/content/modules/PopupDetection.js', // Popup detection
-  'src/content/modules/ExtensionMessaging.js', // Extension communication
-  'src/content/modules/Roll20Integration.js', // Roll20 platform integration
-  'src/content/modules/StorageManager.js', // Storage coordination
-  'src/content/modules/ModifierBoxManager.js', // ModifierBox coordination
-  'src/content/modules/PixelsBluetooth.js', // Bluetooth management
-  'src/content/roll20.js', // Main coordinator (loads last)
+  'utils/modifierSettings.js', // Settings persistence
+  'utils/profileStorage.js', // Profiles + minimize state (chrome.storage)
+  'utils/themeDetector.js', // Theme detection
+  'utils/cssLoader.js', // CSS loading utility
+  'utils/htmlLoader.js', // HTML loading utility
+  'components/modifierBox/themeManager.js',
+  'components/modifierBox/dragHandler.js',
+  'components/modifierBox/rowManager.js',
+  'components/modifierBox/dragDrop.js',
+  'components/modifierBox/modifierBox.js',
+  'content/modules/Utils.js', // Core utilities
+  'content/modules/PopupDetection.js', // Popup detection
+  'content/modules/Roll20Integration.js', // Roll20 platform integration
+  'content/modules/StorageManager.js', // Storage coordination
+  'content/modules/ModifierBoxManager.js', // ModifierBox coordination
+  'content/modules/PixelsBluetooth.js', // Bluetooth management
+  'content/roll20.js', // Main coordinator (loads last)
 ];
 ```
 
