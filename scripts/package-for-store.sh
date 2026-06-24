@@ -126,9 +126,8 @@ fi
 # Step 7: Create package
 print_status "Creating Chrome Web Store package..."
 
-# Get version from package.json
-VERSION=$(node -p "require('./package.json').version")
-PACKAGE_NAME="pixels-roll20-extension-v${VERSION}-store.zip"
+# Output name matches the committed artifact and the install docs.
+PACKAGE_NAME="pixels-roll20-extension-store.zip"
 
 # Create the zip file
 cd dist
