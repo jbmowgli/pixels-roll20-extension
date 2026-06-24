@@ -82,7 +82,7 @@
 
 ### 📦 Package Preparation
 
-- [ ] **Version Bump**: Update version in manifest.json if needed
+- [ ] **Version Bump**: Update version in src/manifest.json if needed
 - [ ] **Asset Review**: Verify all required icons and images included
 - [ ] **File Cleanup**: Remove development files, logs, temp files
 - [ ] **ZIP Package**: Create clean ZIP for store submission
