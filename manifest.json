@@ -40,7 +40,6 @@
         "src/components/modifierBox/modifierBox.js",
         "src/content/modules/Utils.js",
         "src/content/modules/PopupDetection.js",
-        "src/content/modules/ExtensionMessaging.js",
         "src/content/modules/Roll20Integration.js",
         "src/content/modules/StorageManager.js",
         "src/content/modules/ModifierBoxManager.js",
