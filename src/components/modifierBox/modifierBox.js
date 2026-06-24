@@ -215,6 +215,7 @@ function createModifierBoxFallback() {
                 <div class="pixels-controls">
                     <button class="add-modifier-btn" type="button" title="Add Row">Add</button>
                     <button class="clear-all-btn" type="button" title="Clear All">Clear All</button>
+                    <button class="pixels-popout" type="button" title="Pop out to window">⧉</button>
                     <button class="pixels-minimize" title="Minimize">−</button>
                 </div>
             </div>

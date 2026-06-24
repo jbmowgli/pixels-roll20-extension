@@ -22,6 +22,7 @@ import {
   setupClearAllControls,
   restoreMinimizedState,
 } from './uiControls.js';
+import { setupPopoutControls } from './popoutManager.js';
 
 export function setupModifierBoxComponents(modifierBox, clearAllCallback) {
   if (!modifierBox) {
@@ -144,6 +145,7 @@ function setupRowManagement(modifierBox) {
 
 function setupUIControls(modifierBox, clearAllCallback) {
   setupMinimizeControls(modifierBox);
+  setupPopoutControls(modifierBox);
 
   if (clearAllCallback) {
     setupClearAllControls(modifierBox, clearAllCallback);
