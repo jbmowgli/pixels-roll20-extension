@@ -94,9 +94,11 @@ module.exports = {
   plugins: [
     new CopyWebpackPlugin({
       patterns: [
-        // Copy manifest and assets
+        // Copy manifest and runtime assets. Only assets/images ships with the
+        // extension; assets/screenshots and assets/New Screenshots are
+        // store-listing images that are not referenced at runtime.
         { from: 'src/manifest.json', to: 'manifest.json' },
-        { from: 'assets', to: 'assets' },
+        { from: 'assets/images', to: 'assets/images' },
 
         // Copy HTML files
         {
