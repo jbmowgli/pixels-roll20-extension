@@ -39,6 +39,8 @@ Try these first:
 - **Can't close modifier box?** → Use "Hide Modifier Box" button in popup
 - **Box disappeared?** → It may be minimized (click "−" again) or hidden via popup
 - **Box keeps opening minimized?** → The minimized state is remembered between sessions; click "−" to restore and it will reopen full-size
+- **No "⧉" pop-out button?** → Pop-out uses Document Picture-in-Picture, which needs Chrome/Edge 116+; the button is hidden on older or unsupported browsers
+- **Popped-out box vanished?** → Closing the pop-out window docks the box back onto the Roll20 page where it was; click "⧉" again to pop it back out
 - **Wrong display format?** → Box visibility affects chat format (detailed vs simple)
 
 ### Profile Issues

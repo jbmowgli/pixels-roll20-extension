@@ -22,6 +22,7 @@
 - **Remove Row** → Click "×" button
 - **Move Box** → Drag the header
 - **Resize** → Drag bottom-right corner
+- **Pop Out** → Click "⧉" to detach into an always-on-top window (click again or close it to dock back; needs Chrome/Edge 116+)
 - **Minimize** → Click "−" button (state remembered between sessions)
 
 ## Profiles (Extension Popup)
@@ -30,7 +31,8 @@
 - **Load** → "Load" next to a profile (applies it, marks it active ●)
 - **Update** → "Update ↻" in the banner (overwrite active profile with current setup)
 - **Delete** → "Delete" next to a profile
-- **Export** → Download all profiles as a `.json` file
+- **Export All** → Download every profile as one `.json` file
+- **Export** (per profile) → Download a single profile as a `.json` file
 - **Import** → Load profiles from a `.json` file (merges; renames on name clash)
 
 > Profiles sync across devices on Chrome/Edge. On Brave/Opera/Vivaldi use Export/Import to move them.

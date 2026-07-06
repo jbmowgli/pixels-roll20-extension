@@ -21,8 +21,9 @@ This project was originally inspired by the [Pixels on Roll20](https://github.co
 - Physical rolls appear instantly in Roll20 chat
 - Floating modifier box with custom values
 - Drag and resize interface
+- Pop the modifier box out into its own always-on-top window (Chrome/Edge 116+)
 - Save, load, and update named modifier **profiles**
-- Import/export profiles to a JSON file (portable across browsers)
+- Import/export all profiles, or export a single profile, as a JSON file (portable across browsers)
 - Remembers minimized/full-size state between sessions
 - Supports both modern and legacy Pixels dice
 - Auto theme matching (light/dark)
@@ -55,9 +56,10 @@ npm run build:prod  # Creates dist/ folder for Chrome
 - **Show/hide modifier box**: Use popup buttons (only way to fully close)
 - **Add modifiers**: Click "Add" in the modifier box
 - **Minimize box**: Click "−" button to collapse (the state is remembered between sessions)
+- **Pop out box**: Click "⧉" to detach the box into an always-on-top window; click again or close the window to dock it back
 - **Save a profile**: In the popup, type a name → "Save" to store the current modifiers
 - **Load/Update a profile**: Click "Load" on a saved profile; use "Update ↻" to overwrite the active profile with the current setup
-- **Import/Export**: Back up or move profiles between browsers via the popup's Export/Import buttons
+- **Import/Export**: Back up or move profiles between browsers via the popup's "Export All"/"Import" buttons, or "Export" a single profile from its row
 - **Roll dice**: Physical rolls automatically appear in chat
 
 ### Chat Display Behavior

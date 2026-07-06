@@ -9,6 +9,7 @@ The Pixels Roll20 Chrome Extension connects your physical Pixels dice to Roll20 
 - **Multi-Device Support**: Connect multiple Pixels dice simultaneously
 - **Automatic Roll Detection**: Physical dice rolls appear in Roll20 chat
 - **Modifier Management**: Add/edit/remove modifiers with a floating UI
+- **Pop-out Window**: Detach the modifier box into its own always-on-top window (great for a second monitor)
 - **Profiles**: Save, load, and update named sets of modifiers, and import/export them to a file
 - **Persistent Layout**: Remembers the box's minimized/full-size state between sessions
 - **Theme Adaptation**: Automatically matches Roll20's light/dark theme
@@ -56,10 +57,10 @@ The modifier box is a floating interface that lets you add modifiers to your dic
 
 #### Adding Modifiers
 
-1. Click the "Add" button in the modifier box header
-2. Edit the modifier name (e.g., "Attack Bonus", "Skill Check")
+1. Click the "Add" button in the modifier box header — the new row is automatically selected as active and its name field is focused, ready to type
+2. Type the modifier name (e.g., "Attack Bonus", "Skill Check")
 3. Set the modifier value (-99 to +99)
-4. Select the radio button to make it active
+4. The new row is already active; click any other row's radio button to switch which modifier applies
 
 #### Editing Modifiers
 
@@ -78,6 +79,16 @@ The modifier box is a floating interface that lets you add modifiers to your dic
 - **Minimize**: Click "−" to collapse the box (click again to restore)
 
 > **Note**: The minimized/full-size state is remembered between sessions. If you leave Roll20 with the box minimized, it will reappear minimized next time — independent of any saved profile.
+
+### Pop Out into Its Own Window
+
+Click the **⧉ (Pop out to window)** button in the modifier box header to detach the box into a separate, always-on-top window. This keeps your modifiers visible even when the Roll20 tab is behind another window — ideal for a second monitor or when you're switching between apps during play.
+
+- **Pop out**: Click **⧉** in the box header. The box moves into its own floating window that stays on top of other windows.
+- **Dock back**: Click **⧉** again, or simply close the pop-out window. The box returns to exactly where it was on the Roll20 page.
+- **While popped out**: All functionality still works (rolls, modifiers, theme matching). Resize the box by resizing the window itself; drag-to-move within the page is paused until you dock it back.
+
+> **Note**: This uses the browser's Document Picture-in-Picture feature, which requires **Chrome/Edge 116 or newer**. On older browsers the **⧉** button is hidden automatically.
 
 ## Saving and Loading Profiles
 
@@ -107,7 +118,8 @@ The saved profile becomes the **active** profile (shown in the banner at the top
 
 Profiles sync automatically across devices on browsers that support extension sync (Chrome, Edge). On browsers that don't propagate extension sync (Brave, Opera, Vivaldi), use import/export to move them manually:
 
-- **Export**: Click **Export** to download all profiles as a `.json` file.
+- **Export All**: Click **Export All** to download every saved profile as a single `.json` file.
+- **Export one profile**: Click **Export** next to an individual profile to download just that profile as a `.json` file — handy for sharing a single character's setup.
 - **Import**: Click **Import**, choose a previously exported `.json` file, and the profiles are merged in. If an imported name matches an existing profile, the import is kept under a new name (e.g. `Combat (2)`) so nothing is overwritten.
 
 ## Rolling Dice
