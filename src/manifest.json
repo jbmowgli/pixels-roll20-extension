@@ -1,6 +1,6 @@
 {
   "name": "Pixels Roll20 Integration",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Connect Pixels dice to Roll20 via Bluetooth with advanced modifier support and seamless integration.",
   "permissions": ["activeTab", "storage"],
   "background": {
