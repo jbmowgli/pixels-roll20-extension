@@ -17,8 +17,8 @@ For complete setup instructions, see the **[Installation Guide](INSTALLATION.md)
 
 1. Clone/download the repository
 2. Install dependencies: `npm install`
-3. Build the extension: `npm run build` or `npm run build:prod`
-4. Load the `dist/` folder in Chrome Developer Mode
+3. Build the extension: `npm run build:chrome` or `npm run build:prod`
+4. Load the `dist/chrome/` folder in Chrome Developer Mode
 5. Use "Reload" button when making changes
 
 ### Build Commands
@@ -76,8 +76,9 @@ npm run zip:store
 
 **Build Output:**
 
-- `dist/` - Webpack build output (load this folder in Chrome)
-- `src/manifest.json` - Extension manifest source (copied into `dist/` by the build)
+- `dist/chrome/` - Webpack build output for Chrome (load this folder in Chrome)
+- `dist/firefox/` - Webpack build output for Firefox (native-messaging bridge, see [Firefox support plan](../specs/firefox-native-messaging-support.md))
+- `src/manifest.json` - Extension manifest source (copied into `dist/chrome/` as-is; patched for Firefox at build time)
 
 ## Development
 
@@ -113,8 +114,8 @@ npm run test:watch
 
 **Manual Testing**:
 
-1. Build the extension: `npm run build`
-2. Load `dist/` folder in Chrome Developer Mode
+1. Build the extension: `npm run build:chrome`
+2. Load `dist/chrome/` folder in Chrome Developer Mode
 3. Test on Roll20 with real Pixels dice
 
 ### Debugging
@@ -133,7 +134,7 @@ For faster development:
 # Terminal 1: Start webpack in watch mode
 npm run watch
 
-# Terminal 2: Load dist/ in Chrome, then reload extension when files change
+# Terminal 2: Load dist/chrome/ in Chrome, then reload extension when files change
 ```
 
 ## Code Guidelines
@@ -351,16 +352,19 @@ npm run package:store
 
 ### Build Output Structure
 
-The webpack build creates:
+The webpack build creates one folder per browser (`npm run build` builds both):
 
 ```
 dist/
-├── manifest.json          # Extension manifest
-├── background/            # Background scripts
-├── content/              # Content scripts (bundled)
-├── components/           # UI components (bundled)
-├── assets/              # Images and icons
-└── popup/               # Extension popup
+├── chrome/
+│   ├── manifest.json      # Chrome manifest (service_worker background)
+│   ├── background/        # Background scripts
+│   ├── content/           # Content scripts (bundled)
+│   ├── components/        # UI components (bundled)
+│   └── assets/            # Images and icons
+└── firefox/
+    ├── manifest.json      # Firefox manifest (event page + nativeMessaging)
+    └── ...                # same structure as dist/chrome/
 ```
 
 ### Distribution Files
@@ -372,7 +376,7 @@ dist/
 
 **For Manual Distribution:**
 
-- Include `dist/` folder contents
+- Include `dist/chrome/` folder contents
 - Add documentation: `docs/USER_GUIDE.md`, `docs/INSTALLATION.md`
 - Include `LICENSE` and `README.md`
 
@@ -403,7 +407,7 @@ dist/
 
 ### Testing Checklist
 
-- [ ] **Extension loads**: `npm run build` → load `dist/` in Chrome
+- [ ] **Extension loads**: `npm run build:chrome` → load `dist/chrome/` in Chrome
 - [ ] **No build errors**: Check webpack output
 - [ ] **No console errors**: Check browser console
 - [ ] **Modifier box works**: Test in light/dark themes

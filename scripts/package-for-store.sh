@@ -86,14 +86,14 @@ print_status "Validating build output..."
 
 # Check if essential files exist
 REQUIRED_FILES=(
-    "dist/manifest.json"
-    "dist/background/background.js"
-    "dist/content/roll20.js"
-    "dist/components/popup/popup.html"
-    "dist/components/popup/popup.js"
-    "dist/components/popup/popup.css"
-    "dist/components/modifierBox/modifierBox.js"
-    "dist/assets/images/logo-128.png"
+    "dist/chrome/manifest.json"
+    "dist/chrome/background/background.js"
+    "dist/chrome/content/roll20.js"
+    "dist/chrome/components/popup/popup.html"
+    "dist/chrome/components/popup/popup.js"
+    "dist/chrome/components/popup/popup.css"
+    "dist/chrome/components/modifierBox/modifierBox.js"
+    "dist/chrome/assets/images/logo-128.png"
 )
 
 MISSING_FILES=()
@@ -115,11 +115,11 @@ else
 fi
 
 # Step 6: Check for source maps (should be excluded in production)
-SOURCE_MAPS=$(find dist/ -name "*.map" | wc -l)
+SOURCE_MAPS=$(find dist/chrome/ -name "*.map" | wc -l)
 if [ "$SOURCE_MAPS" -gt 0 ]; then
     print_warning "Found $SOURCE_MAPS source map files in production build"
     print_status "Removing source maps..."
-    find dist/ -name "*.map" -delete
+    find dist/chrome/ -name "*.map" -delete
     print_success "Source maps removed"
 fi
 
@@ -130,12 +130,12 @@ print_status "Creating Chrome Web Store package..."
 PACKAGE_NAME="pixels-roll20-extension-store.zip"
 
 # Create the zip file
-cd dist
-if zip -r "../${PACKAGE_NAME}" . -x "*.map" "*.DS_Store" > /dev/null 2>&1; then
-    cd ..
+cd dist/chrome
+if zip -r "../../${PACKAGE_NAME}" . -x "*.map" "*.DS_Store" > /dev/null 2>&1; then
+    cd ../..
     print_success "Package created: ${PACKAGE_NAME}"
 else
-    cd ..
+    cd ../..
     print_error "Failed to create package"
     exit 1
 fi
@@ -165,6 +165,6 @@ echo "  4. Submit for review"
 
 echo ""
 print_warning "Remember to test the packaged extension before submission:"
-echo "  1. Load the dist/ folder as an unpacked extension"
+echo "  1. Load the dist/chrome/ folder as an unpacked extension"
 echo "  2. Test all functionality on Roll20"
 echo "  3. Verify dice connectivity and modifier box features"

@@ -47,7 +47,7 @@ This project was originally inspired by the [Pixels on Roll20](https://github.co
 git clone https://github.com/your-username/PixelsRoll20ChromeExtension.git
 cd PixelsRoll20ChromeExtension
 npm install
-npm run build:prod  # Creates dist/ folder for Chrome
+npm run build:prod  # Creates dist/chrome/ folder
 ```
 
 ## Usage Overview
