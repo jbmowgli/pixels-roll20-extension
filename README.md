@@ -41,6 +41,10 @@ This project was originally inspired by the [Pixels on Roll20](https://github.co
 
 **Alternative**: Build from source - see **[Installation Guide](docs/INSTALLATION.md)**.
 
+**Using Firefox?** Web Bluetooth isn't available there, so dice connectivity
+goes through a small native companion app instead — see
+**[Firefox Setup (Beta)](docs/FIREFOX_SETUP.md)**.
+
 ## Building from Source
 
 ```bash

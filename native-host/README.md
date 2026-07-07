@@ -7,13 +7,14 @@ characteristic — it never writes to a die, and never parses roll data; it
 forwards raw notification bytes and the extension does the rest with the
 same logic used on the Chrome/Web Bluetooth path.
 
-See [`PROTOCOL.md`](./PROTOCOL.md) for the stdin/stdout message format.
+See [`PROTOCOL.md`](./PROTOCOL.md) for the stdin/stdout message format, and
+[`../docs/FIREFOX_SETUP.md`](../docs/FIREFOX_SETUP.md) for the full
+build-and-install walkthrough for using this with Firefox.
 
 This crate implements Milestone 3 of
-[`../specs/firefox-native-messaging-support.md`](../specs/firefox-native-messaging-support.md).
-Host registration (native messaging manifest + install script) and the
-extension-side wiring (background script relay, `PixelsNativeBridge.js`)
-are separate, later milestones in that plan and are not part of this crate.
+[`../specs/firefox-native-messaging-support.md`](../specs/firefox-native-messaging-support.md);
+host registration (`manifests/pixels_roll20_helper.json`,
+`scripts/install-host.ps1`/`uninstall-host.ps1`) is Milestone 5.
 
 ## Build
 
@@ -47,6 +48,10 @@ before exiting).
 Run with no arguments. It expects to be launched by the browser via
 `runtime.connectNative()`, which pipes the extension's messages to its
 stdin and reads its stdout — it is not meant to be run interactively in
-this mode. Host registration (the manifest that tells Firefox this binary
-exists and which extension may launch it, plus the Windows registry key)
-is out of scope for this crate — see Milestone 5 of the plan.
+this mode. `../scripts/install-host.ps1` registers it: it copies the built
+exe to `%LOCALAPPDATA%\PixelsRoll20\`, writes a resolved copy of
+`manifests/pixels_roll20_helper.json` next to it (with `path` pointing at
+the installed exe), and points Firefox at that manifest via the
+`HKCU\Software\Mozilla\NativeMessagingHosts\pixels_roll20_helper` registry
+key. Run `../scripts/uninstall-host.ps1` to remove all of that again. See
+[`../docs/FIREFOX_SETUP.md`](../docs/FIREFOX_SETUP.md) for the full flow.
