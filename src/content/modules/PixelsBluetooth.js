@@ -9,10 +9,10 @@
  */
 
 import { curry, pipe, map, filter, find, propEq, prop } from 'ramda';
+import { processNotification } from './rollProcessor';
 
 // Utility functions
 const log = window.log || console.log;
-const postChatMessage = window.postChatMessage || function () {};
 const sendTextToExtension = window.sendTextToExtension || function () {};
 const sendStatusToExtension = window.sendStatusToExtension || function () {};
 
@@ -36,12 +36,6 @@ const pixels = [];
 // Reconnection strategy: 'unknown' until first attempt, then 'watch' or 'poll'
 let reconnectionStrategy = 'unknown';
 
-// Roll formulas
-const pixelsFormulaWithModifier =
-  '&{template:default} {{name=#modifier_name (#modifier_sign)}} {{Pixel=#face_value}} {{Result=[[#face_value + #modifier]]}}';
-const pixelsFormulaSimple =
-  '&{template:default} {{name=Pixel Roll}} {{Pixel=#face_value}} {{Result=[[#result]]}}';
-
 // Functional helpers using Ramda
 const isConnected = prop('_isConnected');
 const getName = prop('_name');
@@ -56,12 +50,6 @@ const getPixelByDeviceId = curry((deviceId, pixelList) =>
 );
 const getConnectedPixels = filter(isConnected);
 
-// Helper function to format modifier with proper sign
-const formatModifierSign = modifier => {
-  const num = parseInt(modifier) || 0;
-  return num >= 0 ? `+${num}` : num.toString();
-};
-
 // Pixel factory function - creates a new Pixel die object
 export const createPixel = (name, server, device) => {
   const _name = name;
@@ -70,11 +58,12 @@ export const createPixel = (name, server, device) => {
   let _device = device;
   let _notify = null;
   let _notificationHandler = null;
-  let _hasMoved = false;
+  // hasMoved/face are tracked here but mutated by rollProcessor (passed by
+  // reference) so face-event state persists across notifications.
+  const _dieState = { hasMoved: false, face: null };
   let _isConnected = true;
   let _connectionMonitor = null;
   let _lastActivity = Date.now();
-  let _face = null;
 
   // Private methods
   const setNotifyCharacteristic = notify => {
@@ -205,84 +194,10 @@ export const createPixel = (name, server, device) => {
     try {
       _lastActivity = Date.now(); // Track activity for connection monitoring
 
-      const value = event.target.value;
-      const arr = [];
-      // Convert raw data bytes to hex values just for the sake of showing something.
-      for (let i = 0; i < value.byteLength; i++) {
-        arr.push(`0x${`00${value.getUint8(i).toString(16)}`.slice(-2)}`);
-      }
-
-      if (value.getUint8(0) === 3) {
-        handleFaceEvent(value.getUint8(1), value.getUint8(2));
-      }
+      processNotification(_name, _dieState, event.target.value);
     } catch (error) {
       log(`Notification handling error for ${_name}: ${error.message}`);
       // Don't mark as disconnected for processing errors
-    }
-  };
-
-  const handleFaceEvent = (ev, face) => {
-    if (!_hasMoved) {
-      if (ev !== 1) {
-        _hasMoved = true;
-      }
-    } else if (ev === 1) {
-      _face = face;
-      const txt = `${_name}: face up = ${face + 1}`;
-
-      // Check if modifier box is visible to determine modifier application
-      const isModifierBoxVisible =
-        window.ModifierBox &&
-        window.ModifierBox.isVisible &&
-        window.ModifierBox.isVisible();
-
-      // Sync modifier values from the modifier box before processing roll (only if visible)
-      if (
-        isModifierBoxVisible &&
-        typeof window.ModifierBox !== 'undefined' &&
-        window.ModifierBox.syncGlobalVars
-      ) {
-        window.ModifierBox.syncGlobalVars();
-      }
-
-      const diceValue = face + 1;
-      const modifier = isModifierBoxVisible
-        ? parseInt(window.pixelsModifier) || 0
-        : 0;
-      const result = diceValue + modifier;
-
-      // Choose formula based on modifier box visibility
-      let formula = isModifierBoxVisible
-        ? pixelsFormulaWithModifier
-        : pixelsFormulaSimple;
-
-      // Add critical hit message if face value is 20
-      if (diceValue === 20 && isModifierBoxVisible) {
-        formula = formula.replace(
-          '{{Pixel=#face_value}}',
-          '{{&#128293; <span style="color: #ff4444; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">CRITICAL!</span> &#128293;}} {{Pixel=#face_value}}'
-        );
-      }
-
-      // Add fumble message if face value is 1
-      if (diceValue === 1 && isModifierBoxVisible) {
-        formula = formula.replace(
-          '{{Pixel=#face_value}}',
-          '{{&#128128; <span style="color: #888888; font-size: 16px; font-style: italic; opacity: 0.7;">FUMBLE!</span> &#128128;}} {{Pixel=#face_value}}'
-        );
-      }
-
-      const message = formula
-        .replaceAll('#modifier_name', window.pixelsModifierName)
-        .replaceAll('#modifier_sign', formatModifierSign(modifier))
-        .replaceAll('#face_value', diceValue.toString())
-        .replaceAll('#pixel_name', _name)
-        .replaceAll('#modifier', modifier.toString())
-        .replaceAll('#result', result.toString());
-
-      message.split('\\n').forEach(s => postChatMessage(s));
-
-      sendTextToExtension(txt);
     }
   };
 
@@ -314,7 +229,7 @@ export const createPixel = (name, server, device) => {
       return _lastActivity;
     },
     get lastFaceUp() {
-      return _face;
+      return _dieState.face;
     },
     setNotifyCharacteristic,
     startConnectionMonitoring,
