@@ -37,6 +37,20 @@ module.exports = {
               gecko: { id: FIREFOX_EXTENSION_ID },
             };
 
+            // Firefox has no Web Bluetooth — swap the Chrome-only
+            // GATT-based module for the native-messaging bridge. (roll20.js
+            // itself still feature-detects and picks the right one at
+            // runtime; this only controls which module's standalone script
+            // — and thus its early window.* legacy exports — loads first.)
+            manifest.content_scripts.forEach(entry => {
+              const index = entry.js.indexOf(
+                'content/modules/PixelsBluetooth.js'
+              );
+              if (index !== -1) {
+                entry.js[index] = 'content/modules/PixelsNativeBridge.js';
+              }
+            });
+
             return JSON.stringify(manifest, null, 2);
           },
         },

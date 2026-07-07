@@ -55,6 +55,8 @@ const config = {
       './src/content/modules/ModifierBoxManager.js',
     'content/modules/PixelsBluetooth':
       './src/content/modules/PixelsBluetooth.js',
+    'content/modules/PixelsNativeBridge':
+      './src/content/modules/PixelsNativeBridge.js',
 
     // Modifier box components
     'components/modifierBox/modifierBox':
