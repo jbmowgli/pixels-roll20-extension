@@ -7,10 +7,16 @@
 
 import {
   initialize as initializePixelsBluetooth,
-  connectToPixel,
-  disconnectAllPixels,
-  getPixels,
+  connectToPixel as connectToPixelBluetooth,
+  disconnectAllPixels as disconnectAllPixelsBluetooth,
+  getPixels as getPixelsBluetooth,
 } from './modules/PixelsBluetooth.js';
+import {
+  initialize as initializePixelsNativeBridge,
+  connectToPixel as connectToPixelNative,
+  disconnectAllPixels as disconnectAllPixelsNative,
+  getPixels as getPixelsNative,
+} from './modules/PixelsNativeBridge.js';
 import {
   sendTextToExtension,
   sendStatusToExtension,
@@ -30,8 +36,24 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
 
     log('Starting Pixels Roll20 extension');
 
-    // Initialize the Bluetooth module
-    initializePixelsBluetooth();
+    // Feature-detect: Chrome/Edge implement Web Bluetooth; Firefox does
+    // not, so it goes through the native-messaging bridge instead (see
+    // native-host/ and specs/firefox-native-messaging-support.md).
+    const useNativeBridge = !navigator.bluetooth;
+
+    let connectToPixel, disconnectAllPixels, getPixels;
+    if (useNativeBridge) {
+      log('navigator.bluetooth unavailable, using native messaging bridge');
+      initializePixelsNativeBridge();
+      connectToPixel = connectToPixelNative;
+      disconnectAllPixels = disconnectAllPixelsNative;
+      getPixels = getPixelsNative;
+    } else {
+      initializePixelsBluetooth();
+      connectToPixel = connectToPixelBluetooth;
+      disconnectAllPixels = disconnectAllPixelsBluetooth;
+      getPixels = getPixelsBluetooth;
+    }
 
     // Expose functions to global scope for backwards compatibility
     window.connectToPixel = connectToPixel;

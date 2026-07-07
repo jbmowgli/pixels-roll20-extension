@@ -59,9 +59,11 @@ describe('Roll20.js - Comprehensive Tests', () => {
 
     // Set global mocks
     global.chrome = mockChrome;
-    global.navigator = {
-      bluetooth: mockBluetooth,
-    };
+    // jsdom's `navigator` is a getter-only binding on window, so a whole-
+    // object reassignment (`global.navigator = {...}`) silently no-ops in
+    // non-strict mode. Mutate the existing navigator's `bluetooth` property
+    // instead, same as the "missing Bluetooth API" test further down does.
+    global.navigator.bluetooth = mockBluetooth;
 
     // Mock DOM with proper jest functions
     global.document = {

@@ -104,12 +104,13 @@ global.simulateEvent = (element, eventType, eventData = {}) => {
 };
 
 // Mock Bluetooth API
-global.navigator = {
-  ...global.navigator,
-  bluetooth: {
-    requestDevice: jest.fn(),
-    getAvailability: jest.fn(() => Promise.resolve(true)),
-  },
+// jsdom's `navigator` is a getter-only binding on window, so a whole-object
+// reassignment (`global.navigator = {...}`) silently no-ops in non-strict
+// mode, leaving the real jsdom navigator (no .bluetooth) in place. Mutate
+// the existing navigator instead so this mock actually takes effect.
+global.navigator.bluetooth = {
+  requestDevice: jest.fn(),
+  getAvailability: jest.fn(() => Promise.resolve(true)),
 };
 
 // Run before each test

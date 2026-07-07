@@ -35,10 +35,21 @@ export const sendTextToExtension = txt => {
 export const sendStatusToExtension = () => {
   const pixels = window.pixels || [];
 
-  // Verify actual GATT state for each pixel, not just cached _isConnected
+  // GATT-backed pixels (Chrome/Web Bluetooth, PixelsBluetooth.js) can have
+  // a stale cached _isConnected flag, so also verify the live GATT state.
+  // Native-bridge pixels (Firefox, PixelsNativeBridge.js) have no
+  // device/gatt object at all — the real connection lives in the native
+  // host process — so isConnected is authoritative there; duck-type on
+  // whether a device/gatt is present rather than assuming one exists.
   const connectedPixels = filter(p => {
     try {
-      return p.isConnected && p.device && p.device.gatt && p.device.gatt.connected;
+      if (!p.isConnected) {
+        return false;
+      }
+      if (p.device && p.device.gatt) {
+        return p.device.gatt.connected;
+      }
+      return true;
     } catch {
       return false;
     }
