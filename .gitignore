@@ -19,6 +19,7 @@ Thumbs.db
 # Build outputs
 dist/
 build/
+native-host/target/
 
 # Extension packaging
 chrome-store-package/

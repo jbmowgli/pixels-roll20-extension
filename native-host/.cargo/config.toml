@@ -1,0 +1,7 @@
+target-dir = "target"
+
+# Statically link the MSVC CRT so the built exe has no dependency on the
+# Visual C++ Redistributable being present on the user's machine — keeps
+# this a true single-file static binary per the plan's design decision.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
