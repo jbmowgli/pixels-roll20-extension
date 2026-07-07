@@ -1,0 +1,7 @@
+{
+  "name": "pixels_roll20_helper",
+  "description": "Native messaging host bridging Pixels dice Bluetooth notifications to the Pixels Roll20 Firefox extension.",
+  "path": "<install path>",
+  "type": "stdio",
+  "allowed_extensions": ["pixels-roll20@jtoddy.github.io"]
+}
