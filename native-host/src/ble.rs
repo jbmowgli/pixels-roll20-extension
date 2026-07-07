@@ -9,11 +9,11 @@
 use anyhow::{Context, Result};
 use btleplug::api::{
     Central, CentralEvent, Characteristic, CharPropFlags, Manager as _, Peripheral as _,
-    PeripheralProperties, ScanFilter,
+    PeripheralProperties, ScanFilter, Service,
 };
 use btleplug::platform::{Adapter, Manager, Peripheral, PeripheralId};
 use futures::StreamExt;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{mpsc, Mutex};
@@ -309,7 +309,7 @@ async fn connect_and_subscribe(
         .await
         .context("service discovery failed")?;
 
-    let characteristic = find_notify_characteristic(peripheral)
+    let characteristic = find_notify_characteristic(&peripheral.services())
         .context("no Pixels notify characteristic found on device")?;
 
     peripheral
@@ -341,10 +341,10 @@ async fn connect_and_subscribe(
 /// Same fallback strategy as `findNotifyCharacteristic` in PixelsBluetooth.js:
 /// try the known modern/legacy service + characteristic UUIDs first, then
 /// fall back to any notifiable characteristic within a matching service, so
-/// connection still works across firmware variants.
-fn find_notify_characteristic(peripheral: &Peripheral) -> Option<Characteristic> {
-    let services = peripheral.services();
-
+/// connection still works across firmware variants. Takes a plain service
+/// set (rather than `&Peripheral`) so this stays pure and unit-testable
+/// without a live BLE backend.
+fn find_notify_characteristic(services: &BTreeSet<Service>) -> Option<Characteristic> {
     let candidates = [
         (PIXELS_SERVICE_UUID, PIXELS_NOTIFY_UUID),
         (PIXELS_LEGACY_SERVICE_UUID, PIXELS_LEGACY_NOTIFY_UUID),
@@ -355,7 +355,11 @@ fn find_notify_characteristic(peripheral: &Peripheral) -> Option<Characteristic>
             continue;
         };
 
-        if let Some(c) = service.characteristics.iter().find(|c| c.uuid == notify_uuid) {
+        if let Some(c) = service
+            .characteristics
+            .iter()
+            .find(|c| c.uuid == notify_uuid && c.properties.contains(CharPropFlags::NOTIFY))
+        {
             return Some(c.clone());
         }
 
@@ -376,4 +380,172 @@ fn find_notify_characteristic(peripheral: &Peripheral) -> Option<Characteristic>
 /// the process, which is all the extension needs to correlate events.
 fn id_string(id: &PeripheralId) -> String {
     format!("{id:?}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn props_with_name(name: &str) -> PeripheralProperties {
+        PeripheralProperties {
+            local_name: Some(name.to_string()),
+            ..Default::default()
+        }
+    }
+
+    fn props_with_service(uuid: Uuid) -> PeripheralProperties {
+        PeripheralProperties {
+            services: vec![uuid],
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn is_pixels_die_matches_on_name_prefix() {
+        assert!(is_pixels_die(&props_with_name("Pixel Aurora")));
+    }
+
+    #[test]
+    fn is_pixels_die_does_not_match_substring_names() {
+        // Must start with "Pixel", not merely contain it.
+        assert!(!is_pixels_die(&props_with_name("NotAPixelDie")));
+    }
+
+    #[test]
+    fn is_pixels_die_matches_on_modern_service_uuid() {
+        assert!(is_pixels_die(&props_with_service(PIXELS_SERVICE_UUID)));
+    }
+
+    #[test]
+    fn is_pixels_die_matches_on_legacy_service_uuid() {
+        assert!(is_pixels_die(&props_with_service(
+            PIXELS_LEGACY_SERVICE_UUID
+        )));
+    }
+
+    #[test]
+    fn is_pixels_die_rejects_unrelated_devices() {
+        let props = PeripheralProperties {
+            local_name: Some("Some Other Device".to_string()),
+            services: vec![uuid!("00001800-0000-1000-8000-00805f9b34fb")],
+            ..Default::default()
+        };
+        assert!(!is_pixels_die(&props));
+    }
+
+    fn characteristic(uuid: Uuid, service_uuid: Uuid, notify: bool) -> Characteristic {
+        Characteristic {
+            uuid,
+            service_uuid,
+            properties: if notify {
+                CharPropFlags::NOTIFY
+            } else {
+                CharPropFlags::READ
+            },
+            descriptors: Default::default(),
+        }
+    }
+
+    fn service(uuid: Uuid, characteristics: Vec<Characteristic>) -> Service {
+        Service {
+            uuid,
+            primary: true,
+            characteristics: characteristics.into_iter().collect(),
+        }
+    }
+
+    #[test]
+    fn find_notify_characteristic_prefers_the_known_modern_uuid() {
+        let services: BTreeSet<Service> = [service(
+            PIXELS_SERVICE_UUID,
+            vec![characteristic(PIXELS_NOTIFY_UUID, PIXELS_SERVICE_UUID, true)],
+        )]
+        .into_iter()
+        .collect();
+
+        let found = find_notify_characteristic(&services).unwrap();
+        assert_eq!(found.uuid, PIXELS_NOTIFY_UUID);
+    }
+
+    #[test]
+    fn find_notify_characteristic_falls_back_to_any_notifiable_characteristic() {
+        // Simulates a firmware variant that doesn't use the documented
+        // notify UUID — the fallback should still find *a* notifiable
+        // characteristic in the matched service.
+        let odd_uuid = uuid!("11111111-1111-1111-1111-111111111111");
+        let services: BTreeSet<Service> = [service(
+            PIXELS_SERVICE_UUID,
+            vec![characteristic(odd_uuid, PIXELS_SERVICE_UUID, true)],
+        )]
+        .into_iter()
+        .collect();
+
+        let found = find_notify_characteristic(&services).unwrap();
+        assert_eq!(found.uuid, odd_uuid);
+    }
+
+    #[test]
+    fn find_notify_characteristic_uses_legacy_service_when_present() {
+        let services: BTreeSet<Service> = [service(
+            PIXELS_LEGACY_SERVICE_UUID,
+            vec![characteristic(
+                PIXELS_LEGACY_NOTIFY_UUID,
+                PIXELS_LEGACY_SERVICE_UUID,
+                true,
+            )],
+        )]
+        .into_iter()
+        .collect();
+
+        let found = find_notify_characteristic(&services).unwrap();
+        assert_eq!(found.uuid, PIXELS_LEGACY_NOTIFY_UUID);
+    }
+
+    #[test]
+    fn find_notify_characteristic_returns_none_when_service_has_no_notifiable_characteristic() {
+        let services: BTreeSet<Service> = [service(
+            PIXELS_SERVICE_UUID,
+            vec![characteristic(
+                PIXELS_NOTIFY_UUID,
+                PIXELS_SERVICE_UUID,
+                false,
+            )],
+        )]
+        .into_iter()
+        .collect();
+
+        assert!(find_notify_characteristic(&services).is_none());
+    }
+
+    #[test]
+    fn find_notify_characteristic_returns_none_when_no_matching_service() {
+        let battery_service = uuid!("0000180f-0000-1000-8000-00805f9b34fb");
+        let battery_level = uuid!("00002a19-0000-1000-8000-00805f9b34fb");
+        let services: BTreeSet<Service> = [service(
+            battery_service,
+            vec![characteristic(battery_level, battery_service, true)],
+        )]
+        .into_iter()
+        .collect();
+
+        assert!(find_notify_characteristic(&services).is_none());
+    }
+
+    #[test]
+    fn backoff_delay_starts_at_the_base_delay() {
+        assert_eq!(backoff_delay(0), RECONNECT_BASE_DELAY);
+    }
+
+    #[test]
+    fn backoff_delay_doubles_each_attempt() {
+        assert_eq!(backoff_delay(1), Duration::from_secs(4));
+        assert_eq!(backoff_delay(2), Duration::from_secs(8));
+    }
+
+    #[test]
+    fn backoff_delay_caps_at_the_max_delay() {
+        assert_eq!(backoff_delay(5), RECONNECT_MAX_DELAY);
+        // Large attempt counts must not overflow the exponent or panic.
+        assert_eq!(backoff_delay(20), RECONNECT_MAX_DELAY);
+    }
 }
