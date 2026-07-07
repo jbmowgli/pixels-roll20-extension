@@ -8,6 +8,7 @@
 - Roll20 account
 
 **Development Only**:
+
 - Node.js (version 14 or later) - only needed if building from source
 
 ## Installation Options
@@ -17,6 +18,7 @@
 **Fastest method**: Download and install the ready-to-use extension in under 2 minutes.
 
 #### Steps:
+
 1. **Download the Extension**
    - Download `pixels-roll20-extension-store.zip` from the [latest release](../../releases)
    - Or get it directly from the repository root
@@ -42,6 +44,7 @@
 **For developers**: Build the extension yourself from the source code with webpack.
 
 #### Prerequisites:
+
 ```bash
 # Ensure you have Node.js installed
 node --version  # Should be 14 or later
@@ -49,18 +52,22 @@ npm --version   # Should be 6 or later
 ```
 
 #### Steps:
+
 1. **Clone the Repository**
+
    ```bash
    git clone https://github.com/your-username/PixelsRoll20ChromeExtension.git
    cd PixelsRoll20ChromeExtension
    ```
 
 2. **Install Dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Build the Extension with Webpack**
+
    ```bash
    # For development build (faster, includes source maps)
    npm run build
@@ -115,22 +122,22 @@ npm run watch          # Development build with auto-rebuild on file changes
 # Production builds
 npm run build:prod     # Optimized production build
 npm run build:store    # Full store package (lint + test + build)
-npm run zip:store      # Create zip package from dist/ folder
+npm run zip:store      # Create zip package from dist/chrome/ folder
 ```
 
 ### Development Workflow
 
 1. **Make Changes**: Edit files in the `src/` directory
 2. **Build**: Run `npm run build` or `npm run watch` (auto-rebuild)
-3. **Reload Extension**: 
+3. **Reload Extension**:
    - Go to `chrome://extensions/`
    - Click the reload button (🔄) next to the extension
 4. **Test Changes**: Verify functionality in Roll20
 
-1. **Make Changes**: Edit files in the `src/` directory
-2. **Build**: Run `npm run build` to rebuild the `dist/` folder
-3. **Reload Extension**: Click the reload button (🔄) in `chrome://extensions/`
-4. **Test Changes**: Verify your changes work in Roll20
+5. **Make Changes**: Edit files in the `src/` directory
+6. **Build**: Run `npm run build:chrome` to rebuild the `dist/chrome/` folder
+7. **Reload Extension**: Click the reload button (🔄) in `chrome://extensions/`
+8. **Test Changes**: Verify your changes work in Roll20
 
 ## First Use
 
@@ -272,12 +279,12 @@ That's it! Roll your dice and they should appear in Roll20 chat.
 
 ### Pre-built Package Updates
 
-1. **Download Latest Version**: Get the newest `pixels-roll20-extension-store.zip` 
-2. **Remove Old Extension**: 
+1. **Download Latest Version**: Get the newest `pixels-roll20-extension-store.zip`
+2. **Remove Old Extension**:
    - Go to `chrome://extensions/`
    - Find Pixels Roll20 extension
    - Click "Remove" button
-3. **Install New Version**: 
+3. **Install New Version**:
    - Extract new package
    - Load the `dist/` folder using "Load unpacked"
 4. **Verify Update**: Test that new features/fixes are working

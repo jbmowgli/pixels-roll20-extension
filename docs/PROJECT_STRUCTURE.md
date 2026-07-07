@@ -7,7 +7,7 @@ This document outlines the organization of the Pixels Roll20 Chrome Extension pr
 ```
 PixelsRoll20ChromeExtension/
 ├── src/                          # Source code
-│   ├── manifest.json            # Chrome extension manifest (copied to dist/ on build)
+│   ├── manifest.json            # Chrome extension manifest (copied to dist/chrome/ as-is; patched for dist/firefox/ on build)
 │   ├── background/               # Background script
 │   │   └── background.js         # Extension background script
 │   ├── content/                  # Content scripts (injected into Roll20)
@@ -97,7 +97,7 @@ PixelsRoll20ChromeExtension/
 
 ### Core Extension Files
 
-- **src/manifest.json**: Chrome extension configuration and permissions (copied to `dist/manifest.json` at build time)
+- **src/manifest.json**: Chrome extension configuration and permissions (copied to `dist/chrome/manifest.json` as-is, and to `dist/firefox/manifest.json` with Firefox-specific patches at build time)
 - **README.md**: Project documentation and setup instructions
 - **LICENSE**: Project license information
 
@@ -281,17 +281,19 @@ The Roll20 integration has been refactored into focused, single-responsibility m
 
 ## Build Process
 
-The extension is bundled with webpack. Source lives in `src/` as ES modules; the build (`npm run build`) compiles each entry into a standalone file under `dist/`, which is what you load as an unpacked extension or package for the store. `src/manifest.json` is copied to `dist/manifest.json` at build time.
+The extension is bundled with webpack, once per browser target. Source lives in `src/` as ES modules; the build compiles each entry into a standalone file under `dist/chrome/` or `dist/firefox/`, which is what you load as an unpacked extension or package for the store. `src/manifest.json` is the Chrome manifest, copied as-is into `dist/chrome/`; the Firefox build patches a copy of it (event-page background, `nativeMessaging` permission, fixed extension ID) into `dist/firefox/`.
 
 ```bash
-npm run build         # development build → dist/
-npm run build:prod    # minified production build → dist/
-npm run package:store # lint + test + production build + zip
+npm run build:chrome  # development build → dist/chrome/
+npm run build:firefox # development build → dist/firefox/
+npm run build         # both of the above
+npm run build:prod    # minified production build (Chrome) → dist/chrome/
+npm run package:store # lint + test + production build + zip (Chrome)
 ```
 
 ### Module Loading Order
 
-Content scripts are injected in the order defined by `src/manifest.json` (paths are relative to the built `dist/` root):
+Content scripts are injected in the order defined by `src/manifest.json` (paths are relative to the built `dist/chrome/` or `dist/firefox/` root):
 
 ```javascript
 // manifest.json content_scripts.js array:

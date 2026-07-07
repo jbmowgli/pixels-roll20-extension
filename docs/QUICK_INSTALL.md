@@ -59,10 +59,10 @@
 git clone https://github.com/your-username/PixelsRoll20ChromeExtension.git
 cd PixelsRoll20ChromeExtension
 npm install
-npm run build:prod  # Creates optimized dist/ folder
+npm run build:prod  # Creates optimized dist/chrome/ folder
 ```
 
-Then load the `dist/` folder in Chrome → Extensions → Load unpacked.
+Then load the `dist/chrome/` folder in Chrome → Extensions → Load unpacked.
 
 ### Development Commands
 
