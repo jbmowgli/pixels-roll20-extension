@@ -22,17 +22,31 @@ const sendStatusToExtension = window.sendStatusToExtension || function () {};
 // Modern Pixels dice UUIDs
 const PIXELS_SERVICE_UUID = 'a6b90001-7a5a-43f2-a962-350c8edc9b5b';
 const PIXELS_NOTIFY_CHARACTERISTIC = 'a6b90002-7a5a-43f2-a962-350c8edc9b5b';
-const _PIXELS_WRITE_CHARACTERISTIC = 'a6b90003-7a5a-43f2-a962-350c8edc9b5b';
+const PIXELS_WRITE_CHARACTERISTIC = 'a6b90003-7a5a-43f2-a962-350c8edc9b5b';
 
 // Legacy Pixels dice UUIDs (for older dice)
 const PIXELS_LEGACY_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const PIXELS_LEGACY_NOTIFY_CHARACTERISTIC =
   '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
-const _PIXELS_LEGACY_WRITE_CHARACTERISTIC =
+const PIXELS_LEGACY_WRITE_CHARACTERISTIC =
   '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 
 // Global pixels array
 const pixels = [];
+
+// Die type enum from the Pixels BLE protocol (IAmADie message)
+const DIE_TYPE_FACES = {
+  0: 0, // Unknown
+  1: 4, // D4
+  2: 6, // D6
+  3: 8, // D8
+  4: 10, // D10
+  5: 100, // D00 (percentile)
+  6: 12, // D12
+  7: 20, // D20
+  8: 6, // D6 Pipped
+  9: 6, // D6 Fudge
+};
 
 // Reconnection strategy: 'unknown' until first attempt, then 'watch' or 'poll'
 let reconnectionStrategy = 'unknown';
@@ -76,6 +90,7 @@ export const createPixel = (name, server, device) => {
   let _connectionMonitor = null;
   let _lastActivity = Date.now();
   let _face = null;
+  let _dieType = null; // Parsed from IAmADie BLE message (number of faces)
 
   // Private methods
   const setNotifyCharacteristic = notify => {
@@ -207,13 +222,19 @@ export const createPixel = (name, server, device) => {
       _lastActivity = Date.now(); // Track activity for connection monitoring
 
       const value = event.target.value;
-      const arr = [];
-      // Convert raw data bytes to hex values just for the sake of showing something.
-      for (let i = 0; i < value.byteLength; i++) {
-        arr.push(`0x${`00${value.getUint8(i).toString(16)}`.slice(-2)}`);
-      }
 
-      if (value.getUint8(0) === 3) {
+      const messageType = value.getUint8(0);
+
+      if (messageType === 2 && value.byteLength >= 4) {
+        // IAmADie message: parse die type
+        // Legacy format: [type=2, ledCount, colorway, dieType, ...]
+        const dieTypeEnum = value.getUint8(3);
+        const faces = DIE_TYPE_FACES[dieTypeEnum] || 0;
+        if (faces > 0) {
+          _dieType = faces;
+          log(`Pixel ${_name} identified as d${faces}`);
+        }
+      } else if (messageType === 3) {
         handleFaceEvent(value.getUint8(1), value.getUint8(2));
       }
     } catch (error) {
@@ -253,7 +274,7 @@ export const createPixel = (name, server, device) => {
       // Route roll through the batcher for multi-dice grouping
       const batcher = window.RollBatcher;
       if (batcher && batcher.addRoll) {
-        const dieType = batcher.parseDieType(_name, diceValue);
+        const dieType = _dieType || batcher.parseDieType(_name, diceValue);
         batcher.addRoll({
           dieName: _name,
           dieType,
@@ -312,6 +333,9 @@ export const createPixel = (name, server, device) => {
     },
     get lastFaceUp() {
       return _face;
+    },
+    get dieType() {
+      return _dieType;
     },
     setNotifyCharacteristic,
     startConnectionMonitoring,
@@ -407,6 +431,31 @@ const findNotifyCharacteristic = async server => {
   throw new Error(
     'No Pixels notify characteristic found on device. The die may use an unsupported firmware or service UUID.'
   );
+};
+
+// Send WhoAreYou (message type 1) to request IAmADie response with die type.
+// Non-blocking: failures are silently ignored since dice may send IAmADie
+// automatically, or the die type will fall back to inference from the name/value.
+const sendWhoAreYou = async server => {
+  const writeUuids = [
+    { service: PIXELS_SERVICE_UUID, write: PIXELS_WRITE_CHARACTERISTIC },
+    {
+      service: PIXELS_LEGACY_SERVICE_UUID,
+      write: PIXELS_LEGACY_WRITE_CHARACTERISTIC,
+    },
+  ];
+
+  for (const { service: serviceUuid, write: writeUuid } of writeUuids) {
+    try {
+      const service = await server.getPrimaryService(serviceUuid);
+      const writeChar = await service.getCharacteristic(writeUuid);
+      const whoAreYou = new Uint8Array([1]); // MessageType.WhoAreYou = 1
+      await writeChar.writeValue(whoAreYou);
+      return;
+    } catch {
+      // Try next UUID pair
+    }
+  }
 };
 
 // Main Bluetooth connection logic using functional approach
@@ -682,6 +731,9 @@ export const connectToPixelByName = async name => {
 
     await notifyChar.startNotifications();
 
+    // Request die identification (triggers IAmADie response with die type)
+    sendWhoAreYou(server);
+
     let pixel;
     if (existingPixel) {
       existingPixel.reconnect(server, notifyChar);
@@ -829,6 +881,9 @@ const watchForDeviceAndConnect = device => {
 
       const notifyChar = await findNotifyCharacteristic(server);
       await notifyChar.startNotifications();
+
+      // Request die identification (triggers IAmADie response with die type)
+      sendWhoAreYou(server);
 
       // Reuse existing pixel or create new one
       let pixel = getPixelByDeviceId(device.id, pixels);
