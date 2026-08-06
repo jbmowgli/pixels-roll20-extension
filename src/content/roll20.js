@@ -12,6 +12,7 @@ import {
   disconnectAllPixels,
   getPixels,
 } from './modules/PixelsBluetooth.js';
+import { setupChatInterception } from './modules/PixelsCommand.js';
 import {
   sendTextToExtension,
   sendStatusToExtension,
@@ -24,6 +25,14 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
   // Global modifier variables (accessed by modifierBox.js)
   window.pixelsModifier = '0';
   window.pixelsModifierName = 'Modifier 1';
+  window.pixelsAllowUnprompted = true; // Default: process all rolls
+
+  // Load saved unprompted setting
+  if (typeof chrome !== 'undefined' && chrome.storage) {
+    chrome.storage.local.get('pixels_allow_unprompted', result => {
+      window.pixelsAllowUnprompted = result.pixels_allow_unprompted !== false;
+    });
+  }
 
   // Initialize modules and set up message handling
   function initializeExtension() {
@@ -33,6 +42,9 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
 
     // Initialize the Bluetooth module
     initializePixelsBluetooth();
+
+    // Initialize /pixels chat command interception
+    setupChatInterception();
 
     // Expose functions to global scope for backwards compatibility
     window.connectToPixel = connectToPixel;
@@ -90,6 +102,10 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
 
             case 'hideModifier':
               window.hideModifierBox();
+              break;
+
+            case 'setAllowUnprompted':
+              window.pixelsAllowUnprompted = msg.value !== false;
               break;
 
             case 'getCurrentRows': {
@@ -301,14 +317,26 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
     // Load modifier settings from localStorage
     window.loadModifierSettings();
 
-    // Show modifier box by default after a delay
+    // Initialize the modifier box and apply saved visibility after DOM settles
     setTimeout(() => {
       try {
-        // Only show modifier box if not in a popup window
-        if (!window.isRoll20PopupWindow()) {
-          window.showModifierBox();
-        } else {
+        if (window.isRoll20PopupWindow()) {
           window.log('Skipping modifier box in popup window');
+          return;
+        }
+        // Apply saved visibility preferences
+        const shouldShowUnprompted = window.pixelsAllowUnprompted !== false;
+        if (!shouldShowUnprompted) {
+          return;
+        }
+        if (typeof chrome !== 'undefined' && chrome.storage) {
+          chrome.storage.local.get('pixels_modifier_box_visible', result => {
+            if (result.pixels_modifier_box_visible !== false) {
+              window.showModifierBox();
+            }
+          });
+        } else {
+          window.showModifierBox();
         }
       } catch (error) {
         window.log(`Error showing modifier box: ${error}`);

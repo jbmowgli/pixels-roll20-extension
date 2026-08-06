@@ -15,7 +15,10 @@ import { saveKnownDie } from '../../utils/knownDiceStorage.js';
 const log = window.log || console.log;
 const postChatMessage = window.postChatMessage || function () {};
 const sendTextToExtension = window.sendTextToExtension || function () {};
-const sendStatusToExtension = window.sendStatusToExtension || function () {};
+
+// Resolved lazily because roll20.js sets this after PixelsBluetooth loads
+const getSendStatusToExtension = () =>
+  window.sendStatusToExtension || function () {};
 
 // Pixels dice UUIDs from the official Pixels JS SDK
 
@@ -174,7 +177,7 @@ export const createPixel = (name, server, device) => {
           _connectionMonitor = null;
         }
         log(`Pixel ${_name} marked as disconnected`);
-        sendStatusToExtension();
+        getSendStatusToExtension()();
       }
       _disconnectionTimeout = null;
     }, 1000); // 1 second debounce
@@ -201,7 +204,7 @@ export const createPixel = (name, server, device) => {
     }
 
     log(`Pixel ${_name} reconnected successfully`);
-    sendStatusToExtension();
+    getSendStatusToExtension()();
   };
 
   const disconnect = () => {
@@ -283,7 +286,23 @@ export const createPixel = (name, server, device) => {
         ? parseInt(window.pixelsModifier) || 0
         : 0;
 
-      // Route roll through the batcher for multi-dice grouping
+      // Route roll through the prompt (if active) or the batcher
+      const command = window.PixelsCommand;
+      if (command && command.isPromptActive()) {
+        const dieType =
+          _dieType ||
+          (window.RollBatcher &&
+            window.RollBatcher.parseDieType(_name, diceValue)) ||
+          diceValue;
+        command.offerRoll(dieType, diceValue);
+        return;
+      }
+
+      // If unprompted rolls are disabled, ignore rolls outside of /pix prompts
+      if (!window.pixelsAllowUnprompted) {
+        return;
+      }
+
       const batcher = window.RollBatcher;
       if (batcher && batcher.addRoll) {
         const dieType = _dieType || batcher.parseDieType(_name, diceValue);
@@ -557,7 +576,7 @@ const _handleDeviceDisconnection = device => {
   if (pixel) {
     pixel.markDisconnected();
     sendTextToExtension(`Pixel ${device.name} disconnected`);
-    sendStatusToExtension();
+    getSendStatusToExtension()();
 
     // Attempt to reconnect after a delay
     setTimeout(() => {
@@ -668,7 +687,7 @@ const attemptPollReconnection = async (device, pixel) => {
       sendTextToExtension(
         `Failed to reconnect to ${pixel.name} after ${maxAttempts} attempts`
       );
-      sendStatusToExtension();
+      getSendStatusToExtension()();
     }
   }
 };
@@ -794,7 +813,7 @@ export const disconnectAllPixels = () => {
 
   log(`Disconnected ${connectedPixels.length} pixels`);
   sendTextToExtension(`Disconnected ${connectedPixels.length} pixels`);
-  sendStatusToExtension();
+  getSendStatusToExtension()();
 };
 
 // Get pixels list
@@ -828,7 +847,7 @@ const setupGlobalCleanup = () => {
       if (activePixels.length !== pixels.length) {
         pixels.length = 0;
         pixels.push(...activePixels);
-        sendStatusToExtension();
+        getSendStatusToExtension()();
       }
     }, 300000); // Check every 5 minutes instead of 1 minute
   } catch (error) {
@@ -924,7 +943,7 @@ const watchForDeviceAndConnect = device => {
 
       log(`Silently reconnected to ${deviceName}`);
       sendTextToExtension(`Reconnected to ${deviceName}`);
-      sendStatusToExtension();
+      getSendStatusToExtension()();
       saveKnownDie(deviceName);
     } catch (error) {
       log(`Silent reconnection to ${deviceName} failed: ${error.message}`);

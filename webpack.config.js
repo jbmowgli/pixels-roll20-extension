@@ -24,6 +24,7 @@ module.exports = {
     'content/modules/Roll20Integration':
       './src/content/modules/Roll20Integration.js',
     'content/modules/RollBatcher': './src/content/modules/RollBatcher.js',
+    'content/modules/PixelsCommand': './src/content/modules/PixelsCommand.js',
     'content/modules/StorageManager': './src/content/modules/StorageManager.js',
     'content/modules/ModifierBoxManager':
       './src/content/modules/ModifierBoxManager.js',
