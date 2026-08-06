@@ -154,7 +154,15 @@ function showText(txt) {
 function sendMessage(data, responseCallback) {
   chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
     if (tabs[0]?.id) {
-      chrome.tabs.sendMessage(tabs[0].id, data, responseCallback);
+      chrome.tabs.sendMessage(tabs[0].id, data, response => {
+        if (chrome.runtime.lastError) {
+          // Content script not available (tab not on Roll20, page not loaded, etc.)
+          return;
+        }
+        if (responseCallback) {
+          responseCallback(response);
+        }
+      });
     }
   });
 }
@@ -540,17 +548,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Setup button event handlers directly to avoid tree-shaking
   const connectBtn = document.getElementById('connect');
-  const showModifierBtn = document.getElementById('showModifier');
-  const hideModifierBtn = document.getElementById('hideModifier');
 
   if (connectBtn) {
     connectBtn.onclick = () => sendMessage({ action: 'connect' });
   }
-  if (showModifierBtn) {
-    showModifierBtn.onclick = () => sendMessage({ action: 'showModifier' });
+
+  // Modifier box toggle
+  const toggleModBox = document.getElementById('toggleModifierBox');
+  if (toggleModBox) {
+    // Load saved state
+    chrome.storage.local.get('pixels_modifier_box_visible', result => {
+      toggleModBox.checked = result.pixels_modifier_box_visible !== false;
+    });
+
+    toggleModBox.addEventListener('change', () => {
+      const visible = toggleModBox.checked;
+      chrome.storage.local.set({ pixels_modifier_box_visible: visible });
+      sendMessage({
+        action: visible ? 'showModifier' : 'hideModifier',
+      });
+    });
   }
-  if (hideModifierBtn) {
-    hideModifierBtn.onclick = () => sendMessage({ action: 'hideModifier' });
+
+  // Unprompted rolls toggle
+  const allowUnpromptedCb = document.getElementById('allowUnprompted');
+  if (allowUnpromptedCb) {
+    const updateModifierVisibility = allowed => {
+      const modBtns = document.getElementById('modifierButtons');
+      const profilesSec = document.getElementById('profilesSection');
+      if (modBtns) {
+        modBtns.style.display = allowed ? 'flex' : 'none';
+      }
+      if (profilesSec) {
+        profilesSec.style.display = allowed ? 'flex' : 'none';
+      }
+      if (!allowed) {
+        sendMessage({ action: 'hideModifier' });
+        chrome.storage.local.set({ pixels_modifier_box_visible: false });
+      }
+    };
+
+    // Load saved state
+    chrome.storage.local.get('pixels_allow_unprompted', result => {
+      const allowed = result.pixels_allow_unprompted !== false; // default true
+      allowUnpromptedCb.checked = allowed;
+      updateModifierVisibility(allowed);
+      sendMessage({ action: 'setAllowUnprompted', value: allowed });
+    });
+
+    allowUnpromptedCb.addEventListener('change', () => {
+      const allowed = allowUnpromptedCb.checked;
+      chrome.storage.local.set({ pixels_allow_unprompted: allowed });
+      updateModifierVisibility(allowed);
+      sendMessage({ action: 'setAllowUnprompted', value: allowed });
+      if (allowed) {
+        sendMessage({ action: 'showModifier' });
+        const toggleModBox = document.getElementById('toggleModifierBox');
+        if (toggleModBox) {
+          toggleModBox.checked = true;
+        }
+      }
+    });
   }
 
   // Profiles UI

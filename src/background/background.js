@@ -37,4 +37,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true; // Will respond asynchronously
   }
+
+  if (request.action === 'updateBadge') {
+    const count = request.count || 0;
+    const text = count > 0 ? count.toString() : '';
+    if (sender.tab?.id) {
+      chrome.action.setBadgeText({ text, tabId: sender.tab.id });
+      chrome.action.setBadgeBackgroundColor({
+        color: count > 0 ? '#4ade80' : '#666666',
+        tabId: sender.tab.id,
+      });
+    }
+    return false;
+  }
 });

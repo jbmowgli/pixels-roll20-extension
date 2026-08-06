@@ -65,6 +65,12 @@ export const sendStatusToExtension = async () => {
       `${connectedPixels.length}/${totalToShow} Pixels connected`
     );
   }
+
+  // Update the extension icon badge with the connected count
+  sendMessageToExtension({
+    action: 'updateBadge',
+    count: connectedPixels.length,
+  });
 };
 
 export const setupMessageListener = () => {
@@ -115,18 +121,6 @@ export const setupMessageListener = () => {
                   }
                 }
               }
-            }
-            break;
-
-          case 'showModifier':
-            if (window.showModifierBox) {
-              window.showModifierBox();
-            }
-            break;
-
-          case 'hideModifier':
-            if (window.hideModifierBox) {
-              window.hideModifierBox();
             }
             break;
 
