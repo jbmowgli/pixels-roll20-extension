@@ -23,6 +23,7 @@ module.exports = {
     'content/modules/PopupDetection': './src/content/modules/PopupDetection.js',
     'content/modules/Roll20Integration':
       './src/content/modules/Roll20Integration.js',
+    'content/modules/RollBatcher': './src/content/modules/RollBatcher.js',
     'content/modules/StorageManager': './src/content/modules/StorageManager.js',
     'content/modules/ModifierBoxManager':
       './src/content/modules/ModifierBoxManager.js',

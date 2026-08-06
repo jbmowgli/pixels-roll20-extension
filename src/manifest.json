@@ -41,6 +41,7 @@
         "content/modules/Utils.js",
         "content/modules/PopupDetection.js",
         "content/modules/Roll20Integration.js",
+        "content/modules/RollBatcher.js",
         "content/modules/StorageManager.js",
         "content/modules/ModifierBoxManager.js",
         "content/modules/PixelsBluetooth.js",
