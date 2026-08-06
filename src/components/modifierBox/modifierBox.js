@@ -312,8 +312,6 @@ function hideModifierBox() {
   if (modifierBox) {
     modifierBox.style.setProperty('display', 'none', 'important');
     setModifierBoxVisible(false);
-  } else {
-    console.error('Cannot hide - modifierBox is null');
   }
 }
 

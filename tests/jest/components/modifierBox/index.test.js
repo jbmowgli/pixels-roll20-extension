@@ -365,9 +365,8 @@ describe('ModifierBox Main Module', () => {
 
       window.ModifierBox.hide();
 
-      expect(console.error).toHaveBeenCalledWith(
-        'Cannot hide - modifierBox is null'
-      );
+      // Hiding when no box exists is a no-op, not an error
+      expect(console.error).not.toHaveBeenCalled();
     });
   });
 
