@@ -6,14 +6,16 @@ The Pixels Roll20 Chrome Extension connects your physical Pixels dice to Roll20 
 
 ### Key Features
 
-- **Multi-Device Support**: Connect multiple Pixels dice simultaneously
-- **Automatic Roll Detection**: Physical dice rolls appear in Roll20 chat
+- **Multi-Dice Grouping**: Physical rolls from multiple dice are grouped into a single formula display
+- **Prompted Rolls**: Use `/pix` in chat to specify exactly which dice to roll
+- **Auto-Reconnect**: Previously connected dice reconnect silently on page load
+- **Connection Status**: Extension icon badge shows how many dice are connected
 - **Modifier Management**: Add/edit/remove modifiers with a floating UI
 - **Pop-out Window**: Detach the modifier box into its own always-on-top window (great for a second monitor)
 - **Profiles**: Save, load, and update named sets of modifiers, and import/export them to a file
-- **Persistent Layout**: Remembers the box's minimized/full-size state between sessions
+- **Persistent Layout**: Remembers the box's minimized/full-size and visible state between sessions
 - **Theme Adaptation**: Automatically matches Roll20's light/dark theme
-- **Reliable Connection**: Robust Bluetooth connection management with device identification
+- **Reliable Connection**: Robust Bluetooth connection management with BLE die type detection
 
 ## Getting Started
 
@@ -181,6 +183,51 @@ Pixel Dice: [6]
 ```
 
 This creates a clean, uncluttered experience when you don't need modifier details.
+
+## Prompted Rolls (/pixels command)
+
+For situations where you need to roll a specific formula, use the `/pixels` chat command (also accepts `/pixel` or `/pix`).
+
+### Basic Usage
+
+Type in the Roll20 chat:
+
+```
+/pix 2d6+5
+/pixels 1d20+8
+/pix 4d6kh3
+```
+
+An overlay appears showing the dice you need to roll. As each die lands, its slot fills in. Once all slots are filled, the result posts to chat automatically.
+
+### Supported Syntax
+
+| Formula       | Description                               |
+| ------------- | ----------------------------------------- |
+| `2d6`         | Roll two d6                               |
+| `1d20+5`      | Roll one d20 with +5 modifier             |
+| `4d6kh3`      | Roll 4d6, keep highest 3 (ability scores) |
+| `2d20kl1`     | Roll 2d20, keep lowest (disadvantage)     |
+| `4d6dl1`      | Roll 4d6, drop lowest 1                   |
+| `d%`          | Roll percentile (prompts for d00 + d10)   |
+| `1d20cs20cf1` | Roll d20 with critical on 20, fumble on 1 |
+| `2d6+1d8+3`   | Mixed dice with flat modifier             |
+
+### Behavior
+
+- **Wrong die type**: If you roll a die that doesn't match any waiting slot, the overlay shakes to indicate rejection
+- **Cancel**: Click the ✕ button to abort the prompted roll
+- **Crit/Fumble**: When triggered, the title bar shows a CRITICAL or FUMBLE indicator
+- **Keep/Drop**: Dropped dice appear with strikethrough in the result
+
+### Unprompted vs Prompted Mode
+
+The popup has an "Allow unprompted rolls" toggle:
+
+- **On (default)**: All dice rolls are processed and posted to chat immediately. The modifier box and profiles are available.
+- **Off**: Only rolls triggered by `/pix` commands are processed. Rolling dice without an active prompt does nothing. The modifier box is hidden.
+
+This is useful when you want precise control over when rolls appear in chat — for example, to avoid accidental rolls while handling dice between turns.
 
 ## Advanced Features
 

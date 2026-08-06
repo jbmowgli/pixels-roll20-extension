@@ -18,7 +18,11 @@ This project was originally inspired by the [Pixels on Roll20](https://github.co
 ## Features
 
 - Connect Pixels dice via Bluetooth
-- Physical rolls appear instantly in Roll20 chat
+- Multi-dice roll grouping with formula display (e.g., "Rolling 2d6")
+- `/pixels` chat command for prompted rolls with keep/drop and crit/fumble
+- Silent auto-reconnect to previously connected dice
+- Configurable roll window for building larger formulas with fewer dice
+- Icon badge showing connected dice count
 - Floating modifier box with custom values
 - Drag and resize interface
 - Pop the modifier box out into its own always-on-top window (Chrome/Edge 116+)
@@ -28,6 +32,8 @@ This project was originally inspired by the [Pixels on Roll20](https://github.co
 - Supports both modern and legacy Pixels dice
 - Auto theme matching (light/dark)
 - Multi-dice support
+- BLE die type detection (d4, d6, d8, d10, d00, d12, d20)
+- Percentile (d%) combo handling
 
 ## Quick Start
 
@@ -52,12 +58,15 @@ npm run build:prod  # Creates dist/ folder for Chrome
 
 ## Usage Overview
 
-- **Connect dice**: Click extension icon → "Connect"
-- **Show/hide modifier box**: Use popup buttons (only way to fully close)
-- **Add modifiers**: Click "Add" in the modifier box
-- **Minimize box**: Click "−" button to collapse (the state is remembered between sessions)
-- **Pop out box**: Click "⧉" to detach the box into an always-on-top window; click again or close the window to dock it back
-- **Save a profile**: In the popup, type a name → "Save" to store the current modifiers
+- **Connect dice**: Click extension icon → "Connect to Pixel"
+- **Prompted rolls**: Type `/pix 2d6+5` in Roll20 chat to prompt for specific dice
+- **Unprompted rolls**: Roll connected dice any time — results post automatically
+- **Toggle modes**: Use "Allow unprompted rolls" checkbox in the popup
+- **Modifier box**: Toggle visibility from the popup (hidden when unprompted is off)
+- **Roll window**: Adjust the slider in the modifier box to batch multiple rolls
+- **Minimize box**: Click "−" button to collapse (state remembered between sessions)
+- **Pop out box**: Click "⧉" to detach into an always-on-top window
+- **Save a profile**: In the popup, type a name → "Save" to store current modifiers
 - **Load/Update a profile**: Click "Load" on a saved profile; use "Update ↻" to overwrite the active profile with the current setup
 - **Import/Export**: Back up or move profiles between browsers via the popup's "Export All"/"Import" buttons, or "Export" a single profile from its row
 - **Roll dice**: Physical rolls automatically appear in chat
