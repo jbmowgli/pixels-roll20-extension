@@ -42,6 +42,7 @@ export function setupModifierBoxComponents(modifierBox, clearAllCallback) {
     setupThemeManagement(modifierBox);
     setupDragAndDrop(modifierBox);
     setupPositioning(modifierBox);
+    setupRollWindowSlider(modifierBox);
     setupCleanupHandlers();
 
     modifierBox.setAttribute('data-components-setup', 'true');
@@ -229,6 +230,46 @@ function setupDragAndDrop(modifierBox) {
   } else {
     console.warn('RowDragDrop not available - drag and drop disabled');
   }
+}
+
+function setupRollWindowSlider(modifierBox) {
+  const slider = modifierBox.querySelector('.roll-window-slider');
+  const valueDisplay = modifierBox.querySelector('.roll-window-value');
+  if (!slider || !valueDisplay) {
+    return;
+  }
+
+  // Load saved value from localStorage
+  try {
+    const saved = localStorage.getItem('pixels_roll_window_seconds');
+    if (saved) {
+      const savedValue = parseInt(saved, 10);
+      if (savedValue >= 1 && savedValue <= 10) {
+        slider.value = savedValue;
+        valueDisplay.textContent = savedValue;
+        if (window.RollBatcher) {
+          window.RollBatcher.setWindowMs(savedValue * 1000);
+        }
+      }
+    }
+  } catch {
+    // localStorage unavailable, use default
+  }
+
+  slider.addEventListener('input', () => {
+    const seconds = parseInt(slider.value, 10);
+    valueDisplay.textContent = seconds;
+
+    if (window.RollBatcher) {
+      window.RollBatcher.setWindowMs(seconds * 1000);
+    }
+
+    try {
+      localStorage.setItem('pixels_roll_window_seconds', seconds.toString());
+    } catch {
+      // localStorage unavailable
+    }
+  });
 }
 
 function setupPositioning(modifierBox) {
