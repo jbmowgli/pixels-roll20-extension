@@ -9,6 +9,7 @@
  */
 
 import { curry, pipe, map, filter, find, propEq, prop } from 'ramda';
+import { saveKnownDie } from '../../utils/knownDiceStorage.js';
 
 // Utility functions
 const log = window.log || console.log;
@@ -228,7 +229,6 @@ export const createPixel = (name, server, device) => {
       }
     } else if (ev === 1) {
       _face = face;
-      const txt = `${_name}: face up = ${face + 1}`;
 
       // Check if modifier box is visible to determine modifier application
       const isModifierBoxVisible =
@@ -249,40 +249,37 @@ export const createPixel = (name, server, device) => {
       const modifier = isModifierBoxVisible
         ? parseInt(window.pixelsModifier) || 0
         : 0;
-      const result = diceValue + modifier;
 
-      // Choose formula based on modifier box visibility
-      let formula = isModifierBoxVisible
-        ? pixelsFormulaWithModifier
-        : pixelsFormulaSimple;
+      // Route roll through the batcher for multi-dice grouping
+      const batcher = window.RollBatcher;
+      if (batcher && batcher.addRoll) {
+        const dieType = batcher.parseDieType(_name, diceValue);
+        batcher.addRoll({
+          dieName: _name,
+          dieType,
+          faceValue: diceValue,
+          modifier,
+          modifierName: window.pixelsModifierName,
+          isModifierBoxVisible,
+        });
+      } else {
+        // Fallback: post immediately if batcher unavailable
+        const result = diceValue + modifier;
+        const formula = isModifierBoxVisible
+          ? pixelsFormulaWithModifier
+          : pixelsFormulaSimple;
 
-      // Add critical hit message if face value is 20
-      if (diceValue === 20 && isModifierBoxVisible) {
-        formula = formula.replace(
-          '{{Pixel=#face_value}}',
-          '{{&#128293; <span style="color: #ff4444; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">CRITICAL!</span> &#128293;}} {{Pixel=#face_value}}'
-        );
+        const message = formula
+          .replaceAll('#modifier_name', window.pixelsModifierName)
+          .replaceAll('#modifier_sign', formatModifierSign(modifier))
+          .replaceAll('#face_value', diceValue.toString())
+          .replaceAll('#pixel_name', _name)
+          .replaceAll('#modifier', modifier.toString())
+          .replaceAll('#result', result.toString());
+
+        message.split('\\n').forEach(s => postChatMessage(s));
+        sendTextToExtension(`${_name}: face up = ${diceValue}`);
       }
-
-      // Add fumble message if face value is 1
-      if (diceValue === 1 && isModifierBoxVisible) {
-        formula = formula.replace(
-          '{{Pixel=#face_value}}',
-          '{{&#128128; <span style="color: #888888; font-size: 16px; font-style: italic; opacity: 0.7;">FUMBLE!</span> &#128128;}} {{Pixel=#face_value}}'
-        );
-      }
-
-      const message = formula
-        .replaceAll('#modifier_name', window.pixelsModifierName)
-        .replaceAll('#modifier_sign', formatModifierSign(modifier))
-        .replaceAll('#face_value', diceValue.toString())
-        .replaceAll('#pixel_name', _name)
-        .replaceAll('#modifier', modifier.toString())
-        .replaceAll('#result', result.toString());
-
-      message.split('\\n').forEach(s => postChatMessage(s));
-
-      sendTextToExtension(txt);
     }
   };
 
@@ -477,8 +474,15 @@ const connectToNewPixel = async () => {
     log(`Connected to ${device.name}`);
     sendTextToExtension(`Connected to ${device.name}`);
 
+    // Remember this die for quick reconnect in the popup
+    saveKnownDie(device.name);
+
     return pixel;
   } catch (error) {
+    if (error.name === 'NotFoundError') {
+      log('User cancelled the device chooser');
+      return null;
+    }
     log(`Connection failed: ${error.message}`);
     throw error;
   }
@@ -650,6 +654,73 @@ const attemptReconnection = async (device, pixel) => {
 // Export the main connection function
 export const connectToPixel = connectToNewPixel;
 
+// Connect to a specific die by name (filters the Bluetooth chooser)
+export const connectToPixelByName = async name => {
+  if (!navigator.bluetooth) {
+    const error = new Error('Bluetooth not supported in this browser');
+    log(error.message);
+    throw error;
+  }
+
+  const filters = [{ name }];
+
+  try {
+    const device = await navigator.bluetooth.requestDevice({
+      filters,
+      optionalServices: [PIXELS_SERVICE_UUID, PIXELS_LEGACY_SERVICE_UUID],
+    });
+
+    const existingPixel = getPixelByDeviceId(device.id, pixels);
+
+    if (existingPixel && isConnected(existingPixel)) {
+      log(`Already connected to ${device.name} (ID: ${device.id})`);
+      return existingPixel;
+    }
+
+    const server = await device.gatt.connect();
+    const notifyChar = await findNotifyCharacteristic(server);
+
+    await notifyChar.startNotifications();
+
+    let pixel;
+    if (existingPixel) {
+      existingPixel.reconnect(server, notifyChar);
+      pixel = existingPixel;
+    } else {
+      pixel = createPixel(device.name, server, device);
+      pixel.setNotifyCharacteristic(notifyChar);
+      pixels.push(pixel);
+    }
+
+    pixel.updateActivity();
+    pixel.startConnectionMonitoring();
+
+    if (!pixel._hasDisconnectListener) {
+      device.addEventListener('gattserverdisconnected', () => {
+        log(`Device ${device.name} disconnected`);
+        pixel.markDisconnected();
+        setTimeout(() => {
+          attemptReconnection(device, pixel);
+        }, 5000);
+      });
+      pixel._hasDisconnectListener = true;
+    }
+
+    log(`Connected to ${device.name}`);
+    sendTextToExtension(`Connected to ${device.name}`);
+    saveKnownDie(device.name);
+
+    return pixel;
+  } catch (error) {
+    if (error.name === 'NotFoundError') {
+      log('User cancelled the device chooser');
+      return null;
+    }
+    log(`Connection to ${name} failed: ${error.message}`);
+    throw error;
+  }
+};
+
 // Disconnect all pixels using functional approach
 export const disconnectAllPixels = () => {
   const connectedPixels = getConnectedPixels(pixels);
@@ -701,7 +772,9 @@ const setupGlobalCleanup = () => {
   }
 };
 
-// Attempt silent reconnection to previously-permitted devices
+// Attempt silent reconnection to previously-permitted devices.
+// Uses watchAdvertisements to listen indefinitely for each known die to
+// start advertising, then connects GATT and sets up notifications.
 const reconnectKnownDevices = async () => {
   if (!navigator.bluetooth || !navigator.bluetooth.getDevices) {
     log('getDevices() not available, skipping silent reconnection');
@@ -716,7 +789,7 @@ const reconnectKnownDevices = async () => {
     }
 
     log(
-      `Found ${devices.length} previously-permitted device(s), attempting reconnection`
+      `Found ${devices.length} previously-permitted device(s), watching for advertisements`
     );
 
     for (const device of devices) {
@@ -726,20 +799,83 @@ const reconnectKnownDevices = async () => {
         continue;
       }
 
-      // Create or reuse pixel entry
-      let pixel = existingPixel;
-      if (!pixel) {
-        pixel = createPixel(device.name || 'Unknown Pixel', null, device);
-        pixel._isConnected = false;
+      watchForDeviceAndConnect(device);
+    }
+  } catch (error) {
+    log(`Silent reconnection setup failed: ${error.message}`);
+  }
+};
+
+// Watch for a single device's advertisements and connect when seen.
+// The listener stays active indefinitely until the device advertises.
+const watchForDeviceAndConnect = device => {
+  const deviceName = device.name || 'Unknown Pixel';
+
+  const handleAdvertisement = async () => {
+    log(`Advertisement received from ${deviceName}, connecting...`);
+
+    // Remove this listener so we don't double-connect
+    device.removeEventListener('advertisementreceived', handleAdvertisement);
+
+    try {
+      const server = await device.gatt.connect();
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      if (!server.connected) {
+        log(`${deviceName} connection lost immediately, will keep watching`);
+        watchForDeviceAndConnect(device);
+        return;
+      }
+
+      const notifyChar = await findNotifyCharacteristic(server);
+      await notifyChar.startNotifications();
+
+      // Reuse existing pixel or create new one
+      let pixel = getPixelByDeviceId(device.id, pixels);
+      if (pixel) {
+        pixel.reconnect(server, notifyChar, device);
+      } else {
+        pixel = createPixel(deviceName, server, device);
+        pixel.setNotifyCharacteristic(notifyChar);
         pixels.push(pixel);
       }
 
-      // Attempt reconnection using dual-path strategy
-      attemptReconnection(device, pixel);
+      pixel.updateActivity();
+      pixel.startConnectionMonitoring();
+
+      if (!pixel._hasDisconnectListener) {
+        device.addEventListener('gattserverdisconnected', () => {
+          log(`Device ${deviceName} disconnected`);
+          pixel.markDisconnected();
+          // Re-watch for the device to come back
+          setTimeout(() => {
+            watchForDeviceAndConnect(device);
+          }, 2000);
+        });
+        pixel._hasDisconnectListener = true;
+      }
+
+      log(`Silently reconnected to ${deviceName}`);
+      sendTextToExtension(`Reconnected to ${deviceName}`);
+      sendStatusToExtension();
+      saveKnownDie(deviceName);
+    } catch (error) {
+      log(`Silent reconnection to ${deviceName} failed: ${error.message}`);
+      // Retry watching — the die may have stopped advertising briefly
+      setTimeout(() => {
+        watchForDeviceAndConnect(device);
+      }, 5000);
     }
-  } catch (error) {
-    log(`Silent reconnection failed: ${error.message}`);
-  }
+  };
+
+  device.addEventListener('advertisementreceived', handleAdvertisement);
+
+  device.watchAdvertisements().catch(error => {
+    if (error.name !== 'InvalidStateError') {
+      // InvalidStateError means already watching, which is fine
+      log(`watchAdvertisements failed for ${deviceName}: ${error.message}`);
+    }
+  });
 };
 
 // Initialize the module
