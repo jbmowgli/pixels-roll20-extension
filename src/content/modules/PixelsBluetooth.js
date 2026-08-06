@@ -250,6 +250,7 @@ export const createPixel = (name, server, device) => {
       }
     } else if (ev === 1) {
       _face = face;
+      _hasMoved = false; // Require movement before next roll registers
 
       // Check if modifier box is visible to determine modifier application
       const isModifierBoxVisible =
@@ -266,7 +267,18 @@ export const createPixel = (name, server, device) => {
         window.ModifierBox.syncGlobalVars();
       }
 
-      const diceValue = face + 1;
+      // Calculate face value based on die type
+      // d00 (percentile): faces represent 00, 10, 20... 90
+      // d10: faces represent 0-9 as printed on the die
+      // All other dice: face index + 1
+      let diceValue;
+      if (_dieType === 100) {
+        diceValue = face === 0 ? 100 : face * 10;
+      } else if (_dieType === 10) {
+        diceValue = face;
+      } else {
+        diceValue = face + 1;
+      }
       const modifier = isModifierBoxVisible
         ? parseInt(window.pixelsModifier) || 0
         : 0;

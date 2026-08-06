@@ -134,6 +134,61 @@ function postSingleRoll(roll) {
  * Post a grouped multi-dice roll with formula, individual results, and sum.
  */
 function postGroupedRoll(rolls) {
+  // Detect percentile combo: exactly one d% and one d10
+  const percentileRolls = rolls.filter(r => r.dieType === 100);
+  const d10Rolls = rolls.filter(r => r.dieType === 10);
+  const otherRolls = rolls.filter(r => r.dieType !== 100 && r.dieType !== 10);
+
+  if (percentileRolls.length === 1 && d10Rolls.length === 1) {
+    const percentileResult = computePercentileValue(
+      percentileRolls[0].faceValue,
+      d10Rolls[0].faceValue
+    );
+    // Combine into a single virtual "d%" roll
+    const combinedRolls = [
+      ...otherRolls,
+      {
+        dieName: `${percentileRolls[0].dieName}+${d10Rolls[0].dieName}`,
+        dieType: 101, // Special marker for combined percentile
+        faceValue: percentileResult,
+        modifier: rolls[0].modifier,
+        modifierName: rolls[0].modifierName,
+        isModifierBoxVisible: rolls[0].isModifierBoxVisible,
+      },
+    ];
+
+    if (combinedRolls.length === 1) {
+      postSingleRoll(combinedRolls[0]);
+      const diceNames = `${percentileRolls[0].dieName}, ${d10Rolls[0].dieName}`;
+      getSendTextToExtension()(`${diceNames}: d% = ${percentileResult}`);
+      return;
+    }
+    // If there are other dice beyond the percentile pair, post as grouped
+    postGroupedRollFromList(combinedRolls);
+    return;
+  }
+
+  postGroupedRollFromList(rolls);
+}
+
+/**
+ * Compute percentile value from d% and d10 face values.
+ * d%=100 (the "00" face), d10=0 → 100; d%=100, d10=X → X; otherwise d%+d10.
+ */
+function computePercentileValue(percentileFace, d10Face) {
+  if (percentileFace === 100 && d10Face === 0) {
+    return 100;
+  }
+  if (percentileFace === 100) {
+    return d10Face;
+  }
+  return percentileFace + d10Face;
+}
+
+/**
+ * Post a grouped roll from a pre-processed list of rolls.
+ */
+function postGroupedRollFromList(rolls) {
   const firstRoll = rolls[0];
   const { modifier, modifierName, isModifierBoxVisible } = firstRoll;
 
@@ -141,22 +196,24 @@ function postGroupedRoll(rolls) {
   const totalDiceValue = rolls.reduce((sum, r) => sum + r.faceValue, 0);
 
   const formulaParts = buildDiceFormulaParts(rollsByType);
-  const individualValues = rolls
+
+  // Sort rolls by die type to match the formula ordering
+  const sortedRolls = [...rolls].sort((a, b) => a.dieType - b.dieType);
+  const individualValues = sortedRolls
     .map(r => `<span title="${r.dieName}">${r.faceValue}</span>`)
     .join(' + ');
 
   let message;
   if (isModifierBoxVisible && modifier !== 0) {
     const modifierSign = formatModifierSign(modifier);
-    const diceExpr = rolls.map(r => r.faceValue).join('+');
+    const diceExpr = sortedRolls.map(r => r.faceValue).join('+');
     message =
       `&{template:default} {{name=${modifierName} (Pixels Dice)}}` +
       ` {{Rolling=${formulaParts}${modifierSign}}}` +
       ` {{Dice=( ${individualValues} ) ${modifierSign}}}` +
       ` {{Result=[[(${diceExpr})+${modifier}[${modifierName}]]]}}`;
   } else {
-    // Use inline roll so hover shows: Rolling (2+5+6+4+2) = 19
-    const diceExpr = rolls.map(r => r.faceValue).join('+');
+    const diceExpr = sortedRolls.map(r => r.faceValue).join('+');
     message =
       `&{template:default} {{name=Pixels Dice}}` +
       ` {{Rolling=${formulaParts}}}` +
@@ -193,7 +250,17 @@ function buildDiceFormulaParts(rollsByType) {
     .map(Number)
     .sort((a, b) => a - b);
   return sortedTypes
-    .map(type => `${rollsByType[type].length}d${type}`)
+    .map(type => {
+      let label;
+      if (type === 101) {
+        label = 'd%';
+      } else if (type === 100) {
+        label = 'd00';
+      } else {
+        label = `d${type}`;
+      }
+      return `${rollsByType[type].length}${label}`;
+    })
     .join(' + ');
 }
 
@@ -209,9 +276,11 @@ function buildSingleWithModifierFormula(
 ) {
   const modifierSign = formatModifierSign(modifier);
   const diceWithHover = `<span title="${dieName}">${faceValue}</span>`;
+  const dieLabel =
+    dieType === 101 ? 'd%' : dieType === 100 ? 'd00' : `d${dieType}`;
   return (
     `&{template:default} {{name=${modifierName} (Pixels Dice)}}` +
-    ` {{Rolling=1d${dieType}${modifierSign}}}` +
+    ` {{Rolling=1${dieLabel}${modifierSign}}}` +
     ` {{Dice=${diceWithHover} ${modifierSign}}}` +
     ` {{Result=[[${faceValue}+${modifier}[${modifierName}]]]}}`
   );
@@ -222,9 +291,11 @@ function buildSingleWithModifierFormula(
  */
 function buildSingleSimpleFormula(faceValue, dieType, dieName) {
   const diceWithHover = `<span title="${dieName}">${faceValue}</span>`;
+  const dieLabel =
+    dieType === 101 ? 'd%' : dieType === 100 ? 'd00' : `d${dieType}`;
   return (
     `&{template:default} {{name=Pixels Dice}}` +
-    ` {{Rolling=1d${dieType}}}` +
+    ` {{Rolling=1${dieLabel}}}` +
     ` {{Dice=${diceWithHover}}}` +
     ` {{Result=[[${faceValue}]]}}`
   );
