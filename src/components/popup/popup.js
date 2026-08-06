@@ -10,6 +10,7 @@ import {
   exportProfile,
   importProfiles,
 } from '../../utils/profileStorage.js';
+import { getKnownDice, removeKnownDie } from '../../utils/knownDiceStorage.js';
 
 // Simple theme detection and CSS loading
 function detectAndApplyTheme() {
@@ -155,6 +156,80 @@ function sendMessage(data, responseCallback) {
     if (tabs[0]?.id) {
       chrome.tabs.sendMessage(tabs[0].id, data, responseCallback);
     }
+  });
+}
+
+// --- Known Dice ---------------------------------------------------------------
+
+async function renderKnownDice() {
+  const section = document.getElementById('knownDiceSection');
+  const list = document.getElementById('knownDiceList');
+  if (!section || !list) {
+    return;
+  }
+
+  let dice = [];
+  try {
+    dice = await getKnownDice();
+  } catch {
+    dice = [];
+  }
+
+  if (dice.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  // Query which dice are currently connected
+  const connectedNames = await new Promise(resolve => {
+    sendMessage({ action: 'getConnectedDice' }, response => {
+      if (chrome.runtime.lastError || !response) {
+        resolve([]);
+      } else {
+        resolve(response.connected || []);
+      }
+    });
+  });
+
+  section.style.display = 'flex';
+  list.innerHTML = '';
+
+  dice.forEach(die => {
+    const isConnected = connectedNames.includes(die.name);
+
+    const li = document.createElement('li');
+    li.className = isConnected
+      ? 'known-dice-item connected'
+      : 'known-dice-item';
+
+    const statusDot = document.createElement('span');
+    statusDot.className = isConnected
+      ? 'known-dice-status connected'
+      : 'known-dice-status';
+    statusDot.title = isConnected ? 'Connected' : 'Disconnected';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'known-dice-name';
+    nameSpan.textContent = die.name;
+
+    const reconnectBtn = document.createElement('button');
+    reconnectBtn.className = 'known-dice-btn reconnect';
+    reconnectBtn.textContent = 'Reconnect';
+    reconnectBtn.onclick = () =>
+      sendMessage({ action: 'reconnect', name: die.name });
+
+    const forgetBtn = document.createElement('button');
+    forgetBtn.className = 'known-dice-btn forget';
+    forgetBtn.textContent = 'Forget';
+    forgetBtn.onclick = () => {
+      removeKnownDie(die.name).then(() => renderKnownDice());
+    };
+
+    li.appendChild(statusDot);
+    li.appendChild(nameSpan);
+    li.appendChild(reconnectBtn);
+    li.appendChild(forgetBtn);
+    list.appendChild(li);
   });
 }
 
@@ -435,6 +510,7 @@ function importProfilesFromFile(file) {
 chrome.runtime.onMessage.addListener((request, _sender, _sendResponse) => {
   if (request.action === 'showText') {
     showText(request.text);
+    renderKnownDice();
   } else if (request.action === 'modifierChanged') {
     // Store the modifier value when changed from floating box
     chrome.storage.sync.set({ modifier: request.modifier });
@@ -450,6 +526,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
     // Poll status every 5 seconds while popup is open to catch silent state changes
     setInterval(() => {
       sendMessage({ action: 'getStatus' });
+      renderKnownDice();
     }, 5000);
   }
 });
@@ -507,6 +584,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   renderProfiles();
+  renderKnownDice();
 
   detectAndApplyTheme();
 });

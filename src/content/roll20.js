@@ -8,6 +8,7 @@
 import {
   initialize as initializePixelsBluetooth,
   connectToPixel,
+  connectToPixelByName,
   disconnectAllPixels,
   getPixels,
 } from './modules/PixelsBluetooth.js';
@@ -35,6 +36,7 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
 
     // Expose functions to global scope for backwards compatibility
     window.connectToPixel = connectToPixel;
+    window.connectToPixelByName = connectToPixelByName;
     window.disconnectAllPixels = disconnectAllPixels;
     window.getPixels = getPixels;
     window.sendTextToExtension = sendTextToExtension;
@@ -168,9 +170,33 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
               })();
               break;
 
+            case 'reconnect':
+              // Reconnect to a specific die by name (filtered Bluetooth chooser)
+              (async () => {
+                try {
+                  await connectToPixelByName(msg.name);
+                } catch (error) {
+                  log(`Error reconnecting to ${msg.name}: ${error.message}`);
+                  if (typeof window.sendTextToExtension === 'function') {
+                    window.sendTextToExtension(
+                      `Failed to reconnect to ${msg.name}: ${error.message}`
+                    );
+                  }
+                }
+              })();
+              break;
+
             case 'disconnect':
               disconnectAllPixels();
               break;
+
+            case 'getConnectedDice': {
+              const connectedNames = getPixels()
+                .filter(p => p.isConnected)
+                .map(p => p.name);
+              sendResponse({ connected: connectedNames });
+              return true;
+            }
 
             case 'getTheme': {
               // Get current theme from ThemeDetector
