@@ -188,13 +188,16 @@ async function renderKnownDice() {
     return;
   }
 
-  // Query which dice are currently connected
-  const connectedNames = await new Promise(resolve => {
+  // Query which dice are currently connected (with battery info)
+  const diceStatus = await new Promise(resolve => {
     sendMessage({ action: 'getConnectedDice' }, response => {
       if (chrome.runtime.lastError || !response) {
-        resolve([]);
+        resolve({ connected: [], batteryLevels: {} });
       } else {
-        resolve(response.connected || []);
+        resolve({
+          connected: response.connected || [],
+          batteryLevels: response.batteryLevels || {},
+        });
       }
     });
   });
@@ -203,7 +206,8 @@ async function renderKnownDice() {
   list.innerHTML = '';
 
   dice.forEach(die => {
-    const isConnected = connectedNames.includes(die.name);
+    const isConnected = diceStatus.connected.includes(die.name);
+    const battery = diceStatus.batteryLevels[die.name];
 
     const li = document.createElement('li');
     li.className = isConnected
@@ -235,6 +239,13 @@ async function renderKnownDice() {
 
     li.appendChild(statusDot);
     li.appendChild(nameSpan);
+    if (isConnected && battery !== undefined) {
+      const batterySpan = document.createElement('span');
+      batterySpan.className = 'known-dice-battery';
+      batterySpan.textContent = `🔋${battery}%`;
+      batterySpan.title = `Battery: ${battery}%`;
+      li.appendChild(batterySpan);
+    }
     li.appendChild(reconnectBtn);
     li.appendChild(forgetBtn);
     list.appendChild(li);

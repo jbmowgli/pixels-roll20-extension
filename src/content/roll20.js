@@ -207,10 +207,15 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
               break;
 
             case 'getConnectedDice': {
-              const connectedNames = getPixels()
-                .filter(p => p.isConnected)
-                .map(p => p.name);
-              sendResponse({ connected: connectedNames });
+              const connectedPixels = getPixels().filter(p => p.isConnected);
+              const connected = connectedPixels.map(p => p.name);
+              const batteryLevels = {};
+              connectedPixels.forEach(p => {
+                if (p.batteryLevel !== null) {
+                  batteryLevels[p.name] = p.batteryLevel;
+                }
+              });
+              sendResponse({ connected, batteryLevels });
               return true;
             }
 

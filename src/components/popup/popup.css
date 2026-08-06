@@ -540,3 +540,9 @@ body {
   border-color: #f87171;
   color: #f87171;
 }
+
+.known-dice-battery {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #9999a6;
+}

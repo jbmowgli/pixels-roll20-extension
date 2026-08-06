@@ -94,6 +94,7 @@ export const createPixel = (name, server, device) => {
   let _lastActivity = Date.now();
   let _face = null;
   let _dieType = null; // Parsed from IAmADie BLE message (number of faces)
+  let _batteryLevel = null; // Battery percentage from IAmADie message (0-100)
 
   // Private methods
   const setNotifyCharacteristic = notify => {
@@ -229,13 +230,19 @@ export const createPixel = (name, server, device) => {
       const messageType = value.getUint8(0);
 
       if (messageType === 2 && value.byteLength >= 4) {
-        // IAmADie message: parse die type
-        // Legacy format: [type=2, ledCount, colorway, dieType, ...]
+        // IAmADie message: parse die type and battery level
+        // Format: [type=2, ledCount, colorway, dieType, dataSetHash(4), pixelId(4),
+        //          availableFlash(2), buildTimestamp(4), rollState, faceIndex,
+        //          batteryLevelPercent, batteryState]
         const dieTypeEnum = value.getUint8(3);
         const faces = DIE_TYPE_FACES[dieTypeEnum] || 0;
         if (faces > 0) {
           _dieType = faces;
           log(`Pixel ${_name} identified as d${faces}`);
+        }
+        if (value.byteLength >= 21) {
+          _batteryLevel = value.getUint8(20);
+          log(`Pixel ${_name} battery: ${_batteryLevel}%`);
         }
       } else if (messageType === 3) {
         handleFaceEvent(value.getUint8(1), value.getUint8(2));
@@ -367,6 +374,9 @@ export const createPixel = (name, server, device) => {
     },
     get dieType() {
       return _dieType;
+    },
+    get batteryLevel() {
+      return _batteryLevel;
     },
     setNotifyCharacteristic,
     startConnectionMonitoring,
