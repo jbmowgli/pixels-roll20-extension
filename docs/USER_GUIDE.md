@@ -136,6 +136,30 @@ Simply roll your connected Pixels dice normally. The extension automatically:
 
 The extension automatically adapts the chat display based on modifier box visibility:
 
+#### Multi-Dice Roll Grouping
+
+When you roll multiple dice within a short time, the extension groups them into a single chat message showing the formula, individual results, and total:
+
+```
+Pixels Dice
+Rolling:  2d6
+Dice:     (4 + 5)
+Result:   9
+```
+
+#### Roll Window Slider
+
+The modifier box includes a **Roll window** slider (1–10 seconds) at the bottom. This controls how long the extension waits after the last die lands before posting the result. The timer resets each time a die settles, so you have the full window after your _last_ die lands.
+
+This lets you build larger formulas with fewer physical dice. For example, to roll 4d6 with only two d6 dice:
+
+1. Set the roll window to 5–6 seconds
+2. Roll your two d6 dice — they register
+3. Pick them up and roll again before the timer expires
+4. All four results are grouped into a single "4d6" message
+
+The setting is saved and persists between sessions.
+
 #### Modifier Box Visible (Detailed Mode)
 
 When the modifier box is shown, chat messages include full breakdown:
@@ -176,6 +200,27 @@ This creates a clean, uncluttered experience when you don't need modifier detail
 - Extension monitors connection status
 - Automatic reconnection attempts
 - Connection status visible in popup
+
+### Auto-Reconnect (Silent Reconnection)
+
+The extension can silently reconnect to your dice when you reload Roll20, without showing the Bluetooth chooser dialog. This requires enabling Chrome's experimental Bluetooth permissions:
+
+1. Navigate to `chrome://flags/#enable-web-bluetooth-new-permissions-backend`
+2. Set it to **Enabled**
+3. Relaunch Chrome
+
+Once enabled, the extension watches for your previously connected dice to start advertising (which happens when they wake up or are rolled). When detected, it reconnects automatically — no dialog, no clicks. You'll see the status count in the popup increment as each die comes online.
+
+**Without the flag**: The extension still remembers your dice and offers quick "Reconnect" buttons in the popup that open a pre-filtered Bluetooth chooser (showing only that specific die), reducing it to a single confirmation click.
+
+### Known Dice and Status
+
+The popup shows a "Known Dice" section listing all previously connected dice with:
+
+- **Green dot**: Die is currently connected
+- **Grey dot**: Die is remembered but not connected
+- **Reconnect**: Opens a filtered Bluetooth chooser for that specific die
+- **Forget**: Removes the die from the remembered list
 
 ## Best Practices
 
