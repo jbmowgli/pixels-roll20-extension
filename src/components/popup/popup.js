@@ -205,6 +205,14 @@ async function renderKnownDice() {
   section.style.display = 'flex';
   list.innerHTML = '';
 
+  // Sort: connected first, then alphabetical within each group
+  dice.sort((a, b) => {
+    const aConnected = diceStatus.connected.includes(a.name);
+    const bConnected = diceStatus.connected.includes(b.name);
+    if (aConnected !== bConnected) return aConnected ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+
   dice.forEach(die => {
     const isConnected = diceStatus.connected.includes(die.name);
     const battery = diceStatus.batteryLevels[die.name];
