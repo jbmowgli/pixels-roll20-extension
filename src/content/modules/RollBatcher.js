@@ -173,16 +173,18 @@ function postGroupedRoll(rolls) {
 
 /**
  * Compute percentile value from d% and d10 face values.
- * d%=100 (the "00" face), d10=0 → 100; d%=100, d10=X → X; otherwise d%+d10.
+ * d10 value of 10 represents the "0" face for percentile purposes.
+ * d%=100 (the "00" face), d10=10 → 100; d%=100, d10=X → X; otherwise d%+d10.
  */
 function computePercentileValue(percentileFace, d10Face) {
-  if (percentileFace === 100 && d10Face === 0) {
+  const d10AsZero = d10Face === 10 ? 0 : d10Face;
+  if (percentileFace === 100 && d10AsZero === 0) {
     return 100;
   }
   if (percentileFace === 100) {
-    return d10Face;
+    return d10AsZero;
   }
-  return percentileFace + d10Face;
+  return percentileFace + d10AsZero;
 }
 
 /**

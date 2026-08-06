@@ -279,13 +279,13 @@ export const createPixel = (name, server, device) => {
 
       // Calculate face value based on die type
       // d00 (percentile): faces represent 00, 10, 20... 90
-      // d10: faces represent 0-9 as printed on the die
+      // d10: faces represent 1-10 (0 face reads as 10)
       // All other dice: face index + 1
       let diceValue;
       if (_dieType === 100) {
         diceValue = face === 0 ? 100 : face * 10;
       } else if (_dieType === 10) {
-        diceValue = face;
+        diceValue = face === 0 ? 10 : face;
       } else {
         diceValue = face + 1;
       }
