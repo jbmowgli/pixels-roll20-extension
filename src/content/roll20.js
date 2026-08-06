@@ -11,6 +11,7 @@ import {
   connectToPixelByName,
   disconnectAllPixels,
   getPixels,
+  findPixelByName,
 } from './modules/PixelsBluetooth.js';
 import { setupChatInterception } from './modules/PixelsCommand.js';
 import {
@@ -205,6 +206,31 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
             case 'disconnect':
               disconnectAllPixels();
               break;
+
+            case 'disconnectByName': {
+              const pixel = findPixelByName(msg.name, getPixels());
+              if (pixel) {
+                pixel.disconnect();
+                log(`Disconnected ${msg.name}`);
+              }
+              break;
+            }
+
+            case 'forgetByName': {
+              const pixelToForget = findPixelByName(msg.name, getPixels());
+              if (pixelToForget) {
+                const device = pixelToForget.device;
+                pixelToForget.destroy();
+                if (device && device.forget) {
+                  device
+                    .forget()
+                    .catch(err =>
+                      log(`Could not un-pair ${msg.name}: ${err.message}`)
+                    );
+                }
+              }
+              break;
+            }
 
             case 'getConnectedDice': {
               const connectedPixels = getPixels().filter(p => p.isConnected);

@@ -224,19 +224,6 @@ async function renderKnownDice() {
     nameSpan.className = 'known-dice-name';
     nameSpan.textContent = die.name;
 
-    const reconnectBtn = document.createElement('button');
-    reconnectBtn.className = 'known-dice-btn reconnect';
-    reconnectBtn.textContent = 'Reconnect';
-    reconnectBtn.onclick = () =>
-      sendMessage({ action: 'reconnect', name: die.name });
-
-    const forgetBtn = document.createElement('button');
-    forgetBtn.className = 'known-dice-btn forget';
-    forgetBtn.textContent = 'Forget';
-    forgetBtn.onclick = () => {
-      removeKnownDie(die.name).then(() => renderKnownDice());
-    };
-
     li.appendChild(statusDot);
     li.appendChild(nameSpan);
     if (isConnected && battery !== undefined) {
@@ -246,8 +233,34 @@ async function renderKnownDice() {
       batterySpan.title = `Battery: ${battery}%`;
       li.appendChild(batterySpan);
     }
-    li.appendChild(reconnectBtn);
-    li.appendChild(forgetBtn);
+
+    if (isConnected) {
+      const disconnectBtn = document.createElement('button');
+      disconnectBtn.className = 'known-dice-btn forget';
+      disconnectBtn.textContent = 'Disconnect';
+      disconnectBtn.onclick = () => {
+        sendMessage({ action: 'disconnectByName', name: die.name });
+        setTimeout(() => renderKnownDice(), 500);
+      };
+      li.appendChild(disconnectBtn);
+    } else {
+      const reconnectBtn = document.createElement('button');
+      reconnectBtn.className = 'known-dice-btn reconnect';
+      reconnectBtn.textContent = 'Reconnect';
+      reconnectBtn.onclick = () =>
+        sendMessage({ action: 'reconnect', name: die.name });
+
+      const forgetBtn = document.createElement('button');
+      forgetBtn.className = 'known-dice-btn forget';
+      forgetBtn.textContent = 'Forget';
+      forgetBtn.onclick = () => {
+        sendMessage({ action: 'forgetByName', name: die.name });
+        removeKnownDie(die.name).then(() => renderKnownDice());
+      };
+
+      li.appendChild(reconnectBtn);
+      li.appendChild(forgetBtn);
+    }
     list.appendChild(li);
   });
 }
