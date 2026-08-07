@@ -308,11 +308,17 @@ async function renderKnownDice() {
   section.style.display = 'flex';
   list.innerHTML = '';
 
-  // Sort: connected first, then alphabetical within each group
+  // Sort: connected first, then by die type, then alphabetical by name
+  const dieTypeOrder = { 4: 0, 6: 1, 8: 2, 10: 3, 100: 3, 12: 4, 20: 5 };
   dice.sort((a, b) => {
     const aConnected = diceStatus.connected.includes(a.name);
     const bConnected = diceStatus.connected.includes(b.name);
     if (aConnected !== bConnected) return aConnected ? -1 : 1;
+    const aType = diceStatus.dieTypes[a.name] || a.dieType || null;
+    const bType = diceStatus.dieTypes[b.name] || b.dieType || null;
+    const aOrder = dieTypeOrder[aType] ?? 99;
+    const bOrder = dieTypeOrder[bType] ?? 99;
+    if (aOrder !== bOrder) return aOrder - bOrder;
     return a.name.localeCompare(b.name);
   });
 
