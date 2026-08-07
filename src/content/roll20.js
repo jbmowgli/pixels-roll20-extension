@@ -236,12 +236,16 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
               const connectedPixels = getPixels().filter(p => p.isConnected);
               const connected = connectedPixels.map(p => p.name);
               const batteryLevels = {};
+              const dieTypes = {};
               connectedPixels.forEach(p => {
                 if (p.batteryLevel !== null) {
                   batteryLevels[p.name] = p.batteryLevel;
                 }
+                if (p.dieType !== null) {
+                  dieTypes[p.name] = p.dieType;
+                }
               });
-              sendResponse({ connected, batteryLevels });
+              sendResponse({ connected, batteryLevels, dieTypes });
               return true;
             }
 

@@ -492,16 +492,20 @@ body {
   text-overflow: ellipsis;
 }
 
-.known-dice-status {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.known-dice-icon {
   flex-shrink: 0;
-  background-color: #666666;
+  color: #666666;
+  --dice-icon-edge: #333333;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.known-dice-status.connected {
-  background-color: #4ade80;
+.known-dice-icon.connected {
+  color: #4ade80;
+  --dice-icon-edge: #166534;
 }
 
 .known-dice-item.connected {

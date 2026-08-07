@@ -29,8 +29,10 @@ export function getKnownDice() {
 /**
  * Add or update a die in the known dice list.
  * Moves existing entries to the top (most recently connected).
+ * @param {string} name - The die name.
+ * @param {number} [dieType] - Number of faces (4, 6, 8, 10, 12, 20, 100).
  */
-export function saveKnownDie(name) {
+export function saveKnownDie(name, dieType) {
   return new Promise(resolve => {
     if (typeof chrome === 'undefined' || !chrome.storage) {
       resolve();
@@ -38,8 +40,13 @@ export function saveKnownDie(name) {
     }
     chrome.storage.local.get(STORAGE_KEY, result => {
       const dice = result[STORAGE_KEY] || [];
+      const existing = dice.find(d => d.name === name);
       const filtered = dice.filter(d => d.name !== name);
-      filtered.unshift({ name, lastConnected: Date.now() });
+      filtered.unshift({
+        name,
+        lastConnected: Date.now(),
+        dieType: dieType || existing?.dieType || null,
+      });
       chrome.storage.local.set({ [STORAGE_KEY]: filtered }, resolve);
     });
   });

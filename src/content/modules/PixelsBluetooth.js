@@ -239,6 +239,7 @@ export const createPixel = (name, server, device) => {
         if (faces > 0) {
           _dieType = faces;
           log(`Pixel ${_name} identified as d${faces}`);
+          saveKnownDie(_name, faces);
         }
         if (value.byteLength >= 21) {
           _batteryLevel = value.getUint8(20);
