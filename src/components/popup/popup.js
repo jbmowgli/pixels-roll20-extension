@@ -146,8 +146,8 @@ function applyTheme(theme) {
   }
 }
 
-function showText(txt) {
-  document.getElementById('text').innerHTML = txt;
+function showText() {
+  // Status messages are now handled by the Known Dice count label
 }
 
 // Send message to injected JS
@@ -307,6 +307,13 @@ async function renderKnownDice() {
 
   section.style.display = 'flex';
   list.innerHTML = '';
+
+  // Update connected/total count
+  const countLabel = document.getElementById('knownDiceCount');
+  if (countLabel) {
+    const connectedCount = diceStatus.connected.length;
+    countLabel.textContent = `${connectedCount}/${dice.length}`;
+  }
 
   // Sort: connected first, then by die type, then alphabetical by name
   const dieTypeOrder = { 4: 0, 6: 1, 8: 2, 10: 3, 100: 3, 12: 4, 20: 5 };
@@ -668,7 +675,6 @@ function importProfilesFromFile(file) {
 // Listen on messages from injected JS
 chrome.runtime.onMessage.addListener((request, _sender, _sendResponse) => {
   if (request.action === 'showText') {
-    showText(request.text);
     renderKnownDice();
   } else if (request.action === 'modifierChanged') {
     // Store the modifier value when changed from floating box

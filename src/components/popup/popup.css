@@ -60,6 +60,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  border-top: 1px solid #444444;
+  padding-top: 16px;
 }
 
 .connection-status {
@@ -76,6 +78,14 @@ body {
   color: #cccccc;
   font-size: 13px;
   font-weight: normal;
+}
+
+.status-text-inline {
+  color: #999999;
+  font-size: 11px;
+  font-weight: normal;
+  min-height: 0;
+  padding: 2px 0;
 }
 
 /* Modifier Section */
@@ -234,6 +244,15 @@ body {
   font-size: 13px;
   font-weight: bold;
   color: #cccccc;
+  display: flex;
+  align-items: center;
+}
+
+.dice-count-label {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: normal;
+  color: #999999;
 }
 
 .active-profile-banner {
