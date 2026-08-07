@@ -550,3 +550,11 @@ body {
   font-size: 11px;
   color: #9999a6;
 }
+
+.known-dice-battery.battery-low {
+  color: #fbbf24;
+}
+
+.known-dice-battery.battery-critical {
+  color: #f87171;
+}

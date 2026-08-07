@@ -348,7 +348,15 @@ async function renderKnownDice() {
     if (isConnected && battery !== undefined) {
       const batterySpan = document.createElement('span');
       batterySpan.className = 'known-dice-battery';
-      batterySpan.textContent = `🔋${battery}%`;
+      if (battery <= 15) {
+        batterySpan.classList.add('battery-critical');
+        batterySpan.textContent = `🪫${battery}%`;
+      } else if (battery <= 30) {
+        batterySpan.classList.add('battery-low');
+        batterySpan.textContent = `🔋${battery}%`;
+      } else {
+        batterySpan.textContent = `🔋${battery}%`;
+      }
       batterySpan.title = `Battery: ${battery}%`;
       li.appendChild(batterySpan);
     }
