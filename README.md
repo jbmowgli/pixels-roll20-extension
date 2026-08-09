@@ -19,7 +19,10 @@ This project was originally inspired by the [Pixels on Roll20](https://github.co
 
 - Connect Pixels dice via Bluetooth
 - Multi-dice roll grouping with formula display (e.g., "Rolling 2d6")
-- `/pixels` chat command for prompted rolls with keep/drop and crit/fumble
+- `/pixels` chat command for prompted rolls with full Roll20 dice syntax
+- `/gmpixels` chat command for GM-only whispered prompted rolls
+- Full Roll20 dice specification: keep/drop, count successes, exploding, compounding, penetrating, reroll
+- Dynamic explosion slots — new dice slots appear as explosions trigger
 - Silent auto-reconnect to previously connected dice
 - Configurable roll window for building larger formulas with fewer dice
 - Icon badge showing connected dice count
@@ -60,6 +63,7 @@ npm run build:prod  # Creates dist/ folder for Chrome
 
 - **Connect dice**: Click extension icon → "Connect to Pixel"
 - **Prompted rolls**: Type `/pix 2d6+5` in Roll20 chat to prompt for specific dice
+- **GM whisper rolls**: Type `/gmpix 1d20+8` to whisper the result to the GM only
 - **Unprompted rolls**: Roll connected dice any time — results post automatically
 - **Toggle modes**: Use "Allow unprompted rolls" checkbox in the popup
 - **Modifier box**: Toggle visibility from the popup (hidden when unprompted is off)

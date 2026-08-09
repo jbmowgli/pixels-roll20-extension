@@ -196,29 +196,70 @@ Type in the Roll20 chat:
 /pix 2d6+5
 /pixels 1d20+8
 /pix 4d6kh3
+/pix 8d6>5
 ```
 
 An overlay appears showing the dice you need to roll. As each die lands, its slot fills in. Once all slots are filled, the result posts to chat automatically.
 
-### Supported Syntax
+<!-- TODO: Add screenshot of dice prompt overlay -->
 
-| Formula       | Description                               |
-| ------------- | ----------------------------------------- |
-| `2d6`         | Roll two d6                               |
-| `1d20+5`      | Roll one d20 with +5 modifier             |
-| `4d6kh3`      | Roll 4d6, keep highest 3 (ability scores) |
-| `2d20kl1`     | Roll 2d20, keep lowest (disadvantage)     |
-| `4d6dl1`      | Roll 4d6, drop lowest 1                   |
-| `d%`          | Roll percentile (prompts for d00 + d10)   |
-| `1d20cs20cf1` | Roll d20 with critical on 20, fumble on 1 |
-| `2d6+1d8+3`   | Mixed dice with flat modifier             |
+### GM Whisper Rolls
+
+Use `/gmpixels` (also `/gmpixel` or `/gmpix`) to whisper the result to the GM only — mirroring Roll20's `/gmroll` behavior:
+
+```
+/gmpix 1d20+5
+/gmpixels 2d6+1d8
+```
+
+The overlay shows "Roll Your Dice (GM Only)" so you know it's a secret roll.
+
+### Supported Formulas
+
+The `/pix` command supports the full Roll20 dice specification:
+
+| Formula     | Description                                |
+| ----------- | ------------------------------------------ |
+| `2d6`       | Roll two d6                                |
+| `1d20+5`    | Roll one d20 with +5 modifier              |
+| `4d6kh3`    | Roll 4d6, keep highest 3 (ability scores)  |
+| `2d20kh1`   | Roll 2d20, keep highest (advantage)        |
+| `2d20kl1`   | Roll 2d20, keep lowest (disadvantage)      |
+| `4d6dl1`    | Roll 4d6, drop lowest 1                    |
+| `8d6>5`     | Roll 8d6, count successes >= 5             |
+| `5d10>8`    | Roll 5d10, count successes >= 8 (WoD)      |
+| `2d6!`      | Roll 2d6, exploding on max                 |
+| `2d6!>4`    | Roll 2d6, exploding on >= 4                |
+| `2d6!!`     | Roll 2d6, compounding (sum into one value) |
+| `2d6!p`     | Roll 2d6, penetrating (-1 per explosion)   |
+| `d%`        | Roll percentile (prompts for d00 + d10)    |
+| `2d6+1d8+3` | Mixed dice with flat modifier              |
+
+> **Note on Roll20 operators**: In Roll20, `>` means "greater than or equal to" and `<` means "less than or equal to." You can also type `>=` or `<=` — they're normalized automatically.
+
+### Exploding Dice
+
+When a die triggers an explosion condition (e.g., rolling max on `2d6!`), a new slot appears in the overlay automatically. Roll the extra die to fill it. If that roll also explodes, another slot appears — and so on, until the chain stops or the safety limit (20 explosions per group) is reached.
+
+Explosion slots are visually distinct in the overlay (amber pulsing border).
+
+### Result Formatting
+
+<!-- TODO: Add screenshot of chat card result -->
+
+The result posts to Roll20 chat using the default template with markdown formatting:
+
+- **Bold** (`**6!**`): Exploding dice and count-successes hits
+- _Italic_ (`*(2)*`): Dropped dice (keep/drop) and non-successes
+- Plain: Normal kept dice
+- Result is displayed in Roll20's native inline roll box (yellow highlight)
 
 ### Behavior
 
 - **Wrong die type**: If you roll a die that doesn't match any waiting slot, the overlay shakes to indicate rejection
 - **Cancel**: Click the ✕ button to abort the prompted roll
-- **Crit/Fumble**: When triggered, the title bar shows a CRITICAL or FUMBLE indicator
-- **Keep/Drop**: Dropped dice appear with strikethrough in the result
+- **Keep/Drop**: Dropped dice appear italicized and parenthesized in the result
+- **Count Successes**: Successes are bolded; the result shows the success count
 
 ### Unprompted vs Prompted Mode
 
