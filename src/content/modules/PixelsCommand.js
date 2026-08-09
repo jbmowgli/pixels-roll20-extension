@@ -2,140 +2,41 @@
  * PixelsCommand.js
  *
  * Intercepts /pixels, /pixel, or /pix commands in the Roll20 chat input.
- * Parses a dice formula (e.g., "2d6+1d8+3"), shows a prompt overlay that
- * collects physical dice rolls by type, and posts the combined result
- * when all slots are filled.
+ * Parses a dice formula using @3d-dice/dice-roller-parser, shows a prompt
+ * overlay that collects physical dice rolls by type, handles dynamic
+ * explosion/reroll slots, and posts the evaluated result when complete.
  */
 
 'use strict';
 
-const COMMAND_PATTERN = /^\/pix(?:el(?:s)?)?(?:\s+(.+))?$/i;
+import {
+  parseFormula,
+  buildSlotsFromAst,
+  checkExplosion,
+  checkReroll,
+  addExplosionSlot,
+  markSlotForReroll,
+  evaluateWithValues,
+  buildEvaluationOrder,
+  isSuccessCountRoll,
+  getFormulaDisplay,
+} from './FormulaEvaluator.js';
 
-// Dice formula token: "2d6kh3", "d20cs>19cf<2", etc.
-const DICE_TOKEN =
-  /(\d*)d(\d+)((?:k[hl]?\d+|d[hl]?\d+)*)((?:cs[<>=]?\d+|cf[<>=]?\d+)*)/gi;
-const PERCENT_TOKEN = /(\d*)d%/gi;
-const MODIFIER_TOKEN = /([+-]\d+)$/;
+const COMMAND_PATTERN = /^\/pix(?:el(?:s)?)?(?:\s+(.+))?$/i;
+const GM_COMMAND_PATTERN = /^\/gmpix(?:el(?:s)?)?(?:\s+(.+))?$/i;
 
 let pendingPrompt = null;
 
 /**
- * Parse a dice formula string into structured roll requirements.
- * Examples:
- *   "2d6+3"       → { dice: [{type:6, count:2}], modifier: 3 }
- *   "4d6kh3"      → { dice: [{type:6, count:4, keep:{high:3}}] }
- *   "1d20cs>19cf1" → { dice: [{type:20, count:1, crit:{success:19, failure:1}}] }
- *   "d%"          → { dice: [{type:100, count:1, percentile:true}, {type:10, count:1, percentile:true}] }
+ * Start a prompted roll session from a parsed formula.
  */
-function parseFormula(formulaStr) {
-  if (!formulaStr || !formulaStr.trim()) {
-    return null;
-  }
-
-  let formula = formulaStr.trim();
-  const dice = [];
-  let match;
-
-  // Expand d% into d100 + d10 (percentile pair)
-  PERCENT_TOKEN.lastIndex = 0;
-  while ((match = PERCENT_TOKEN.exec(formula)) !== null) {
-    const count = parseInt(match[1], 10) || 1;
-    for (let i = 0; i < count; i++) {
-      dice.push({ type: 100, count: 1, percentile: true });
-      dice.push({ type: 10, count: 1, percentile: true });
-    }
-  }
-  // Remove d% tokens so DICE_TOKEN doesn't re-match them
-  formula = formula.replace(PERCENT_TOKEN, '');
-
-  DICE_TOKEN.lastIndex = 0;
-  while ((match = DICE_TOKEN.exec(formula)) !== null) {
-    const count = parseInt(match[1], 10) || 1;
-    const type = parseInt(match[2], 10);
-    if (type <= 0) {
-      continue;
-    }
-
-    const spec = { type, count };
-
-    // Parse keep/drop modifiers
-    const kdStr = match[3];
-    if (kdStr) {
-      const kdMatch = kdStr.match(/(k|d)(h|l)?(\d+)/i);
-      if (kdMatch) {
-        const action = kdMatch[1].toLowerCase(); // k or d
-        const end = (kdMatch[2] || (action === 'k' ? 'h' : 'l')).toLowerCase();
-        const n = parseInt(kdMatch[3], 10);
-        if (action === 'k') {
-          spec.keep = end === 'h' ? { high: n } : { low: n };
-        } else {
-          spec.drop = end === 'h' ? { high: n } : { low: n };
-        }
-      }
-    }
-
-    // Parse crit success/failure markers
-    const csStr = match[4];
-    if (csStr) {
-      spec.crit = {};
-      const csMatch = csStr.match(/cs[<>=]?(\d+)/i);
-      if (csMatch) {
-        spec.crit.success = parseInt(csMatch[1], 10);
-      }
-      const cfMatch = csStr.match(/cf[<>=]?(\d+)/i);
-      if (cfMatch) {
-        spec.crit.failure = parseInt(cfMatch[1], 10);
-      }
-    }
-
-    dice.push(spec);
-  }
-
-  if (dice.length === 0) {
-    return null;
-  }
-
-  let modifier = 0;
-  const modMatch = formula.match(MODIFIER_TOKEN);
-  if (modMatch) {
-    modifier = parseInt(modMatch[1], 10);
-  }
-
-  return { dice, modifier };
-}
-
-/**
- * Build the list of individual slots needed.
- * Each slot tracks which dice spec it belongs to for keep/drop rules.
- */
-function buildSlots(diceSpecs) {
-  const slots = [];
-  for (let specIdx = 0; specIdx < diceSpecs.length; specIdx++) {
-    const spec = diceSpecs[specIdx];
-    for (let i = 0; i < spec.count; i++) {
-      slots.push({ type: spec.type, value: null, specIndex: specIdx });
-    }
-  }
-  return slots;
-}
-
-/**
- * Start a prompted roll session.
- */
-function startPrompt(parsed) {
-  const slots = buildSlots(parsed.dice);
-  pendingPrompt = {
-    slots,
-    diceSpecs: parsed.dice,
-    modifier: parsed.modifier,
-    onComplete: null,
-    onCancel: null,
-  };
+function startPrompt(promptData) {
+  pendingPrompt = promptData;
   showPromptOverlay(pendingPrompt);
 }
 
 /**
- * Attempt to fill a slot with an incoming roll. Returns true if accepted.
+ * Attempt to fill a slot with an incoming roll. Returns true if consumed.
  */
 function offerRoll(dieType, faceValue) {
   if (!pendingPrompt) {
@@ -154,6 +55,25 @@ function offerRoll(dieType, faceValue) {
   }
 
   slot.value = faceValue;
+
+  // Check for explosion: does this value trigger a new slot?
+  const group = pendingPrompt.groups[slot.groupIndex];
+  if (checkExplosion(faceValue, group)) {
+    addExplosionSlot(pendingPrompt, slot.groupIndex);
+  }
+
+  // Check for reroll: does this value need to be re-rolled?
+  // For "rerollOnce", clear the slot once and let the user roll again.
+  // For "reroll", keep clearing until the condition is no longer met.
+  // In practice, for physical dice we only support "rerollOnce" semantics
+  // since we can't force the user to keep rolling until a condition fails.
+  // We'll prompt for one re-roll and accept whatever comes.
+  if (!slot.isReroll && checkReroll(faceValue, group)) {
+    markSlotForReroll(pendingPrompt, pendingPrompt.slots.indexOf(slot));
+    updateOverlaySlots(pendingPrompt);
+    return true;
+  }
+
   updateOverlaySlots(pendingPrompt);
 
   // Check if all slots are filled
@@ -174,248 +94,176 @@ function cancelPrompt() {
 }
 
 /**
- * Compute percentile value from d00 and d10 face values.
+ * Check if a prompt is currently active.
  */
-function computePercentileValue(d100Face, d10Face) {
-  if (d100Face === 100 && d10Face === 0) {
-    return 100;
-  }
-  if (d100Face === 100) {
-    return d10Face;
-  }
-  return d100Face + d10Face;
+function isPromptActive() {
+  return pendingPrompt !== null;
 }
 
 /**
  * Post the completed roll result to chat.
- * Applies keep/drop rules and crit/fumble markers.
+ * Uses dice-roller-parser for full evaluation with collected physical values.
  */
 function completePrompt() {
-  const { slots, diceSpecs, modifier } = pendingPrompt;
   const postChatMessage = window.postChatMessage || function () {};
+  const sendText = window.sendTextToExtension || function () {};
 
-  // Group slots by their spec index
-  const slotsBySpec = {};
-  for (const slot of slots) {
-    if (!slotsBySpec[slot.specIndex]) {
-      slotsBySpec[slot.specIndex] = [];
-    }
-    slotsBySpec[slot.specIndex].push(slot.value);
-  }
+  const formulaStr = pendingPrompt.formula;
+  const isWhisper = pendingPrompt.whisper || false;
+  const evaluationOrder = buildEvaluationOrder(pendingPrompt);
+  const result = evaluateWithValues(formulaStr, evaluationOrder);
 
-  // Combine percentile pairs (d100 + d10) into a single value
-  let hasPercentile = false;
-  const percentileD100Indices = [];
-  const percentileD10Indices = [];
-  for (let i = 0; i < diceSpecs.length; i++) {
-    if (diceSpecs[i].percentile && diceSpecs[i].type === 100) {
-      percentileD100Indices.push(i);
-      hasPercentile = true;
-    }
-    if (diceSpecs[i].percentile && diceSpecs[i].type === 10) {
-      percentileD10Indices.push(i);
-    }
-  }
-
-  // Replace percentile pairs with combined values
-  const combinedPercentiles = [];
-  if (hasPercentile) {
-    for (let p = 0; p < percentileD100Indices.length; p++) {
-      const d100Val = (slotsBySpec[percentileD100Indices[p]] || [])[0] || 0;
-      const d10Val = (slotsBySpec[percentileD10Indices[p]] || [])[0] || 0;
-      const combined = computePercentileValue(d100Val, d10Val);
-      combinedPercentiles.push(combined);
-    }
-  }
-
-  // Apply keep/drop per spec and build display data
-  const allKept = [];
-  const allDropped = [];
-  const formulaSegments = [];
-  let hasCrit = false;
-  let hasFumble = false;
-
-  // Track which percentile pair we're on
-  const percentileSpecIndices = new Set([
-    ...percentileD100Indices,
-    ...percentileD10Indices,
-  ]);
-
-  // Add combined percentile values first
-  if (hasPercentile) {
-    for (const combined of combinedPercentiles) {
-      allKept.push(combined);
-    }
-    const pCount = combinedPercentiles.length;
-    formulaSegments.push(`${pCount > 1 ? pCount : ''}d%`);
-  }
-
-  for (let i = 0; i < diceSpecs.length; i++) {
-    // Skip percentile sub-specs (already handled above)
-    if (percentileSpecIndices.has(i)) {
-      continue;
-    }
-
-    const spec = diceSpecs[i];
-    const values = slotsBySpec[i] || [];
-    const sorted = [...values].sort((a, b) => a - b);
-
-    let kept = [...values];
-    let dropped = [];
-
-    if (spec.keep) {
-      if (spec.keep.high) {
-        const sortedDesc = [...values].sort((a, b) => b - a);
-        kept = sortedDesc.slice(0, spec.keep.high);
-        dropped = sortedDesc.slice(spec.keep.high);
-      } else if (spec.keep.low) {
-        kept = sorted.slice(0, spec.keep.low);
-        dropped = sorted.slice(spec.keep.low);
-      }
-    } else if (spec.drop) {
-      if (spec.drop.low) {
-        dropped = sorted.slice(0, spec.drop.low);
-        kept = sorted.slice(spec.drop.low);
-      } else if (spec.drop.high) {
-        const sortedDesc = [...values].sort((a, b) => b - a);
-        dropped = sortedDesc.slice(0, spec.drop.high);
-        kept = sortedDesc.slice(spec.drop.high);
-      }
-    }
-
-    // Check crit/fumble on kept values
-    if (spec.crit) {
-      for (const v of kept) {
-        if (spec.crit.success && v >= spec.crit.success) {
-          hasCrit = true;
-        }
-        if (spec.crit.failure && v <= spec.crit.failure) {
-          hasFumble = true;
-        }
-      }
-    }
-
-    allKept.push(...kept);
-    allDropped.push(...dropped);
-
-    // Build formula segment
-    const label = spec.type === 100 ? 'd%' : `d${spec.type}`;
-    let segment = `${spec.count}${label}`;
-    if (spec.keep) {
-      const end = spec.keep.high ? 'kh' : 'kl';
-      segment += `${end}${spec.keep.high || spec.keep.low}`;
-    } else if (spec.drop) {
-      const end = spec.drop.high ? 'dh' : 'dl';
-      segment += `${end}${spec.drop.high || spec.drop.low}`;
-    }
-    formulaSegments.push(segment);
-  }
-
-  const formulaParts = formulaSegments.join(' + ');
-  const totalDice = allKept.reduce((sum, v) => sum + v, 0);
-  const total = totalDice + modifier;
-
-  // Build dice display
-  const diceDisplay = buildDiceDisplay(
-    slots,
-    diceSpecs,
-    slotsBySpec,
-    allDropped,
-    percentileSpecIndices,
-    combinedPercentiles
-  );
+  const formulaDisplay = getFormulaDisplay(formulaStr);
+  const isSuccessRoll = isSuccessCountRoll(pendingPrompt);
 
   // Build the chat message
-  let message;
-  const modSign =
-    modifier !== 0
-      ? modifier >= 0
-        ? `+${modifier}`
-        : modifier.toString()
-      : '';
+  const message = buildChatMessage(result, formulaDisplay, isSuccessRoll);
 
-  // Determine crit/fumble display suffix
-  let critText = '';
-  if (hasCrit && hasFumble) {
-    critText = ' &#9876; CRIT & FUMBLE';
-  } else if (hasCrit) {
-    critText = ' &#9876; CRITICAL';
-  } else if (hasFumble) {
-    critText = ' &#9760; FUMBLE';
-  }
-
-  const keptExpr = allKept.join('+');
-
-  if (modifier !== 0) {
-    message =
-      `&{template:default} {{name=Pixels Dice${critText}}}` +
-      ` {{Rolling=${formulaParts}${modSign}}}` +
-      ` {{Dice=${diceDisplay} ${modSign}}}` +
-      ` {{Result=[[(${keptExpr})+${modifier}]]}}`;
+  if (isWhisper) {
+    postChatMessage(`/w gm ${message}`);
   } else {
-    message =
-      `&{template:default} {{name=Pixels Dice${critText}}}` +
-      ` {{Rolling=${formulaParts}}}` +
-      ` {{Dice=${diceDisplay}}}` +
-      ` {{Result=[[(${keptExpr})]]}}`;
+    postChatMessage(message);
   }
 
-  postChatMessage(message);
-
-  const sendText = window.sendTextToExtension || function () {};
-  sendText(`Prompted roll: ${formulaParts}${modSign} = ${total}`);
+  // Send status to extension popup
+  const total = result.value;
+  const whisperLabel = isWhisper ? ' (GM whisper)' : '';
+  sendText(`Prompted roll: ${formulaDisplay} = ${total}${whisperLabel}`);
 
   pendingPrompt = null;
   hideOverlay();
 }
 
 /**
- * Build the dice display string with dropped values shown as strikethrough.
+ * Build a Roll20 chat message from the evaluation result.
  */
-function buildDiceDisplay(
-  slots,
-  diceSpecs,
-  slotsBySpec,
-  allDropped,
-  percentileSpecIndices,
-  combinedPercentiles
-) {
+function buildChatMessage(result, formulaDisplay, isSuccessRoll) {
+  const diceDisplay = buildDiceDisplay(result);
+  const critText = buildCritText(result);
+
+  let resultValue;
+  if (isSuccessRoll) {
+    resultValue = `${result.value} success${result.value !== 1 ? 'es' : ''}`;
+  } else {
+    resultValue = `[[${result.value}]]`;
+  }
+
+  return (
+    `&{template:default} {{name=Pixels Dice${critText}}}` +
+    ` {{Rolling=${formulaDisplay}}}` +
+    ` {{Dice=${diceDisplay}}}` +
+    ` {{Result=${resultValue}}}`
+  );
+}
+
+/**
+ * Build the dice display string from evaluation result.
+ * Shows individual die values, with dropped values as strikethrough
+ * and exploded dice marked.
+ */
+function buildDiceDisplay(result) {
   const parts = [];
-  const droppedTracker = [...allDropped];
-
-  // Show combined percentile values first
-  if (combinedPercentiles && combinedPercentiles.length > 0) {
-    for (const v of combinedPercentiles) {
-      parts.push(`${v}`);
-    }
-  }
-
-  for (let i = 0; i < diceSpecs.length; i++) {
-    // Skip percentile sub-specs
-    if (percentileSpecIndices && percentileSpecIndices.has(i)) {
-      continue;
-    }
-
-    const values = slotsBySpec[i] || [];
-    for (const v of values) {
-      const droppedIdx = droppedTracker.indexOf(v);
-      if (droppedIdx >= 0) {
-        droppedTracker.splice(droppedIdx, 1);
-        parts.push(`~~${v}~~`);
-      } else {
-        parts.push(`${v}`);
-      }
-    }
-  }
-
+  collectDiceDisplayParts(result, parts);
   return `( ${parts.join(' + ')} )`;
 }
 
 /**
- * Check if a prompt is currently active.
+ * Recursively collect display parts from the result tree.
  */
-function isPromptActive() {
-  return pendingPrompt !== null;
+function collectDiceDisplayParts(node, parts) {
+  if (!node) {
+    return;
+  }
+
+  // Single die group with rolls
+  if (node.type === 'die' && node.rolls) {
+    for (const roll of node.rolls) {
+      if (!roll.valid) {
+        parts.push(`~~${roll.roll}~~`);
+      } else if (roll.explode) {
+        parts.push(`**${roll.roll}!**`);
+      } else if (roll.success === true) {
+        parts.push(`**${roll.roll}**`);
+      } else if (roll.success === false) {
+        parts.push(`~~${roll.roll}~~`);
+      } else {
+        parts.push(`${roll.roll}`);
+      }
+    }
+    return;
+  }
+
+  // Expression with multiple dice groups
+  if (node.type === 'expressionroll' || node.type === 'diceexpressionroll') {
+    if (node.dice) {
+      for (const die of node.dice) {
+        collectDiceDisplayParts(die, parts);
+      }
+    }
+    return;
+  }
+
+  // Group roll
+  if (node.type === 'grouproll') {
+    if (node.dice) {
+      for (const die of node.dice) {
+        collectDiceDisplayParts(die, parts);
+      }
+    }
+    return;
+  }
+}
+
+/**
+ * Determine crit/fumble text from the result.
+ */
+function buildCritText(result) {
+  let hasCrit = false;
+  let hasFumble = false;
+
+  checkCritRecursive(result, critical => {
+    if (critical === 'success') {
+      hasCrit = true;
+    }
+    if (critical === 'failure') {
+      hasFumble = true;
+    }
+  });
+
+  if (hasCrit && hasFumble) {
+    return ' &#9876; CRIT & FUMBLE';
+  }
+  if (hasCrit) {
+    return ' &#9876; CRITICAL';
+  }
+  if (hasFumble) {
+    return ' &#9760; FUMBLE';
+  }
+  return '';
+}
+
+/**
+ * Recursively check for critical rolls in result tree.
+ */
+function checkCritRecursive(node, callback) {
+  if (!node) {
+    return;
+  }
+
+  if (node.type === 'die' && node.rolls) {
+    for (const roll of node.rolls) {
+      if (roll.critical && roll.valid) {
+        callback(roll.critical);
+      }
+    }
+    return;
+  }
+
+  if (node.dice) {
+    for (const die of node.dice) {
+      checkCritRecursive(die, callback);
+    }
+  }
 }
 
 // --- Overlay UI ---
@@ -448,26 +296,15 @@ function showPromptOverlay(prompt) {
   }
   overlayElement.style.display = 'block';
 
-  // Build formula display from diceSpecs
+  // Update title for whisper rolls
+  const titleEl = overlayElement.querySelector('.pixels-cmd-title');
+  titleEl.textContent = prompt.whisper
+    ? 'Roll Your Dice (GM Only)'
+    : 'Roll Your Dice';
+
+  // Show the formula
   const formulaEl = overlayElement.querySelector('.pixels-cmd-formula');
-  const parts = [];
-  for (const spec of prompt.diceSpecs) {
-    const label = spec.type === 100 ? 'd%' : `d${spec.type}`;
-    let segment = `${spec.count}${label}`;
-    if (spec.keep) {
-      const end = spec.keep.high ? 'kh' : 'kl';
-      segment += `${end}${spec.keep.high || spec.keep.low}`;
-    } else if (spec.drop) {
-      const end = spec.drop.high ? 'dh' : 'dl';
-      segment += `${end}${spec.drop.high || spec.drop.low}`;
-    }
-    parts.push(segment);
-  }
-  if (prompt.modifier !== 0) {
-    const sign = prompt.modifier >= 0 ? `+${prompt.modifier}` : prompt.modifier;
-    parts.push(sign.toString());
-  }
-  formulaEl.textContent = parts.join(' + ');
+  formulaEl.textContent = getFormulaDisplay(prompt.formula);
 
   updateOverlaySlots(prompt);
 }
@@ -481,14 +318,40 @@ function updateOverlaySlots(prompt) {
 
   for (const slot of prompt.slots) {
     const slotDiv = document.createElement('div');
-    slotDiv.className =
-      slot.value !== null
-        ? 'pixels-cmd-slot filled'
-        : 'pixels-cmd-slot waiting';
-    slotDiv.innerHTML =
-      slot.value !== null
-        ? `<span class="slot-value">${slot.value}</span><span class="slot-type">d${slot.type}</span>`
-        : `<span class="slot-placeholder">?</span><span class="slot-type">d${slot.type}</span>`;
+    const baseClass = 'pixels-cmd-slot';
+
+    let stateClass;
+    if (slot.value !== null) {
+      stateClass = 'filled';
+    } else if (slot.isReroll) {
+      stateClass = 'reroll';
+    } else if (slot.isExplosion) {
+      stateClass = 'explosion';
+    } else {
+      stateClass = 'waiting';
+    }
+
+    slotDiv.className = `${baseClass} ${stateClass}`;
+
+    const typeLabel = slot.type === 'fate' ? 'dF' : `d${slot.type}`;
+    let decorator = '';
+    if (slot.isExplosion) {
+      decorator = '💥';
+    }
+    if (slot.isReroll) {
+      decorator = '🔄';
+    }
+
+    if (slot.value !== null) {
+      slotDiv.innerHTML =
+        `<span class="slot-value">${slot.value}</span>` +
+        `<span class="slot-type">${typeLabel}${decorator}</span>`;
+    } else {
+      slotDiv.innerHTML =
+        `<span class="slot-placeholder">${decorator || '?'}</span>` +
+        `<span class="slot-type">${typeLabel}</span>`;
+    }
+
     slotsEl.appendChild(slotDiv);
   }
 }
@@ -597,9 +460,25 @@ function injectOverlayStyles() {
       border-color: #4ade80;
       background: #1a2e1a;
     }
+    .pixels-cmd-slot.explosion {
+      border-color: #f59e0b;
+      animation: pixels-pulse-explosion 1.5s infinite;
+    }
+    .pixels-cmd-slot.reroll {
+      border-color: #a855f7;
+      animation: pixels-pulse-reroll 1.5s infinite;
+    }
     @keyframes pixels-pulse {
       0%, 100% { border-color: #4a9eff; }
       50% { border-color: #2a6ecf; }
+    }
+    @keyframes pixels-pulse-explosion {
+      0%, 100% { border-color: #f59e0b; }
+      50% { border-color: #d97706; }
+    }
+    @keyframes pixels-pulse-reroll {
+      0%, 100% { border-color: #a855f7; }
+      50% { border-color: #7c3aed; }
     }
     .slot-placeholder {
       font-size: 24px;
@@ -685,35 +564,60 @@ function attachChatListeners(chatInput) {
 }
 
 /**
- * Check if the textarea contains a /pixels command. If so, parse and start prompt.
+ * Check if the textarea contains a /pixels or /gmpixels command.
+ * If so, parse the formula and start a prompt.
  * Returns true if the command was intercepted.
  */
 function interceptCommand(textarea) {
   const text = textarea.value.trim();
-  const match = text.match(COMMAND_PATTERN);
-  if (!match) {
-    return false;
+
+  let formulaStr = null;
+  let isWhisper = false;
+
+  const gmMatch = text.match(GM_COMMAND_PATTERN);
+  if (gmMatch) {
+    formulaStr = gmMatch[1];
+    isWhisper = true;
+  } else {
+    const match = text.match(COMMAND_PATTERN);
+    if (!match) {
+      return false;
+    }
+    formulaStr = match[1];
   }
 
-  const formulaStr = match[1];
   if (!formulaStr) {
-    // Just "/pixels" with no formula — show help
+    // No formula — show help
     textarea.value = '';
     const postChat = window.postChatMessage || function () {};
-    postChat('Usage: /pixels 2d6+1d8+3 — prompts you to roll physical dice');
+    const prefix = isWhisper ? '/gmpixels' : '/pixels';
+    postChat(
+      `Usage: ${prefix} 2d6+1d8+3 — prompts you to roll physical dice. ` +
+        'Supports: keep/drop (4d6kh3), count successes (8d6>5), ' +
+        'exploding (2d6!), and more.'
+    );
     return true;
   }
 
-  const parsed = parseFormula(formulaStr);
-  if (!parsed) {
+  const ast = parseFormula(formulaStr);
+  if (!ast) {
     textarea.value = '';
     const postChat = window.postChatMessage || function () {};
     postChat(`Invalid dice formula: ${formulaStr}`);
     return true;
   }
 
+  const promptData = buildSlotsFromAst(ast, formulaStr);
+  if (promptData.slots.length === 0) {
+    textarea.value = '';
+    const postChat = window.postChatMessage || function () {};
+    postChat(`No dice found in formula: ${formulaStr}`);
+    return true;
+  }
+
+  promptData.whisper = isWhisper;
   textarea.value = '';
-  startPrompt(parsed);
+  startPrompt(promptData);
   return true;
 }
 
