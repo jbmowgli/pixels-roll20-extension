@@ -36,6 +36,22 @@ function startPrompt(promptData) {
 }
 
 /**
+ * Mapping from larger die types to the smaller die they can substitute for.
+ * d8 → d4, d12 → d6, d20 → d10.
+ */
+const SUBSTITUTION_MAP = { 8: 4, 12: 6, 20: 10 };
+
+/**
+ * Convert a face value from a larger die to fit the smaller die's range.
+ * If the value exceeds half the larger die's max, subtract half.
+ * Example: d20 rolls 19 → 19 > 10, so result is 19 - 10 = 9.
+ */
+function convertSubstitutedValue(faceValue, largerDieType) {
+  const half = largerDieType / 2;
+  return faceValue > half ? faceValue - half : faceValue;
+}
+
+/**
  * Attempt to fill a slot with an incoming roll. Returns true if consumed.
  */
 function offerRoll(dieType, faceValue) {
@@ -43,22 +59,49 @@ function offerRoll(dieType, faceValue) {
     return false;
   }
 
-  // Find first unfilled slot matching this die type
+  // Find first unfilled slot matching this die type exactly
   const slot = pendingPrompt.slots.find(
     s => s.value === null && s.type === dieType
   );
 
-  if (!slot) {
-    // Wrong die type — signal rejection
-    shakeOverlay();
-    return true; // Consumed (don't pass to batcher)
+  if (slot) {
+    return fillSlot(slot, faceValue);
   }
 
-  slot.value = faceValue;
+  // No exact match — try die substitution if enabled
+  if (window.pixelsAllowDiceSubstitution && dieType in SUBSTITUTION_MAP) {
+    const smallerType = SUBSTITUTION_MAP[dieType];
+
+    // Only substitute if there is no unfilled slot that actually needs this
+    // larger die type (exact-match slots take priority)
+    const exactSlotExists = pendingPrompt.slots.some(
+      s => s.value === null && s.type === dieType
+    );
+    if (!exactSlotExists) {
+      const substituteSlot = pendingPrompt.slots.find(
+        s => s.value === null && s.type === smallerType
+      );
+      if (substituteSlot) {
+        const convertedValue = convertSubstitutedValue(faceValue, dieType);
+        return fillSlot(substituteSlot, convertedValue);
+      }
+    }
+  }
+
+  // Wrong die type — signal rejection
+  shakeOverlay();
+  return true; // Consumed (don't pass to batcher)
+}
+
+/**
+ * Fill a slot with a value and handle explosion/reroll/completion checks.
+ */
+function fillSlot(slot, value) {
+  slot.value = value;
 
   // Check for explosion: does this value trigger a new slot?
   const group = pendingPrompt.groups[slot.groupIndex];
-  if (checkExplosion(faceValue, group)) {
+  if (checkExplosion(value, group)) {
     addExplosionSlot(pendingPrompt, slot.groupIndex);
   }
 
@@ -68,7 +111,7 @@ function offerRoll(dieType, faceValue) {
   // In practice, for physical dice we only support "rerollOnce" semantics
   // since we can't force the user to keep rolling until a condition fails.
   // We'll prompt for one re-roll and accept whatever comes.
-  if (!slot.isReroll && checkReroll(faceValue, group)) {
+  if (!slot.isReroll && checkReroll(value, group)) {
     markSlotForReroll(pendingPrompt, pendingPrompt.slots.indexOf(slot));
     updateOverlaySlots(pendingPrompt);
     return true;

@@ -27,11 +27,16 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
   window.pixelsModifier = '0';
   window.pixelsModifierName = 'Modifier 1';
   window.pixelsAllowUnprompted = true; // Default: process all rolls
+  window.pixelsAllowDiceSubstitution = false; // Default: no substitution
 
   // Load saved unprompted setting
   if (typeof chrome !== 'undefined' && chrome.storage) {
     chrome.storage.local.get('pixels_allow_unprompted', result => {
       window.pixelsAllowUnprompted = result.pixels_allow_unprompted !== false;
+    });
+    chrome.storage.local.get('pixels_allow_dice_substitution', result => {
+      window.pixelsAllowDiceSubstitution =
+        result.pixels_allow_dice_substitution === true;
     });
   }
 
@@ -107,6 +112,10 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
 
             case 'setAllowUnprompted':
               window.pixelsAllowUnprompted = msg.value !== false;
+              break;
+
+            case 'setAllowDiceSubstitution':
+              window.pixelsAllowDiceSubstitution = msg.value === true;
               break;
 
             case 'getCurrentRows': {

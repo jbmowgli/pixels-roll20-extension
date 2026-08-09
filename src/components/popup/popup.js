@@ -768,6 +768,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Dice substitution toggle
+  const diceSubCb = document.getElementById('allowDiceSubstitution');
+  if (diceSubCb) {
+    chrome.storage.local.get('pixels_allow_dice_substitution', result => {
+      const enabled = result.pixels_allow_dice_substitution === true;
+      diceSubCb.checked = enabled;
+      sendMessage({ action: 'setAllowDiceSubstitution', value: enabled });
+    });
+
+    diceSubCb.addEventListener('change', () => {
+      const enabled = diceSubCb.checked;
+      chrome.storage.local.set({ pixels_allow_dice_substitution: enabled });
+      sendMessage({ action: 'setAllowDiceSubstitution', value: enabled });
+    });
+  }
+
   // Profiles UI
   const saveProfileBtn = document.getElementById('saveProfile');
   if (saveProfileBtn) {

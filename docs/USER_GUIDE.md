@@ -259,6 +259,31 @@ The popup has an "Allow unprompted rolls" toggle:
 
 This is useful when you want precise control over when rolls appear in chat — for example, to avoid accidental rolls while handling dice between turns.
 
+### Dice Substitution (Use Larger Dice as Smaller)
+
+The popup has an "Allow d8, d12 and d20 as d4, d6 and d10" toggle:
+
+- **Off (default)**: Only the exact die type requested by a `/pix` prompt is accepted.
+- **On**: During a prompted roll, a larger die can fill a smaller die's slot when no slot of the larger die's own type is waiting.
+
+The substitution mapping is:
+
+| Physical die | Can substitute for |
+| ------------ | ------------------ |
+| d8           | d4                 |
+| d12          | d6                 |
+| d20          | d10                |
+
+**Value conversion**: If the rolled value is greater than half the physical die's maximum, half is subtracted. Otherwise the value is used as-is. This maps the larger die's range onto the smaller die's range.
+
+Examples:
+
+- `/pix 2d10` — you have a d10 and a d20. You roll the d10 (lands on 7, used as 7) and the d20 (lands on 19 → 19 - 10 = **9**).
+- `/pix 2d10+1d20` — you roll a d10, then a d20. The d20 fills the 1d20 slot first (exact match takes priority). If you then roll a second d20, it substitutes for the remaining d10 slot.
+- `/pix 1d6` — you roll a d12 that lands on 4. Since 4 ≤ 6 (half of 12), the value is used as **4**.
+
+**Priority rule**: Exact-match slots are always filled first. Substitution only kicks in when there is no unfilled slot matching the physical die's actual type.
+
 ## Advanced Features
 
 ### Multiple Dice Support
