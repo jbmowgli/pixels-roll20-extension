@@ -49,6 +49,8 @@ The extension supports connecting multiple dice simultaneously:
 
 The modifier box is a floating interface that lets you add modifiers to your dice rolls.
 
+![Modifier box with +1 Longsword active](ModifierBox.png)
+
 - **Show**: Click "Show Modifier Box" in the extension popup
 - **Hide**: Click "Hide Modifier Box" in the extension popup
 - **Minimize**: Click the "−" button on the box (temporary hide)
@@ -81,6 +83,19 @@ The modifier box is a floating interface that lets you add modifiers to your dic
 - **Minimize**: Click "−" to collapse the box (click again to restore)
 
 > **Note**: The minimized/full-size state is remembered between sessions. If you leave Roll20 with the box minimized, it will reappear minimized next time — independent of any saved profile.
+
+### Roll Window
+
+The modifier box includes a **Roll window** slider (1–10 seconds) at the bottom (visible in the screenshot above). This controls how long the extension waits after the last die lands before posting the result. The timer resets each time a die settles, so you have the full window after your _last_ die lands.
+
+This lets you build larger formulas with fewer physical dice. For example, to roll 4d6 with only two d6 dice:
+
+1. Set the roll window to 5–6 seconds
+2. Roll your two d6 dice — they register
+3. Pick them up and roll again before the timer expires
+4. All four results are grouped into a single "4d6" message
+
+The setting is saved and persists between sessions.
 
 ### Pop Out into Its Own Window
 
@@ -142,51 +157,25 @@ The extension automatically adapts the chat display based on modifier box visibi
 
 When you roll multiple dice within a short time, the extension groups them into a single chat message showing the formula, individual results, and total:
 
-```
-Pixels Dice
-Rolling:  2d6
-Dice:     (4 + 5)
-Result:   9
-```
-
-#### Roll Window Slider
-
-The modifier box includes a **Roll window** slider (1–10 seconds) at the bottom. This controls how long the extension waits after the last die lands before posting the result. The timer resets each time a die settles, so you have the full window after your _last_ die lands.
-
-This lets you build larger formulas with fewer physical dice. For example, to roll 4d6 with only two d6 dice:
-
-1. Set the roll window to 5–6 seconds
-2. Roll your two d6 dice — they register
-3. Pick them up and roll again before the timer expires
-4. All four results are grouped into a single "4d6" message
-
-The setting is saved and persists between sessions.
+![Multi-dice roll showing 2d6 grouped result](Roll2d6.png)
 
 #### Modifier Box Visible (Detailed Mode)
 
-When the modifier box is shown, chat messages include full breakdown:
+When the modifier box is shown, chat messages include the modifier name and full breakdown:
 
-```
-[Modifier Name]
-Pixel Die: [4]
-Modifier: [+2]
-Total: [6]
-```
+![Roll with +1 Longsword modifier](RollModifier.png)
 
 #### Modifier Box Hidden (Simple Mode)
 
-When the modifier box is hidden, chat messages show only the result:
+When the modifier box is hidden, chat messages show the formula and result cleanly:
 
-```
-Result
-Pixel Dice: [6]
-```
+![Simple 1d20 roll without modifier](Roll1d20.png)
 
 This creates a clean, uncluttered experience when you don't need modifier details.
 
 ## Prompted Rolls (/pixels command)
 
-For situations where you need to roll a specific formula, use the `/pixels` chat command (also accepts `/pixel` or `/pix`).
+For situations where you need to roll a specific formula, use the `/pixels` chat command (also accepts `/pixel` or `/pix`). It supports the full range of Roll20 dice formulas — anything you can type into Roll20's chat box as a `/roll` expression, you can use with `/pix` to roll with your physical Pixels dice.
 
 ### Basic Usage
 
@@ -201,7 +190,7 @@ Type in the Roll20 chat:
 
 An overlay appears showing the dice you need to roll. As each die lands, its slot fills in. Once all slots are filled, the result posts to chat automatically.
 
-<!-- TODO: Add screenshot of dice prompt overlay -->
+![Dice prompt overlay showing 2d6+5 with one slot filled](RollPrompt2d6+5.png)
 
 ### GM Whisper Rolls
 
@@ -245,7 +234,7 @@ Explosion slots are visually distinct in the overlay (amber pulsing border).
 
 ### Result Formatting
 
-<!-- TODO: Add screenshot of chat card result -->
+![Chat result card for 2d6+5](RollResult2d6+5.png)
 
 The result posts to Roll20 chat using the default template with markdown formatting:
 

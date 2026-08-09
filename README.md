@@ -62,7 +62,7 @@ npm run build:prod  # Creates dist/ folder for Chrome
 ## Usage Overview
 
 - **Connect dice**: Click extension icon → "Connect to Pixel"
-- **Prompted rolls**: Type `/pix 2d6+5` in Roll20 chat to prompt for specific dice
+- **Prompted rolls**: Type `/pix 2d6+5` in Roll20 chat — supports the full range of Roll20 dice formulas
 - **GM whisper rolls**: Type `/gmpix 1d20+8` to whisper the result to the GM only
 - **Unprompted rolls**: Roll connected dice any time — results post automatically
 - **Toggle modes**: Use "Allow unprompted rolls" checkbox in the popup
@@ -77,9 +77,15 @@ npm run build:prod  # Creates dist/ folder for Chrome
 
 ### Chat Display Behavior
 
-- **Modifier box visible**: Shows detailed breakdown (die + modifier = total)
-- **Modifier box hidden**: Shows simplified result (just final value)
-- **Header adapts**: "Modifier Name" when visible, "Result" when hidden
+| Modifier box visible                         | Modifier box hidden               |
+| -------------------------------------------- | --------------------------------- |
+| ![Roll with modifier](docs/RollModifier.png) | ![Simple roll](docs/Roll1d20.png) |
+
+### Prompted Roll (/pix command)
+
+| Prompt overlay                           | Result                                   |
+| ---------------------------------------- | ---------------------------------------- |
+| ![Dice prompt](docs/RollPrompt2d6+5.png) | ![Roll result](docs/RollResult2d6+5.png) |
 
 ## Documentation
 
