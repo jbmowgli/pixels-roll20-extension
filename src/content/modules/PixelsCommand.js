@@ -139,7 +139,6 @@ function completePrompt() {
  */
 function buildChatMessage(result, formulaDisplay, isSuccessRoll) {
   const diceDisplay = buildDiceDisplay(result);
-  const critText = buildCritText(result);
 
   let resultValue;
   if (isSuccessRoll) {
@@ -149,7 +148,7 @@ function buildChatMessage(result, formulaDisplay, isSuccessRoll) {
   }
 
   return (
-    `&{template:default} {{name=Pixels Dice${critText}}}` +
+    `&{template:default} {{name=Pixels Dice}}` +
     ` {{Rolling=${formulaDisplay}}}` +
     ` {{Dice=${diceDisplay}}}` +
     ` {{Result=${resultValue}}}`
@@ -169,6 +168,13 @@ function buildDiceDisplay(result) {
 
 /**
  * Recursively collect display parts from the result tree.
+ * Roll20 template fields support *italic* and **bold** markdown.
+ * Bold requires whitespace before/after the ** markers.
+ * - Dropped: italic parenthesized (de-emphasized)
+ * - Exploding: bold with "!" suffix
+ * - Successes: bold
+ * - Non-successes: italic (de-emphasized against successes)
+ * - Normal kept: plain
  */
 function collectDiceDisplayParts(node, parts) {
   if (!node) {
@@ -179,13 +185,17 @@ function collectDiceDisplayParts(node, parts) {
   if (node.type === 'die' && node.rolls) {
     for (const roll of node.rolls) {
       if (!roll.valid) {
-        parts.push(`~~${roll.roll}~~`);
+        // Dropped (keep/drop) — italic parenthesized
+        parts.push(`*(${roll.roll})*`);
       } else if (roll.explode) {
+        // Exploded — bold with bang suffix
         parts.push(`**${roll.roll}!**`);
       } else if (roll.success === true) {
+        // Success — bold
         parts.push(`**${roll.roll}**`);
       } else if (roll.success === false) {
-        parts.push(`~~${roll.roll}~~`);
+        // Non-success — italic
+        parts.push(`*${roll.roll}*`);
       } else {
         parts.push(`${roll.roll}`);
       }
@@ -211,58 +221,6 @@ function collectDiceDisplayParts(node, parts) {
       }
     }
     return;
-  }
-}
-
-/**
- * Determine crit/fumble text from the result.
- */
-function buildCritText(result) {
-  let hasCrit = false;
-  let hasFumble = false;
-
-  checkCritRecursive(result, critical => {
-    if (critical === 'success') {
-      hasCrit = true;
-    }
-    if (critical === 'failure') {
-      hasFumble = true;
-    }
-  });
-
-  if (hasCrit && hasFumble) {
-    return ' &#9876; CRIT & FUMBLE';
-  }
-  if (hasCrit) {
-    return ' &#9876; CRITICAL';
-  }
-  if (hasFumble) {
-    return ' &#9760; FUMBLE';
-  }
-  return '';
-}
-
-/**
- * Recursively check for critical rolls in result tree.
- */
-function checkCritRecursive(node, callback) {
-  if (!node) {
-    return;
-  }
-
-  if (node.type === 'die' && node.rolls) {
-    for (const roll of node.rolls) {
-      if (roll.critical && roll.valid) {
-        callback(roll.critical);
-      }
-    }
-    return;
-  }
-
-  if (node.dice) {
-    for (const die of node.dice) {
-      checkCritRecursive(die, callback);
-    }
   }
 }
 
