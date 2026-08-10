@@ -8,7 +8,7 @@
  * - Roll handling and formula processing
  */
 
-import { curry, pipe, map, filter, find, propEq, prop } from 'ramda';
+import { curry, map, filter, find, prop } from 'ramda';
 import { saveKnownDie } from '../../utils/knownDiceStorage.js';
 
 // Utility functions
@@ -64,7 +64,7 @@ const pixelsFormulaSimple =
 const isConnected = prop('_isConnected');
 const getName = prop('_name');
 const getPixelByName = curry((name, pixelList) =>
-  find(pipe(getName, propEq(name)), pixelList)
+  find(pixel => getName(pixel) === name, pixelList)
 );
 const getPixelByDeviceId = curry((deviceId, pixelList) =>
   pixelList.find(pixel => {
@@ -111,6 +111,8 @@ export const createPixel = (name, server, device) => {
       clearInterval(_connectionMonitor);
     }
 
+    let _batteryPollCounter = 0;
+
     _connectionMonitor = setInterval(() => {
       // Only monitor GATT connection state, no timeout-based disconnection
       // This allows for hours between dice rolls without disconnecting
@@ -125,6 +127,13 @@ export const createPixel = (name, server, device) => {
                 attemptReconnection(deviceRef, _pixelSelf);
               }
             }, 5000);
+          } else if (_server) {
+            // Poll battery every ~5 minutes (10 ticks × 30s = 300s)
+            _batteryPollCounter += 1;
+            if (_batteryPollCounter >= 10) {
+              _batteryPollCounter = 0;
+              sendRequestBatteryLevel(_server);
+            }
           }
         } catch (error) {
           log(
@@ -247,6 +256,10 @@ export const createPixel = (name, server, device) => {
         }
       } else if (messageType === 3) {
         handleFaceEvent(value.getUint8(1), value.getUint8(2));
+      } else if (messageType === 34 && value.byteLength >= 2) {
+        // BatteryLevel response: [type=34, levelPercent, batteryState]
+        _batteryLevel = value.getUint8(1);
+        log(`Pixel ${_name} battery update: ${_batteryLevel}%`);
       }
     } catch (error) {
       log(`Notification handling error for ${_name}: ${error.message}`);
@@ -475,10 +488,10 @@ const findNotifyCharacteristic = async server => {
   );
 };
 
-// Send WhoAreYou (message type 1) to request IAmADie response with die type.
-// Non-blocking: failures are silently ignored since dice may send IAmADie
-// automatically, or the die type will fall back to inference from the name/value.
-const sendWhoAreYou = async server => {
+// Send a single-byte message to the die's write characteristic.
+// Tries modern UUIDs first, then legacy. Non-blocking: failures are silently
+// ignored since the die may not support or respond to every message type.
+const sendMessage = async (server, messageType) => {
   const writeUuids = [
     { service: PIXELS_SERVICE_UUID, write: PIXELS_WRITE_CHARACTERISTIC },
     {
@@ -491,13 +504,25 @@ const sendWhoAreYou = async server => {
     try {
       const service = await server.getPrimaryService(serviceUuid);
       const writeChar = await service.getCharacteristic(writeUuid);
-      const whoAreYou = new Uint8Array([1]); // MessageType.WhoAreYou = 1
-      await writeChar.writeValue(whoAreYou);
+      await writeChar.writeValue(new Uint8Array([messageType]));
       return;
     } catch {
       // Try next UUID pair
     }
   }
+};
+
+// Send WhoAreYou (message type 1) to request IAmADie response with die type.
+// Non-blocking: failures are silently ignored since dice may send IAmADie
+// automatically, or the die type will fall back to inference from the name/value.
+const sendWhoAreYou = async server => {
+  await sendMessage(server, 1);
+};
+
+// Send RequestBatteryLevel (message type 33) to request a BatteryLevel response.
+// The die replies with message type 34 containing levelPercent and state.
+const sendRequestBatteryLevel = async server => {
+  await sendMessage(server, 33);
 };
 
 // Main Bluetooth connection logic using functional approach
