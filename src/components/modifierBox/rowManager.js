@@ -1,68 +1,89 @@
 'use strict';
 
 //
-// Row Manager Module - Handles adding, removing, and managing modifier rows
+// Row Manager Module - Handles adding, removing, and managing saved roll formula rows
 //
 import { forceElementUpdates } from './themeManager.js';
 
 let rowCounter = 1; // Start from 1 since we have row 0
 
-// Function to clear modifier state
-function clearModifierState(modifierBox) {
-  // Clear global variables
-  if (typeof window.pixelsModifierName !== 'undefined') {
-    window.pixelsModifierName = '';
-  }
-  if (typeof window.pixelsModifier !== 'undefined') {
-    window.pixelsModifier = '0';
+const STORAGE_KEY = 'pixels_saved_rolls';
+const LEGACY_STORAGE_KEY = 'pixels_modifier_rows';
+const CURRENT_VERSION = 2;
+
+/**
+ * Migrate v1 row data (modifier-based) to v2 (formula-based).
+ * v1 row: { name, value, originalIndex }
+ * v2 row: { name, formula }
+ */
+function migrateRowData(stored) {
+  if (!stored || !Array.isArray(stored.rows)) {
+    return null;
   }
 
-  // Update header title to show standard title
-  if (modifierBox) {
-    const headerTitle = modifierBox.querySelector('.pixels-title');
-    if (headerTitle) {
-      const logoImg = headerTitle.querySelector('.pixels-logo');
-      if (logoImg) {
-        headerTitle.innerHTML = `<img src="${logoImg.src}" alt="Pixels" class="pixels-logo"> Modifiers`;
-      } else {
-        headerTitle.textContent = 'Modifiers';
-      }
+  // Already v2
+  if (stored.version === CURRENT_VERSION) {
+    return stored;
+  }
+
+  // v1 → v2: convert numeric value to formula string
+  const migratedRows = stored.rows.map(row => {
+    if (typeof row.formula === 'string') {
+      return { name: row.name || 'Roll', formula: row.formula };
     }
+    const numericValue = parseInt(row.value) || 0;
+    const formula =
+      numericValue === 0
+        ? '1d20'
+        : `1d20${numericValue >= 0 ? '+' : ''}${numericValue}`;
+    return { name: row.name || 'Roll', formula };
+  });
+
+  return { rows: migratedRows, version: CURRENT_VERSION };
+}
+
+/**
+ * Execute a formula by invoking the /pixels command programmatically.
+ */
+function executeFormula(formula) {
+  if (!formula || !formula.trim()) {
+    return;
   }
 
-  // Send message to extension about clearing the modifier
-  if (typeof window.sendMessageToExtension === 'function') {
-    window.sendMessageToExtension({
-      action: 'modifierChanged',
-      modifier: '0',
-      name: '',
-    });
+  const command = window.PixelsCommand;
+  if (command && command.interceptFormula) {
+    command.interceptFormula(formula.trim());
+  } else {
+    console.error(
+      'PixelsCommand.interceptFormula not available. Is the content script loaded?'
+    );
   }
 }
 
 // Export functions to global scope
 window.ModifierBoxRowManager = {
-  setupModifierRowLogic: setupModifierRowLogic,
-  addModifierRow: addModifierRow,
-  removeModifierRow: removeModifierRow,
+  setupModifierRowLogic: setupRowLogic,
+  addModifierRow: addFormulaRow,
+  removeModifierRow: removeRow,
   updateEventListeners: updateEventListeners,
-  updateSelectedModifier: updateSelectedModifier,
-  clearModifierState: clearModifierState,
+  updateSelectedModifier: function () {}, // No-op for backward compatibility
+  clearModifierState: function () {}, // No-op for backward compatibility
   reindexRows: reindexRows,
   serializeRows: serializeRows,
   applyRows: applyRows,
-  saveModifierRows: saveModifierRows,
-  loadModifierRows: loadModifierRows,
+  saveModifierRows: saveRows,
+  loadModifierRows: loadRows,
   applyProfileRows: applyProfileRows,
-  clearStoredModifierRows: clearStoredModifierRows,
+  clearStoredModifierRows: clearStoredRows,
   resetAllRows: resetAllRows,
+  executeFormula: executeFormula,
   getRowCounter: () => rowCounter,
   setRowCounter: value => (rowCounter = value),
 };
 
-function setupModifierRowLogic(modifierBox, updateSelectedModifierCallback) {
+function setupRowLogic(modifierBox) {
   if (!modifierBox) {
-    console.error('setupModifierRowLogic: modifierBox is required');
+    console.error('setupRowLogic: modifierBox is required');
     return;
   }
 
@@ -70,24 +91,24 @@ function setupModifierRowLogic(modifierBox, updateSelectedModifierCallback) {
   const addButton = modifierBox.querySelector('.add-modifier-btn');
   if (addButton && !addButton.hasAttribute('data-listener-added')) {
     addButton.addEventListener('click', () => {
-      addModifierRow(modifierBox, updateSelectedModifierCallback);
+      addFormulaRow(modifierBox);
     });
     addButton.setAttribute('data-listener-added', 'true');
   }
 
-  // Add event listeners for existing radio buttons and inputs
-  updateEventListeners(modifierBox, updateSelectedModifierCallback);
+  // Add event listeners for existing inputs and buttons
+  updateEventListeners(modifierBox);
 }
 
-function addModifierRow(modifierBox, updateSelectedModifierCallback) {
+function addFormulaRow(modifierBox) {
   if (!modifierBox) {
-    console.error('addModifierRow: modifierBox is required');
+    console.error('addFormulaRow: modifierBox is required');
     return;
   }
 
   const content = modifierBox.querySelector('.pixels-content');
   if (!content) {
-    console.error('addModifierRow: content area not found');
+    console.error('addFormulaRow: content area not found');
     return;
   }
 
@@ -96,9 +117,9 @@ function addModifierRow(modifierBox, updateSelectedModifierCallback) {
   newRow.className = 'modifier-row';
   newRow.innerHTML = `
             <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
-            <input type="radio" name="modifier-select" value="${rowCounter}" class="modifier-radio" id="mod-${rowCounter}">
-            <input type="text" class="modifier-name" placeholder="Modifier" value="Modifier" data-index="${rowCounter}">
-            <input type="number" class="modifier-value" value="0" min="-99" max="99" data-index="${rowCounter}">
+            <input type="text" class="modifier-name" placeholder="Name" value="Roll" data-index="${rowCounter}">
+            <input type="text" class="formula-input" placeholder="e.g. 2d6+3" value="" data-index="${rowCounter}">
+            <button class="roll-formula-btn" type="button" title="Roll this formula">Roll</button>
             <button class="remove-row-btn" type="button">×</button>
         `;
 
@@ -106,23 +127,11 @@ function addModifierRow(modifierBox, updateSelectedModifierCallback) {
   content.appendChild(newRow);
   rowCounter++;
 
-  // Auto-select the new row so it becomes the active modifier
-  const newRadio = newRow.querySelector('.modifier-radio');
-  if (newRadio) {
-    newRadio.checked = true;
-  }
-
   // Update event listeners for all rows
-  updateEventListeners(modifierBox, updateSelectedModifierCallback);
-
-  // Sync the new selection (setting `checked` programmatically does not fire
-  // the change listener that normally updates the active modifier)
-  if (updateSelectedModifierCallback) {
-    updateSelectedModifierCallback();
-  }
+  updateEventListeners(modifierBox);
 
   // Save the updated state to localStorage
-  saveModifierRows(modifierBox);
+  saveRows(modifierBox);
 
   // Move focus to the new row's name field, selecting its text for quick edit
   const newNameInput = newRow.querySelector('.modifier-name');
@@ -142,29 +151,16 @@ function addModifierRow(modifierBox, updateSelectedModifierCallback) {
   }
 }
 
-function removeModifierRow(
-  rowElement,
-  modifierBox,
-  updateSelectedModifierCallback
-) {
+function removeRow(rowElement, modifierBox) {
   if (!rowElement) {
-    console.error('removeModifierRow: rowElement is null or undefined');
+    console.error('removeRow: rowElement is null or undefined');
     return;
   }
 
   if (!modifierBox) {
-    console.error('removeModifierRow: modifierBox is required');
+    console.error('removeRow: modifierBox is required');
     return;
   }
-
-  // Find the actual data-index from the radio button
-  const radio = rowElement.querySelector('.modifier-radio');
-  if (!radio) {
-    console.error('removeModifierRow: radio button not found in row');
-    return;
-  }
-
-  const _index = parseInt(radio.value);
 
   // Count total rows
   const totalRows = modifierBox.querySelectorAll('.modifier-row').length;
@@ -172,257 +168,156 @@ function removeModifierRow(
   // If this is the only row left, reset it to default values instead of removing
   if (totalRows === 1) {
     const nameInput = rowElement.querySelector('.modifier-name');
-    const valueInput = rowElement.querySelector('.modifier-value');
+    const formulaInput = rowElement.querySelector('.formula-input');
 
-    nameInput.value = 'Modifier 1';
-    valueInput.value = '0';
-
-    // Make sure it's selected
-    radio.checked = true;
-
-    // Update the selected modifier
-    if (updateSelectedModifierCallback) {
-      updateSelectedModifierCallback();
-    }
+    nameInput.value = 'Roll';
+    formulaInput.value = '1d20';
 
     // Save the updated state to localStorage
-    saveModifierRows(modifierBox);
-
+    saveRows(modifierBox);
     return;
   }
 
-  // Check if this row was selected
-  const wasSelected = radio.checked;
-
   // Remove the row
   rowElement.remove();
-
-  // If the removed row was selected, select the first remaining row
-  if (wasSelected) {
-    const firstRadio = modifierBox.querySelector('.modifier-radio');
-    if (firstRadio) {
-      firstRadio.checked = true;
-      if (updateSelectedModifierCallback) {
-        updateSelectedModifierCallback();
-      }
-    } else {
-      // Clear global variables since no rows remain
-      clearModifierState(modifierBox);
-    }
-  }
 
   // Reindex rows to maintain consistency
   reindexRows(modifierBox);
 
   // Save the updated state to localStorage
-  saveModifierRows(modifierBox);
+  saveRows(modifierBox);
 }
 
 // Function to reindex all rows after deletion
 function reindexRows(modifierBox) {
   const rows = modifierBox.querySelectorAll('.modifier-row');
   rows.forEach((row, index) => {
-    const radio = row.querySelector('.modifier-radio');
     const nameInput = row.querySelector('.modifier-name');
-    const valueInput = row.querySelector('.modifier-value');
+    const formulaInput = row.querySelector('.formula-input');
 
-    if (radio) {
-      radio.value = index.toString();
-      radio.id = `mod-${index}`;
-    }
     if (nameInput) {
       nameInput.setAttribute('data-index', index.toString());
     }
-    if (valueInput) {
-      valueInput.setAttribute('data-index', index.toString());
+    if (formulaInput) {
+      formulaInput.setAttribute('data-index', index.toString());
     }
   });
 }
 
-function updateEventListeners(modifierBox, updateSelectedModifierCallback) {
+function updateEventListeners(modifierBox) {
   if (!modifierBox) {
     console.error('updateEventListeners: modifierBox is required');
     return;
   }
 
-  // Remove all existing event listeners by clearing and re-adding rows
-  // This is simpler than trying to manage individual listeners
   const rows = modifierBox.querySelectorAll('.modifier-row');
 
   rows.forEach(row => {
-    // Get elements
-    const radio = row.querySelector('.modifier-radio');
     const nameInput = row.querySelector('.modifier-name');
-    const valueInput = row.querySelector('.modifier-value');
+    const formulaInput = row.querySelector('.formula-input');
+    const rollButton = row.querySelector('.roll-formula-btn');
     const removeButton = row.querySelector('.remove-row-btn');
 
-    // Add event listeners (removing duplicates isn't critical since
-    // addEventListener with the same function reference won't add duplicates)
-    if (radio && updateSelectedModifierCallback) {
-      radio.addEventListener('change', () => {
-        updateSelectedModifierCallback();
-        saveModifierRows(modifierBox);
-      });
-    }
-    if (nameInput && updateSelectedModifierCallback) {
+    // Save on input changes
+    if (nameInput) {
       nameInput.addEventListener('input', () => {
-        updateSelectedModifierCallback();
-        saveModifierRows(modifierBox);
+        saveRows(modifierBox);
       });
     }
-    if (valueInput && updateSelectedModifierCallback) {
-      valueInput.addEventListener('input', () => {
-        updateSelectedModifierCallback();
-        saveModifierRows(modifierBox);
+    if (formulaInput) {
+      formulaInput.addEventListener('input', () => {
+        saveRows(modifierBox);
+      });
+
+      // Allow Enter key in formula input to trigger roll
+      formulaInput.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          executeFormula(formulaInput.value);
+        }
       });
     }
 
-    // For remove button, we need to ensure we get the right row
-    // Use a closure to capture the current row element
+    // Roll button executes the formula
+    if (rollButton) {
+      rollButton.onclick = function () {
+        const formula = row.querySelector('.formula-input');
+        if (formula && formula.value.trim()) {
+          executeFormula(formula.value);
+        } else {
+          // Visual feedback for empty formula
+          if (formulaInput) {
+            formulaInput.classList.add('formula-invalid');
+            setTimeout(
+              () => formulaInput.classList.remove('formula-invalid'),
+              600
+            );
+          }
+        }
+      };
+    }
+
+    // Remove button
     if (removeButton) {
       removeButton.onclick = function () {
-        removeModifierRow(row, modifierBox, updateSelectedModifierCallback);
+        removeRow(row, modifierBox);
       };
     }
   });
 }
 
-function updateSelectedModifier(modifierBox) {
-  if (!modifierBox) {
-    console.error('updateSelectedModifier: modifierBox is required');
-    return;
-  }
-
-  const selectedRadio = modifierBox.querySelector(
-    'input[name="modifier-select"]:checked'
-  );
-  if (selectedRadio) {
-    // Find the row that contains this radio button directly
-    // instead of using the radio value as an array index
-    const row = selectedRadio.closest('.modifier-row');
-    if (row) {
-      const nameInput = row.querySelector('.modifier-name');
-      const valueInput = row.querySelector('.modifier-value');
-
-      // Update global variables (these should be defined in roll20.js)
-      const modifierName = nameInput.value || 'Unnamed';
-      const modifierValue = valueInput.value || '0';
-
-      // Check if values have actually changed before saving
-      const nameChanged =
-        typeof window.pixelsModifierName !== 'undefined' &&
-        window.pixelsModifierName !== modifierName;
-      const valueChanged =
-        typeof window.pixelsModifier !== 'undefined' &&
-        window.pixelsModifier !== modifierValue;
-
-      if (typeof window.pixelsModifierName !== 'undefined') {
-        window.pixelsModifierName = modifierName;
-      }
-      if (typeof window.pixelsModifier !== 'undefined') {
-        window.pixelsModifier = modifierValue;
-      }
-
-      // Only save to localStorage if values actually changed
-      if (nameChanged || valueChanged) {
-        if (typeof window.updateModifierSettings === 'function') {
-          window.updateModifierSettings(
-            window.pixelsModifier,
-            window.pixelsModifierName
-          );
-        }
-      }
-
-      // Save the modifier rows state to localStorage
-      saveModifierRows(modifierBox);
-
-      // Update the header title to show standard title
-      const headerTitle = modifierBox.querySelector('.pixels-title');
-      if (headerTitle) {
-        // Find the logo image and preserve it, then update the text content
-        const logoImg = headerTitle.querySelector('.pixels-logo');
-        if (logoImg) {
-          headerTitle.innerHTML = `<img src="${logoImg.src}" alt="Pixels" class="pixels-logo"> Modifiers`;
-        } else {
-          headerTitle.textContent = 'Modifiers';
-        }
-      }
-
-      // Send message to extension if the function exists
-      if (typeof window.sendMessageToExtension === 'function') {
-        window.sendMessageToExtension({
-          action: 'modifierChanged',
-          modifier: modifierValue,
-          name: modifierName,
-        });
-      }
-    }
-  } else {
-    // No radio button is selected, clear global variables
-    clearModifierState(modifierBox);
-  }
-}
-
-// Pure serialization of the current rows in their DOM order (preserves
-// drag-and-drop order). Returns { rows: [{ name, value, originalIndex }],
-// selectedIndex }. Shared by localStorage persistence and profile saving.
+/**
+ * Serialize the current rows in their DOM order.
+ * Returns { rows: [{ name, formula }], version: 2 }.
+ */
 function serializeRows(modifierBox) {
   const rowsData = [];
-  let selectedIndex = -1;
 
   if (!modifierBox) {
-    return { rows: rowsData, selectedIndex };
+    return { rows: rowsData, version: CURRENT_VERSION };
   }
 
   const rows = modifierBox.querySelectorAll('.modifier-row');
-  rows.forEach((row, domIndex) => {
-    const radio = row.querySelector('.modifier-radio');
+  rows.forEach(row => {
     const nameInput = row.querySelector('.modifier-name');
-    const valueInput = row.querySelector('.modifier-value');
+    const formulaInput = row.querySelector('.formula-input');
 
-    if (nameInput && valueInput) {
+    if (nameInput && formulaInput) {
       rowsData.push({
-        name: nameInput.value || 'Modifier',
-        value: valueInput.value || '0',
-        originalIndex: radio ? radio.value : domIndex.toString(), // Store original index for reference
+        name: nameInput.value || 'Roll',
+        formula: formulaInput.value || '',
       });
-
-      if (radio && radio.checked) {
-        selectedIndex = domIndex; // Use DOM index for selection
-      }
     }
   });
 
-  return { rows: rowsData, selectedIndex };
+  return { rows: rowsData, version: CURRENT_VERSION };
 }
 
-// Function to save all modifier rows to localStorage
-function saveModifierRows(modifierBox) {
+// Save all rows to localStorage
+function saveRows(modifierBox) {
   if (!modifierBox) {
     return;
   }
 
   try {
-    const { rows, selectedIndex } = serializeRows(modifierBox);
+    const data = serializeRows(modifierBox);
+    data.rowCounter = rowCounter;
+    data.lastUpdated = Date.now();
 
-    const modifierState = {
-      rows,
-      selectedIndex,
-      rowCounter: rowCounter,
-      lastUpdated: Date.now(),
-    };
-
-    localStorage.setItem('pixels_modifier_rows', JSON.stringify(modifierState));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (error) {
-    console.error('Error saving modifier rows:', error);
+    console.error('Error saving formula rows:', error);
   }
 }
 
-// Rebuild the modifier rows in the DOM from serialized data
-// ({ rows: [{ name, value }], selectedIndex }). Shared by localStorage loading
-// and profile applying. Returns true on success.
-function applyRows(modifierBox, data, updateSelectedModifierCallback) {
-  if (!modifierBox || !data || !Array.isArray(data.rows)) {
+/**
+ * Rebuild the rows in the DOM from serialized data.
+ * Accepts both v1 and v2 formats (auto-migrates v1).
+ * Returns true on success.
+ */
+function applyRows(modifierBox, data) {
+  const migrated = migrateRowData(data);
+  if (!modifierBox || !migrated || !Array.isArray(migrated.rows)) {
     return false;
   }
 
@@ -431,46 +326,30 @@ function applyRows(modifierBox, data, updateSelectedModifierCallback) {
     return false;
   }
 
-  // Ensure the row counter stays ahead of the rebuilt indices so future rows
-  // get unique values (rows are reindexed 0..n-1 on rebuild).
-  rowCounter = Math.max(rowCounter, data.rows.length);
+  // Ensure the row counter stays ahead of the rebuilt indices
+  rowCounter = Math.max(rowCounter, migrated.rows.length);
 
-  // Remove all existing modifier rows
+  // Remove all existing rows
   const existingRows = content.querySelectorAll('.modifier-row');
   existingRows.forEach(row => row.remove());
 
   // Recreate rows from the supplied data
-  data.rows.forEach((rowData, index) => {
+  migrated.rows.forEach((rowData, index) => {
     const newRow = document.createElement('div');
     newRow.className = 'modifier-row';
     newRow.innerHTML = `
           <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
-          <input type="radio" name="modifier-select" value="${index}" class="modifier-radio" id="mod-${index}">
-          <input type="text" class="modifier-name" placeholder="Modifier" value="${rowData.name}" data-index="${index}">
-          <input type="number" class="modifier-value" value="${rowData.value}" min="-99" max="99" data-index="${index}">
+          <input type="text" class="modifier-name" placeholder="Name" value="${escapeHtml(rowData.name)}" data-index="${index}">
+          <input type="text" class="formula-input" placeholder="e.g. 2d6+3" value="${escapeHtml(rowData.formula)}" data-index="${index}">
+          <button class="roll-formula-btn" type="button" title="Roll this formula">Roll</button>
           <button class="remove-row-btn" type="button">×</button>
         `;
 
     content.appendChild(newRow);
   });
 
-  // Restore selected row
-  if (data.selectedIndex >= 0 && data.selectedIndex < data.rows.length) {
-    const selectedRadio = modifierBox.querySelector(
-      `input[name="modifier-select"][value="${data.selectedIndex}"]`
-    );
-    if (selectedRadio) {
-      selectedRadio.checked = true;
-    }
-  }
-
   // Update event listeners for all rows
-  updateEventListeners(modifierBox, updateSelectedModifierCallback);
-
-  // Update the selected modifier to sync global variables
-  if (updateSelectedModifierCallback) {
-    updateSelectedModifierCallback();
-  }
+  updateEventListeners(modifierBox);
 
   // Force theme updates on the restored elements
   if (
@@ -485,74 +364,80 @@ function applyRows(modifierBox, data, updateSelectedModifierCallback) {
   return true;
 }
 
-// Function to load modifier rows from localStorage
-function loadModifierRows(modifierBox, updateSelectedModifierCallback) {
+// Load rows from localStorage (tries new key first, then legacy key with migration)
+function loadRows(modifierBox) {
   if (!modifierBox) {
     return false;
   }
 
   try {
-    const stored = localStorage.getItem('pixels_modifier_rows');
+    let stored = localStorage.getItem(STORAGE_KEY);
+
+    // Fall back to legacy key if new key not found
+    if (!stored) {
+      stored = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (stored) {
+        // Migrate: save under new key, remove legacy key
+        const parsed = JSON.parse(stored);
+        const migrated = migrateRowData(parsed);
+        if (migrated) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+          localStorage.removeItem(LEGACY_STORAGE_KEY);
+          stored = JSON.stringify(migrated);
+        }
+      }
+    }
+
     if (!stored) {
       return false;
     }
 
-    const modifierState = JSON.parse(stored);
-    if (!modifierState.rows || !Array.isArray(modifierState.rows)) {
+    const data = JSON.parse(stored);
+    if (!data.rows || !Array.isArray(data.rows)) {
       return false;
     }
 
     // Restore row counter
-    if (modifierState.rowCounter) {
-      rowCounter = modifierState.rowCounter;
+    if (data.rowCounter) {
+      rowCounter = data.rowCounter;
     }
 
-    return applyRows(
-      modifierBox,
-      modifierState,
-      updateSelectedModifierCallback
-    );
+    return applyRows(modifierBox, data);
   } catch (error) {
-    console.error('Error loading modifier rows:', error);
+    console.error('Error loading formula rows:', error);
     return false;
   }
 }
 
-// Apply a saved profile's rows to the modifier box and persist the result to
-// localStorage so the restored state survives a reload. Returns true on success.
-function applyProfileRows(
-  modifierBox,
-  profile,
-  updateSelectedModifierCallback
-) {
-  const applied = applyRows(
-    modifierBox,
-    profile,
-    updateSelectedModifierCallback
-  );
+/**
+ * Apply a saved profile's rows and persist to localStorage.
+ * Returns true on success.
+ */
+function applyProfileRows(modifierBox, profile) {
+  const applied = applyRows(modifierBox, profile);
   if (applied) {
-    saveModifierRows(modifierBox);
+    saveRows(modifierBox);
   }
   return applied;
 }
 
-// Function to clear stored modifier rows
-function clearStoredModifierRows() {
+// Clear stored rows
+function clearStoredRows() {
   try {
-    localStorage.removeItem('pixels_modifier_rows');
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
   } catch (error) {
-    console.error('Error clearing stored modifier rows:', error);
+    console.error('Error clearing stored rows:', error);
   }
 }
 
-// Function to reset all rows to default values
-function resetAllRows(modifierBox, updateSelectedModifierCallback) {
+// Reset all rows to a single default row
+function resetAllRows(modifierBox) {
   if (!modifierBox) {
     console.error('resetAllRows: modifierBox is required');
     return;
   }
 
-  // Remove all existing rows
   const content = modifierBox.querySelector('.pixels-content');
   if (!content) {
     console.error('resetAllRows: content area not found');
@@ -570,47 +455,51 @@ function resetAllRows(modifierBox, updateSelectedModifierCallback) {
   defaultRow.className = 'modifier-row';
   defaultRow.innerHTML = `
       <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
-      <input type="radio" name="modifier-select" value="0" class="modifier-radio" id="mod-0" checked>
-      <input type="text" class="modifier-name" placeholder="Modifier 1" value="Modifier 1" data-index="0">
-      <input type="number" class="modifier-value" value="0" min="-99" max="99" data-index="0">
+      <input type="text" class="modifier-name" placeholder="Name" value="Attack" data-index="0">
+      <input type="text" class="formula-input" placeholder="e.g. 2d6+3" value="1d20" data-index="0">
+      <button class="roll-formula-btn" type="button" title="Roll this formula">Roll</button>
       <button class="remove-row-btn" type="button">×</button>
     `;
 
   content.appendChild(defaultRow);
 
-  // Reset global variables
-  window.pixelsModifier = '0';
-  window.pixelsModifierName = 'Modifier 1';
-
   // Update event listeners for the new row
-  updateEventListeners(modifierBox, updateSelectedModifierCallback);
+  updateEventListeners(modifierBox);
 
-  // Update selected modifier display
-  if (updateSelectedModifierCallback) {
-    updateSelectedModifierCallback();
-  }
-
-  // Clear stored modifier rows
-  clearStoredModifierRows();
+  // Clear stored rows
+  clearStoredRows();
 }
 
-// Export functions
-export { setupModifierRowLogic };
-export { addModifierRow };
-export { removeModifierRow };
+/**
+ * Escape HTML special characters in a string for safe insertion into innerHTML.
+ */
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text || '';
+  return div.innerHTML;
+}
+
+// Named exports
+export { setupRowLogic as setupModifierRowLogic };
+export { addFormulaRow as addModifierRow };
+export { removeRow as removeModifierRow };
 export { updateEventListeners };
-export { updateSelectedModifier };
-export { clearModifierState };
-export { reindexRows };
 export { serializeRows };
 export { applyRows };
-export { saveModifierRows };
-export { loadModifierRows };
+export { saveRows as saveModifierRows };
+export { loadRows as loadModifierRows };
 export { applyProfileRows };
-export { clearStoredModifierRows };
+export { clearStoredRows as clearStoredModifierRows };
 export { resetAllRows };
+export { executeFormula };
+export { reindexRows };
+export { migrateRowData };
 export const getRowCounter = () => rowCounter;
 export const setRowCounter = value => (rowCounter = value);
+
+// No-op stubs for backward compatibility
+export const updateSelectedModifier = function () {};
+export const clearModifierState = function () {};
 
 // Helper function to reset module state (for testing)
 export const resetState = () => {
@@ -619,41 +508,43 @@ export const resetState = () => {
 
 // Default export for convenience
 export default {
-  setupModifierRowLogic,
-  addModifierRow,
-  removeModifierRow,
+  setupModifierRowLogic: setupRowLogic,
+  addModifierRow: addFormulaRow,
+  removeModifierRow: removeRow,
   updateEventListeners,
-  updateSelectedModifier,
-  clearModifierState,
+  updateSelectedModifier: function () {},
+  clearModifierState: function () {},
   reindexRows,
   serializeRows,
   applyRows,
-  saveModifierRows,
-  loadModifierRows,
+  saveModifierRows: saveRows,
+  loadModifierRows: loadRows,
   applyProfileRows,
-  clearStoredModifierRows,
+  clearStoredModifierRows: clearStoredRows,
   resetAllRows,
+  executeFormula,
   getRowCounter,
   setRowCounter,
 };
 
-// Legacy global exports for compatibility (temporary)
+// Legacy global exports for compatibility
 if (typeof window !== 'undefined') {
   window.ModifierBoxRowManager = {
-    setupModifierRowLogic,
-    addModifierRow,
-    removeModifierRow,
+    setupModifierRowLogic: setupRowLogic,
+    addModifierRow: addFormulaRow,
+    removeModifierRow: removeRow,
     updateEventListeners,
-    updateSelectedModifier,
-    clearModifierState,
+    updateSelectedModifier: function () {},
+    clearModifierState: function () {},
     reindexRows,
     serializeRows,
     applyRows,
-    saveModifierRows,
-    loadModifierRows,
+    saveModifierRows: saveRows,
+    loadModifierRows: loadRows,
     applyProfileRows,
-    clearStoredModifierRows,
+    clearStoredModifierRows: clearStoredRows,
     resetAllRows,
+    executeFormula,
     getRowCounter,
     setRowCounter,
     resetState,

@@ -676,9 +676,6 @@ function importProfilesFromFile(file) {
 chrome.runtime.onMessage.addListener((request, _sender, _sendResponse) => {
   if (request.action === 'showText') {
     renderKnownDice();
-  } else if (request.action === 'modifierChanged') {
-    // Store the modifier value when changed from floating box
-    chrome.storage.sync.set({ modifier: request.modifier });
   }
 });
 
@@ -710,61 +707,37 @@ document.addEventListener('DOMContentLoaded', () => {
     connectBtn.onclick = () => sendMessage({ action: 'connect' });
   }
 
-  // Modifier box toggle
-  const toggleModBox = document.getElementById('toggleModifierBox');
-  if (toggleModBox) {
+  // Saved rolls panel toggle
+  const toggleSavedRolls = document.getElementById('toggleSavedRolls');
+  if (toggleSavedRolls) {
     // Load saved state
-    chrome.storage.local.get('pixels_modifier_box_visible', result => {
-      toggleModBox.checked = result.pixels_modifier_box_visible !== false;
+    chrome.storage.local.get('pixels_saved_rolls_visible', result => {
+      toggleSavedRolls.checked = result.pixels_saved_rolls_visible !== false;
     });
 
-    toggleModBox.addEventListener('change', () => {
-      const visible = toggleModBox.checked;
-      chrome.storage.local.set({ pixels_modifier_box_visible: visible });
+    toggleSavedRolls.addEventListener('change', () => {
+      const visible = toggleSavedRolls.checked;
+      chrome.storage.local.set({ pixels_saved_rolls_visible: visible });
       sendMessage({
-        action: visible ? 'showModifier' : 'hideModifier',
+        action: visible ? 'showSavedRolls' : 'hideSavedRolls',
       });
     });
   }
 
-  // Unprompted rolls toggle
+  // Unprompted rolls toggle (independent of saved rolls visibility)
   const allowUnpromptedCb = document.getElementById('allowUnprompted');
   if (allowUnpromptedCb) {
-    const updateModifierVisibility = allowed => {
-      const modBtns = document.getElementById('modifierButtons');
-      const profilesSec = document.getElementById('profilesSection');
-      if (modBtns) {
-        modBtns.style.display = allowed ? 'flex' : 'none';
-      }
-      if (profilesSec) {
-        profilesSec.style.display = allowed ? 'flex' : 'none';
-      }
-      if (!allowed) {
-        sendMessage({ action: 'hideModifier' });
-        chrome.storage.local.set({ pixels_modifier_box_visible: false });
-      }
-    };
-
     // Load saved state
     chrome.storage.local.get('pixels_allow_unprompted', result => {
       const allowed = result.pixels_allow_unprompted !== false; // default true
       allowUnpromptedCb.checked = allowed;
-      updateModifierVisibility(allowed);
       sendMessage({ action: 'setAllowUnprompted', value: allowed });
     });
 
     allowUnpromptedCb.addEventListener('change', () => {
       const allowed = allowUnpromptedCb.checked;
       chrome.storage.local.set({ pixels_allow_unprompted: allowed });
-      updateModifierVisibility(allowed);
       sendMessage({ action: 'setAllowUnprompted', value: allowed });
-      if (allowed) {
-        sendMessage({ action: 'showModifier' });
-        const toggleModBox = document.getElementById('toggleModifierBox');
-        if (toggleModBox) {
-          toggleModBox.checked = true;
-        }
-      }
     });
   }
 

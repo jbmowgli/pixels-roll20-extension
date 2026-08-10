@@ -5,7 +5,6 @@ import {
   forceElementUpdates,
   stopThemeMonitoring,
 } from './themeManager.js';
-import { updateSelectedModifier as updateSelectedModifierFromRowManager } from './rowManager.js';
 import { loadTemplate } from '../../utils/htmlLoader.js';
 import { setupModifierBoxComponents } from './componentInitializer.js';
 import {
@@ -25,20 +24,8 @@ const _getModifierBoxElementWrapper = () => getModifierBoxElement();
 const isModifierBoxVisibleFunc = () => isModifierBoxVisible();
 const _isModifierBoxInitializedWrapper = () => isModifierBoxInitialized();
 
-// Function to update selected modifier using imported function
-const updateSelectedModifierWrapper = () => {
-  const modifierBox = getModifierBoxElement();
-  if (modifierBox) {
-    if (
-      window.ModifierBoxRowManager &&
-      window.ModifierBoxRowManager.updateSelectedModifier
-    ) {
-      window.ModifierBoxRowManager.updateSelectedModifier(modifierBox);
-    } else if (typeof updateSelectedModifierFromRowManager === 'function') {
-      updateSelectedModifierFromRowManager(modifierBox);
-    }
-  }
-};
+// No-op: modifier selection is removed. Kept for backward compatibility.
+const updateSelectedModifierWrapper = () => {};
 
 // Function to update theme using imported function
 const updateThemeWrapper = () => {
@@ -78,19 +65,8 @@ const forceThemeRefreshWrapper = () => {
   }
 };
 
-const syncGlobalVars = () => {
-  const modifierBox = getModifierBoxElement();
-  if (modifierBox) {
-    if (
-      window.ModifierBoxRowManager &&
-      window.ModifierBoxRowManager.updateSelectedModifier
-    ) {
-      window.ModifierBoxRowManager.updateSelectedModifier(modifierBox);
-    } else if (typeof updateSelectedModifierFromRowManager === 'function') {
-      updateSelectedModifierFromRowManager(modifierBox);
-    }
-  }
-};
+// No-op: modifier sync removed. Kept for backward compatibility with content script callers.
+const syncGlobalVars = () => {};
 
 async function createModifierBox() {
   const hasThemeManager =
@@ -122,17 +98,14 @@ async function createModifierBox() {
     setModifierBoxElement(existingBox);
     setModifierBoxVisible(existingBox.style.display !== 'none');
 
+    // Legacy migration: old modifier names no longer relevant
     const firstNameInput = existingBox.querySelector('.modifier-name');
     if (
       firstNameInput &&
       (firstNameInput.value === 'None' || firstNameInput.value === 'D20')
     ) {
-      firstNameInput.value = 'Modifier';
-      firstNameInput.placeholder = 'Modifier';
-
-      if (typeof window.pixelsModifierName !== 'undefined') {
-        window.pixelsModifierName = 'Modifier';
-      }
+      firstNameInput.value = 'Attack';
+      firstNameInput.placeholder = 'Name';
     }
 
     setupModifierBoxComponents(existingBox, clearAllModifiers);
@@ -210,7 +183,7 @@ function createModifierBoxFallback() {
   newModifierBox.innerHTML = `
             <div class="pixels-header">
                 <span class="pixels-title">
-                    <img src="${logoUrl}" alt="Pixels" class="pixels-logo"> Modifiers
+                    <img src="${logoUrl}" alt="Pixels" class="pixels-logo"> Saved Rolls
                 </span>
                 <div class="pixels-controls">
                     <button class="add-modifier-btn" type="button" title="Add Row">Add</button>
@@ -222,9 +195,9 @@ function createModifierBoxFallback() {
             <div class="pixels-content">
                 <div class="modifier-row">
                     <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
-                    <input type="radio" name="modifier-select" value="0" class="modifier-radio" id="mod-0" checked>
-                    <input type="text" class="modifier-name" placeholder="Modifier" value="Modifier" data-index="0">
-                    <input type="number" class="modifier-value" value="0" min="-99" max="99" data-index="0">
+                    <input type="text" class="modifier-name" placeholder="Name" value="Attack" data-index="0">
+                    <input type="text" class="formula-input" placeholder="e.g. 2d6+3" value="1d20" data-index="0">
+                    <button class="roll-formula-btn" type="button" title="Roll this formula">Roll</button>
                     <button class="remove-row-btn" type="button">×</button>
                 </div>
             </div>
@@ -303,7 +276,7 @@ async function showModifierBox() {
   }
 
   if (modifierBox && window.ModifierBoxRowManager) {
-    window.ModifierBoxRowManager.updateSelectedModifier(modifierBox);
+    // Rows are self-managing now; no active selection to sync
   }
 }
 
@@ -318,24 +291,15 @@ function hideModifierBox() {
 function clearAllModifiers() {
   const modifierBox = getModifierBoxElement();
   if (!modifierBox) {
-    console.error('Cannot clear modifiers - modifierBox is null');
+    console.error('Cannot clear saved rolls - modifierBox is null');
     return;
-  }
-
-  if (typeof window.clearAllModifierSettings === 'function') {
-    window.clearAllModifierSettings();
   }
 
   if (
     window.ModifierBoxRowManager &&
     window.ModifierBoxRowManager.resetAllRows
   ) {
-    const updateCallback = () => {
-      if (window.ModifierBoxRowManager.updateSelectedModifier) {
-        window.ModifierBoxRowManager.updateSelectedModifier(modifierBox);
-      }
-    };
-    window.ModifierBoxRowManager.resetAllRows(modifierBox, updateCallback);
+    window.ModifierBoxRowManager.resetAllRows(modifierBox);
   } else {
     console.error('ModifierBoxRowManager.resetAllRows not available');
   }

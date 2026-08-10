@@ -101,31 +101,12 @@ function flushRolls() {
 }
 
 /**
- * Post a single-die roll (preserves current behavior).
+ * Post a single-die roll result to Roll20 chat.
  */
 function postSingleRoll(roll) {
-  const {
-    dieName,
-    dieType,
-    faceValue,
-    modifier,
-    modifierName,
-    isModifierBoxVisible,
-  } = roll;
+  const { dieName, dieType, faceValue } = roll;
 
-  let formula;
-  if (isModifierBoxVisible && modifier !== 0) {
-    formula = buildSingleWithModifierFormula(
-      faceValue,
-      modifier,
-      modifierName,
-      dieType,
-      dieName
-    );
-  } else {
-    formula = buildSingleSimpleFormula(faceValue, dieType, dieName);
-  }
-
+  const formula = buildSingleSimpleFormula(faceValue, dieType, dieName);
   formula.split('\\n').forEach(s => getPostChatMessage()(s));
   getSendTextToExtension()(`${dieName}: face up = ${faceValue}`);
 }
@@ -151,9 +132,6 @@ function postGroupedRoll(rolls) {
         dieName: `${percentileRolls[0].dieName}+${d10Rolls[0].dieName}`,
         dieType: 101, // Special marker for combined percentile
         faceValue: percentileResult,
-        modifier: rolls[0].modifier,
-        modifierName: rolls[0].modifierName,
-        isModifierBoxVisible: rolls[0].isModifierBoxVisible,
       },
     ];
 
@@ -191,9 +169,6 @@ function computePercentileValue(percentileFace, d10Face) {
  * Post a grouped roll from a pre-processed list of rolls.
  */
 function postGroupedRollFromList(rolls) {
-  const firstRoll = rolls[0];
-  const { modifier, modifierName, isModifierBoxVisible } = firstRoll;
-
   const rollsByType = groupRollsByDieType(rolls);
   const totalDiceValue = rolls.reduce((sum, r) => sum + r.faceValue, 0);
 
@@ -205,23 +180,12 @@ function postGroupedRollFromList(rolls) {
     .map(r => `<span title="${r.dieName}">${r.faceValue}</span>`)
     .join(' + ');
 
-  let message;
-  if (isModifierBoxVisible && modifier !== 0) {
-    const modifierSign = formatModifierSign(modifier);
-    const diceExpr = sortedRolls.map(r => r.faceValue).join('+');
-    message =
-      `&{template:default} {{name=${modifierName} (Pixels Dice)}}` +
-      ` {{Rolling=${formulaParts}${modifierSign}}}` +
-      ` {{Dice=( ${individualValues} ) ${modifierSign}}}` +
-      ` {{Result=[[(${diceExpr})+${modifier}[${modifierName}]]]}}`;
-  } else {
-    const diceExpr = sortedRolls.map(r => r.faceValue).join('+');
-    message =
-      `&{template:default} {{name=Pixels Dice}}` +
-      ` {{Rolling=${formulaParts}}}` +
-      ` {{Dice=( ${individualValues} )}}` +
-      ` {{Result=[[(${diceExpr})]]}}`;
-  }
+  const diceExpr = sortedRolls.map(r => r.faceValue).join('+');
+  const message =
+    `&{template:default} {{name=Pixels Dice}}` +
+    ` {{Rolling=${formulaParts}}}` +
+    ` {{Dice=( ${individualValues} )}}` +
+    ` {{Result=[[(${diceExpr})]]}}`;
 
   getPostChatMessage()(message);
 
@@ -267,29 +231,7 @@ function buildDiceFormulaParts(rollsByType) {
 }
 
 /**
- * Build a single-die formula with modifier (matches existing format).
- */
-function buildSingleWithModifierFormula(
-  faceValue,
-  modifier,
-  modifierName,
-  dieType,
-  dieName
-) {
-  const modifierSign = formatModifierSign(modifier);
-  const diceWithHover = `<span title="${dieName}">${faceValue}</span>`;
-  const dieLabel =
-    dieType === 101 ? 'd%' : dieType === 100 ? 'd00' : `d${dieType}`;
-  return (
-    `&{template:default} {{name=${modifierName} (Pixels Dice)}}` +
-    ` {{Rolling=1${dieLabel}${modifierSign}}}` +
-    ` {{Dice=${diceWithHover} ${modifierSign}}}` +
-    ` {{Result=[[${faceValue}+${modifier}[${modifierName}]]]}}`
-  );
-}
-
-/**
- * Build a single-die formula without modifier (matches existing format).
+ * Build a single-die chat message (no modifier).
  */
 function buildSingleSimpleFormula(faceValue, dieType, dieName) {
   const diceWithHover = `<span title="${dieName}">${faceValue}</span>`;
@@ -301,11 +243,6 @@ function buildSingleSimpleFormula(faceValue, dieType, dieName) {
     ` {{Dice=${diceWithHover}}}` +
     ` {{Result=[[${faceValue}]]}}`
   );
-}
-
-function formatModifierSign(modifier) {
-  const num = parseInt(modifier, 10) || 0;
-  return num >= 0 ? `+${num}` : num.toString();
 }
 
 /**

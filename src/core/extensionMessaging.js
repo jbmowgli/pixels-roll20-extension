@@ -93,37 +93,6 @@ export const setupMessageListener = () => {
             sendStatusToExtension();
             break;
 
-          case 'setModifier':
-            if (window.pixelsModifier !== msg.modifier) {
-              window.pixelsModifier = msg.modifier || '0';
-
-              if (window.saveModifierSettings) {
-                window.saveModifierSettings(); // Save to localStorage
-              }
-
-              // Update floating box if it exists and ModifierBox is loaded
-              if (typeof window.ModifierBox !== 'undefined') {
-                const modifierBox = window.ModifierBox.getElement();
-                if (modifierBox) {
-                  const selectedRadio = modifierBox.querySelector(
-                    'input[name="modifier-select"]:checked'
-                  );
-                  if (selectedRadio) {
-                    const index = parseInt(selectedRadio.value);
-                    const rows = modifierBox.querySelectorAll('.modifier-row');
-                    const row = rows[index];
-                    if (row) {
-                      const valueInput = row.querySelector('.modifier-value');
-                      if (valueInput) {
-                        valueInput.value = window.pixelsModifier;
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            break;
-
           case 'connect':
             try {
               if (window.connectToPixel) {

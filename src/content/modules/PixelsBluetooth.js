@@ -54,9 +54,7 @@ const DIE_TYPE_FACES = {
 // Reconnection strategy: 'unknown' until first attempt, then 'watch' or 'poll'
 let reconnectionStrategy = 'unknown';
 
-// Roll formulas
-const pixelsFormulaWithModifier =
-  '&{template:default} {{name=#modifier_name (#modifier_sign)}} {{Pixel=#face_value}} {{Result=[[#face_value + #modifier]]}}';
+// Roll formula for unprompted rolls (simple, no modifier)
 const pixelsFormulaSimple =
   '&{template:default} {{name=Pixel Roll}} {{Pixel=#face_value}} {{Result=[[#result]]}}';
 
@@ -73,12 +71,6 @@ const getPixelByDeviceId = curry((deviceId, pixelList) =>
   })
 );
 const getConnectedPixels = filter(isConnected);
-
-// Helper function to format modifier with proper sign
-const formatModifierSign = modifier => {
-  const num = parseInt(modifier) || 0;
-  return num >= 0 ? `+${num}` : num.toString();
-};
 
 // Pixel factory function - creates a new Pixel die object
 export const createPixel = (name, server, device) => {
@@ -276,21 +268,6 @@ export const createPixel = (name, server, device) => {
       _face = face;
       _hasMoved = false; // Require movement before next roll registers
 
-      // Check if modifier box is visible to determine modifier application
-      const isModifierBoxVisible =
-        window.ModifierBox &&
-        window.ModifierBox.isVisible &&
-        window.ModifierBox.isVisible();
-
-      // Sync modifier values from the modifier box before processing roll (only if visible)
-      if (
-        isModifierBoxVisible &&
-        typeof window.ModifierBox !== 'undefined' &&
-        window.ModifierBox.syncGlobalVars
-      ) {
-        window.ModifierBox.syncGlobalVars();
-      }
-
       // Calculate face value based on die type
       // d00 (percentile): faces represent 00, 10, 20... 90
       // d10: faces represent 1-10 (0 face reads as 10)
@@ -303,9 +280,6 @@ export const createPixel = (name, server, device) => {
       } else {
         diceValue = face + 1;
       }
-      const modifier = isModifierBoxVisible
-        ? parseInt(window.pixelsModifier) || 0
-        : 0;
 
       // Route roll through the prompt (if active) or the batcher
       const command = window.PixelsCommand;
@@ -331,24 +305,13 @@ export const createPixel = (name, server, device) => {
           dieName: _name,
           dieType,
           faceValue: diceValue,
-          modifier,
-          modifierName: window.pixelsModifierName,
-          isModifierBoxVisible,
         });
       } else {
         // Fallback: post immediately if batcher unavailable
-        const result = diceValue + modifier;
-        const formula = isModifierBoxVisible
-          ? pixelsFormulaWithModifier
-          : pixelsFormulaSimple;
-
-        const message = formula
-          .replaceAll('#modifier_name', window.pixelsModifierName)
-          .replaceAll('#modifier_sign', formatModifierSign(modifier))
+        const message = pixelsFormulaSimple
           .replaceAll('#face_value', diceValue.toString())
           .replaceAll('#pixel_name', _name)
-          .replaceAll('#modifier', modifier.toString())
-          .replaceAll('#result', result.toString());
+          .replaceAll('#result', diceValue.toString());
 
         message.split('\\n').forEach(s => postChatMessage(s));
         sendTextToExtension(`${_name}: face up = ${diceValue}`);

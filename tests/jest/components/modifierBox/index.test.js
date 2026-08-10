@@ -170,19 +170,18 @@ describe('ModifierBox Main Module', () => {
       const modifierRow = content.querySelector('.modifier-row');
       expect(modifierRow).toBeTruthy();
 
-      const radio = modifierRow.querySelector('input[type="radio"]');
-      const nameInput = modifierRow.querySelector('input[type="text"]');
-      const valueInput = modifierRow.querySelector('input[type="number"]');
+      const nameInput = modifierRow.querySelector('.modifier-name');
+      const formulaInput = modifierRow.querySelector('.formula-input');
+      const rollBtn = modifierRow.querySelector('.roll-formula-btn');
       const removeBtn = modifierRow.querySelector('.remove-row-btn');
 
-      expect(radio).toBeTruthy();
       expect(nameInput).toBeTruthy();
-      expect(valueInput).toBeTruthy();
+      expect(formulaInput).toBeTruthy();
+      expect(rollBtn).toBeTruthy();
       expect(removeBtn).toBeTruthy();
 
-      expect(radio.checked).toBe(true);
-      expect(nameInput.value).toBe('Modifier');
-      expect(valueInput.value).toBe('0');
+      expect(nameInput.value).toBe('Attack');
+      expect(formulaInput.value).toBe('1d20');
     });
 
     test('should return existing modifier box if one already exists', async () => {
@@ -209,9 +208,9 @@ describe('ModifierBox Main Module', () => {
       expect(element.id).toBe('pixels-modifier-box');
       expect(document.body.contains(element)).toBe(true);
 
-      // Check that "D20" was updated to "Modifier" in the new structure
+      // Check that "D20" was updated to "Attack" in the new structure
       const nameInput = element.querySelector('.modifier-name');
-      expect(nameInput.value).toBe('Modifier');
+      expect(nameInput.value).toBe('Attack');
     });
 
     test('should call all component setup methods', async () => {
@@ -434,14 +433,12 @@ describe('ModifierBox Main Module', () => {
   });
 
   describe('Integration Methods', () => {
-    test('should call updateSelectedModifier when available', async () => {
+    test('should not throw when calling updateSelectedModifier (no-op)', async () => {
       await window.ModifierBox.create();
 
-      window.ModifierBox.updateSelectedModifier();
-
-      expect(
-        window.ModifierBoxRowManager.updateSelectedModifier
-      ).toHaveBeenCalled();
+      expect(() => {
+        window.ModifierBox.updateSelectedModifier();
+      }).not.toThrow();
     });
 
     test('should call theme methods when available', async () => {
@@ -459,14 +456,12 @@ describe('ModifierBox Main Module', () => {
       ).toHaveBeenCalled();
     });
 
-    test('should sync global variables', async () => {
+    test('should not throw when calling syncGlobalVars (no-op)', async () => {
       await window.ModifierBox.create();
 
-      window.ModifierBox.syncGlobalVars();
-
-      expect(
-        window.ModifierBoxRowManager.updateSelectedModifier
-      ).toHaveBeenCalled();
+      expect(() => {
+        window.ModifierBox.syncGlobalVars();
+      }).not.toThrow();
     });
   });
 

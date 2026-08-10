@@ -277,10 +277,10 @@ describe('Roll20.js - Comprehensive Tests', () => {
         isInitialized: jest.fn(() => true),
       };
 
-      mockMessageListener({ action: 'showModifier' }, null, jest.fn());
+      mockMessageListener({ action: 'showSavedRolls' }, null, jest.fn());
       expect(global.window.ModifierBox.show).toHaveBeenCalled();
 
-      mockMessageListener({ action: 'hideModifier' }, null, jest.fn());
+      mockMessageListener({ action: 'hideSavedRolls' }, null, jest.fn());
       expect(global.window.ModifierBox.hide).toHaveBeenCalled();
     });
   });

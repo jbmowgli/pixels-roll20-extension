@@ -23,9 +23,7 @@ import {
 if (typeof window.roll20PixelsLoaded === 'undefined') {
   const _roll20PixelsLoaded = true;
 
-  // Global modifier variables (accessed by modifierBox.js)
-  window.pixelsModifier = '0';
-  window.pixelsModifierName = 'Modifier 1';
+  // Global settings
   window.pixelsAllowUnprompted = true; // Default: process all rolls
   window.pixelsAllowDiceSubstitution = false; // Default: no substitution
 
@@ -63,22 +61,6 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
     // Set up extension messaging
     setupMessageListener();
 
-    // Set up formulas
-    const pixelsFormulaWithModifier =
-      '&{template:default} {{name=#modifier_name (#modifier_sign)}} {{Result=[[#face_value + #modifier]]}}';
-    const _pixelsFormulaSimple =
-      '&{template:default} {{name=Result}} {{Pixel Dice=[[#result]]}}';
-    const _pixelsFormula = pixelsFormulaWithModifier; // Legacy compatibility
-
-    // Helper function to format modifier with proper sign
-    const formatModifierSign = modifier => {
-      const num = parseInt(modifier) || 0;
-      return num >= 0 ? `+${num}` : num.toString();
-    };
-
-    // Export function to global scope for compatibility
-    window.formatModifierSign = formatModifierSign;
-
     // Only set up message listener if in extension context
     if (
       typeof chrome !== 'undefined' &&
@@ -98,15 +80,11 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
               window.sendStatusToExtension();
               break;
 
-            case 'setModifier':
-              handleSetModifierMessage(msg);
-              break;
-
-            case 'showModifier':
+            case 'showSavedRolls':
               window.showModifierBox();
               break;
 
-            case 'hideModifier':
+            case 'hideSavedRolls':
               window.hideModifierBox();
               break;
 
@@ -119,9 +97,8 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
               break;
 
             case 'getCurrentRows': {
-              // Return the current popout rows (names/order/values) for the
-              // popup to save as a profile. Prefer the live DOM; fall back to
-              // persisted rows so this works even when the box is hidden.
+              // Return the current saved roll rows for the popup to save as a
+              // profile. Prefer the live DOM; fall back to persisted rows.
               let rowsData = null;
               const box = window.ModifierBox?.getElement?.();
               if (box && window.ModifierBoxRowManager?.serializeRows) {
@@ -129,27 +106,26 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
               }
               if (!rowsData || !rowsData.rows || rowsData.rows.length === 0) {
                 try {
-                  const stored = localStorage.getItem('pixels_modifier_rows');
+                  const stored =
+                    localStorage.getItem('pixels_saved_rolls') ||
+                    localStorage.getItem('pixels_modifier_rows');
                   if (stored) {
                     const parsed = JSON.parse(stored);
                     rowsData = {
                       rows: parsed.rows || [],
-                      selectedIndex:
-                        typeof parsed.selectedIndex === 'number'
-                          ? parsed.selectedIndex
-                          : -1,
+                      version: parsed.version || 1,
                     };
                   }
                 } catch (e) {
                   log(`Could not read stored rows: ${e.message}`);
                 }
               }
-              sendResponse(rowsData || { rows: [], selectedIndex: -1 });
+              sendResponse(rowsData || { rows: [], version: 2 });
               break;
             }
 
             case 'applyProfile': {
-              // Apply a saved profile's rows to the popout, creating/showing it
+              // Apply a saved profile's rows to the panel, creating/showing it
               // first if necessary. Responds asynchronously.
               (async () => {
                 try {
@@ -158,17 +134,11 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
                     await window.ModifierBox.show();
                   }
                   const box = window.ModifierBox?.getElement?.();
-                  const cb = () => {
-                    if (window.ModifierBox?.updateSelectedModifier) {
-                      window.ModifierBox.updateSelectedModifier();
-                    }
-                  };
                   const ok =
                     box && window.ModifierBoxRowManager?.applyProfileRows
                       ? window.ModifierBoxRowManager.applyProfileRows(
                           box,
-                          msg.profile,
-                          cb
+                          msg.profile
                         )
                       : false;
                   sendResponse({ success: Boolean(ok) });
@@ -280,77 +250,6 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
     }
   }
 
-  // Handle setModifier message
-  function handleSetModifierMessage(msg) {
-    // Instead of overwriting the UI, sync FROM the UI TO the global variables
-    // This prevents resetting user-entered values when the popup initializes
-    if (typeof window.ModifierBox !== 'undefined') {
-      const modifierBox = window.ModifierBox.getElement();
-      if (modifierBox) {
-        // Check if the modifier box has any user data
-        const selectedRadio = modifierBox.querySelector(
-          'input[name="modifier-select"]:checked'
-        );
-        if (selectedRadio) {
-          const index = parseInt(selectedRadio.value);
-          const rows = modifierBox.querySelectorAll('.modifier-row');
-          const row = rows[index];
-          if (row) {
-            const valueInput = row.querySelector('.modifier-value');
-            const nameInput = row.querySelector('.modifier-name');
-
-            // If there's already user data in the UI, sync FROM UI TO global vars
-            if (valueInput && nameInput) {
-              const currentValue = valueInput.value;
-              const currentName = nameInput.value;
-
-              // Only update if the UI has meaningful data
-              if (currentValue !== '' && currentName !== '') {
-                window.pixelsModifier = currentValue;
-                window.pixelsModifierName = currentName;
-                window.saveModifierSettings();
-                return; // Exit early, don't overwrite UI
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // If no meaningful UI data exists, then apply the popup's value
-    if (window.pixelsModifier !== msg.modifier) {
-      window.pixelsModifier = msg.modifier || '0';
-      window.saveModifierSettings();
-
-      // Only update UI if there's no existing meaningful data
-      if (typeof window.ModifierBox !== 'undefined') {
-        const modifierBox = window.ModifierBox.getElement();
-        if (modifierBox) {
-          const selectedRadio = modifierBox.querySelector(
-            'input[name="modifier-select"]:checked'
-          );
-          if (selectedRadio) {
-            const index = parseInt(selectedRadio.value);
-            const rows = modifierBox.querySelectorAll('.modifier-row');
-            const row = rows[index];
-            if (row) {
-              const valueInput = row.querySelector('.modifier-value');
-              if (
-                valueInput &&
-                (valueInput.value === '' || valueInput.value === '0')
-              ) {
-                valueInput.value = window.pixelsModifier;
-                window.log(
-                  `Updated UI with popup value: ${window.pixelsModifier}`
-                );
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
   // Initialize after all modules are loaded
   function startExtension() {
     initializeExtension();
@@ -358,24 +257,17 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
     // Send initial status
     window.sendStatusToExtension();
 
-    // Load modifier settings from localStorage
-    window.loadModifierSettings();
-
-    // Initialize the modifier box and apply saved visibility after DOM settles
+    // Initialize the saved rolls panel and apply saved visibility after DOM settles
     setTimeout(() => {
       try {
         if (window.isRoll20PopupWindow()) {
-          window.log('Skipping modifier box in popup window');
+          window.log('Skipping saved rolls panel in popup window');
           return;
         }
-        // Apply saved visibility preferences
-        const shouldShowUnprompted = window.pixelsAllowUnprompted !== false;
-        if (!shouldShowUnprompted) {
-          return;
-        }
+        // Apply saved visibility preference (independent of unprompted setting)
         if (typeof chrome !== 'undefined' && chrome.storage) {
-          chrome.storage.local.get('pixels_modifier_box_visible', result => {
-            if (result.pixels_modifier_box_visible !== false) {
+          chrome.storage.local.get('pixels_saved_rolls_visible', result => {
+            if (result.pixels_saved_rolls_visible !== false) {
               window.showModifierBox();
             }
           });
@@ -383,7 +275,7 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
           window.showModifierBox();
         }
       } catch (error) {
-        window.log(`Error showing modifier box: ${error}`);
+        window.log(`Error showing saved rolls panel: ${error}`);
       }
     }, 1000);
   }

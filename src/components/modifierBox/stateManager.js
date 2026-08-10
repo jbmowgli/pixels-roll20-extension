@@ -1,6 +1,6 @@
 /**
  * State Manager Module
- * Manages singleton state and lifecycle for the modifier box
+ * Manages singleton state and lifecycle for the saved rolls panel
  */
 
 'use strict';
@@ -94,13 +94,8 @@ export function updateLegacyDefaults(modifierBox) {
     firstNameInput &&
     (firstNameInput.value === 'None' || firstNameInput.value === 'D20')
   ) {
-    firstNameInput.value = 'Modifier';
-    firstNameInput.placeholder = 'Modifier';
-
-    // Update global variable too
-    if (typeof window.pixelsModifierName !== 'undefined') {
-      window.pixelsModifierName = 'Modifier';
-    }
+    firstNameInput.value = 'Attack';
+    firstNameInput.placeholder = 'Name';
   }
 }
 

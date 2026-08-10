@@ -142,7 +142,7 @@ describe('RollBatcher', () => {
       expect(global.window.postChatMessage).toHaveBeenCalledTimes(1);
     });
 
-    test('should include modifier in output when non-zero', () => {
+    test('should not include modifier in output (modifiers removed)', () => {
       const rollData = createRollData('Die1', 20, 15, {
         modifier: 3,
         modifierName: 'Attack',
@@ -153,11 +153,13 @@ describe('RollBatcher', () => {
       jest.advanceTimersByTime(2000);
 
       const message = global.window.postChatMessage.mock.calls[0][0];
-      expect(message).toContain('Attack (Pixels Dice)');
-      expect(message).toContain('+3');
+      // Modifiers are no longer applied to unprompted rolls
+      expect(message).toContain('Pixels Dice');
+      expect(message).not.toContain('Attack');
+      expect(message).not.toContain('+3');
     });
 
-    test('should not include modifier when zero', () => {
+    test('should produce simple output regardless of modifier data', () => {
       const rollData = createRollData('Die1', 20, 15, {
         modifier: 0,
         modifierName: 'Modifier',

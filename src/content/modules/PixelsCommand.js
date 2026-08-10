@@ -634,6 +634,37 @@ function interceptCommand(textarea) {
   return true;
 }
 
+/**
+ * Programmatic entry point for executing a dice formula.
+ * Called by the saved rolls panel when the user clicks a "Roll" button.
+ * Parses the formula, validates it, and starts the roll prompt overlay.
+ * Returns true if the formula was accepted, false otherwise.
+ */
+function interceptFormula(formulaStr) {
+  if (!formulaStr || !formulaStr.trim()) {
+    return false;
+  }
+
+  const trimmed = formulaStr.trim();
+  const postChat = window.postChatMessage || function () {};
+
+  const ast = parseFormula(trimmed);
+  if (!ast) {
+    postChat(`Invalid dice formula: ${trimmed}`);
+    return false;
+  }
+
+  const promptData = buildSlotsFromAst(ast, trimmed);
+  if (promptData.slots.length === 0) {
+    postChat(`No dice found in formula: ${trimmed}`);
+    return false;
+  }
+
+  promptData.whisper = false;
+  startPrompt(promptData);
+  return true;
+}
+
 // --- Public API ---
 
 const PixelsCommand = {
@@ -642,6 +673,7 @@ const PixelsCommand = {
   isPromptActive,
   cancelPrompt,
   parseFormula,
+  interceptFormula,
 };
 
 export {
@@ -650,6 +682,7 @@ export {
   isPromptActive,
   cancelPrompt,
   parseFormula,
+  interceptFormula,
 };
 export default PixelsCommand;
 

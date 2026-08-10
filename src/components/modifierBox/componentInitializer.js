@@ -12,11 +12,7 @@ import {
   stopThemeMonitoring,
 } from './themeManager.js';
 import { setupDragFunctionality } from './dragHandler.js';
-import {
-  setupModifierRowLogic,
-  updateSelectedModifier as updateSelectedModifierFromRowManager,
-  loadModifierRows,
-} from './rowManager.js';
+import { setupModifierRowLogic, loadModifierRows } from './rowManager.js';
 import {
   setupMinimizeControls,
   setupClearAllControls,
@@ -88,32 +84,14 @@ function setupDragHandling(modifierBox) {
 }
 
 function setupRowManagement(modifierBox) {
-  const updateCallback = () => {
-    try {
-      if (
-        window.ModifierBoxRowManager &&
-        window.ModifierBoxRowManager.updateSelectedModifier
-      ) {
-        window.ModifierBoxRowManager.updateSelectedModifier(modifierBox);
-      } else if (typeof updateSelectedModifierFromRowManager === 'function') {
-        updateSelectedModifierFromRowManager(modifierBox);
-      }
-    } catch (error) {
-      console.error('Error updating selected modifier:', error);
-    }
-  };
-
   try {
     if (
       window.ModifierBoxRowManager &&
       window.ModifierBoxRowManager.setupModifierRowLogic
     ) {
-      window.ModifierBoxRowManager.setupModifierRowLogic(
-        modifierBox,
-        updateCallback
-      );
+      window.ModifierBoxRowManager.setupModifierRowLogic(modifierBox);
     } else if (typeof setupModifierRowLogic === 'function') {
-      setupModifierRowLogic(modifierBox, updateCallback);
+      setupModifierRowLogic(modifierBox);
     } else {
       console.error('Row manager setupModifierRowLogic not available');
     }
@@ -126,21 +104,12 @@ function setupRowManagement(modifierBox) {
       window.ModifierBoxRowManager &&
       window.ModifierBoxRowManager.loadModifierRows
     ) {
-      const loaded = window.ModifierBoxRowManager.loadModifierRows(
-        modifierBox,
-        updateCallback
-      );
-      if (!loaded) {
-        // No saved modifier rows found, using default
-      }
+      window.ModifierBoxRowManager.loadModifierRows(modifierBox);
     } else if (typeof loadModifierRows === 'function') {
-      const loaded = loadModifierRows(modifierBox, updateCallback);
-      if (!loaded) {
-        // No saved modifier rows found, using default
-      }
+      loadModifierRows(modifierBox);
     }
   } catch (error) {
-    console.error('Error loading modifier rows:', error);
+    console.error('Error loading saved rows:', error);
   }
 }
 
@@ -195,19 +164,6 @@ function setupThemeManagement(modifierBox) {
     }
   } catch (error) {
     console.error('Error applying initial theme:', error);
-  }
-
-  try {
-    if (
-      window.ModifierBoxRowManager &&
-      window.ModifierBoxRowManager.updateSelectedModifier
-    ) {
-      window.ModifierBoxRowManager.updateSelectedModifier(modifierBox);
-    } else if (typeof updateSelectedModifierFromRowManager === 'function') {
-      updateSelectedModifierFromRowManager(modifierBox);
-    }
-  } catch (error) {
-    console.error('Error updating selected modifier:', error);
   }
 }
 

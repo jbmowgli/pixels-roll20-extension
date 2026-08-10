@@ -12,7 +12,7 @@ export function generateModifierBoxHTML(
   return `
     <div class="pixels-header">
         <span class="pixels-title">
-            <img src="${logoUrl}" alt="Pixels" class="pixels-logo"> Modifiers
+            <img src="${logoUrl}" alt="Pixels" class="pixels-logo"> Saved Rolls
         </span>
         <div class="pixels-controls">
             <button class="add-modifier-btn" type="button" title="Add Row">Add</button>
@@ -23,9 +23,9 @@ export function generateModifierBoxHTML(
     <div class="pixels-content">
         <div class="modifier-row">
             <div class="drag-handle" title="Drag to reorder">⋮⋮</div>
-            <input type="radio" name="modifier-select" value="0" class="modifier-radio" id="mod-0" checked>
-            <input type="text" class="modifier-name" placeholder="Modifier" value="Modifier" data-index="0">
-            <input type="number" class="modifier-value" value="0" min="-99" max="99" data-index="0">
+            <input type="text" class="modifier-name" placeholder="Name" value="Attack" data-index="0">
+            <input type="text" class="formula-input" placeholder="e.g. 2d6+3" value="1d20" data-index="0">
+            <button class="roll-formula-btn" type="button" title="Roll this formula">Roll</button>
             <button class="remove-row-btn" type="button">×</button>
         </div>
     </div>
