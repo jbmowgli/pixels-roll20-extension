@@ -68,6 +68,18 @@ function offerRoll(dieType, faceValue) {
     return fillSlot(slot, faceValue);
   }
 
+  // No exact match — d100 (percentile) always works as d10
+  // Convert tens (10,20...90,100) to 1-10 range
+  if (dieType === 100) {
+    const d10Slot = pendingPrompt.slots.find(
+      s => s.value === null && s.type === 10
+    );
+    if (d10Slot) {
+      const convertedValue = faceValue === 100 ? 10 : faceValue / 10;
+      return fillSlot(d10Slot, convertedValue);
+    }
+  }
+
   // No exact match — try die substitution if enabled
   if (window.pixelsAllowDiceSubstitution && dieType in SUBSTITUTION_MAP) {
     const smallerType = SUBSTITUTION_MAP[dieType];

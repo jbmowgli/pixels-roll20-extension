@@ -226,6 +226,10 @@ The `/pix` command supports the full Roll20 dice specification:
 
 > **Note on Roll20 operators**: In Roll20, `>` means "greater than or equal to" and `<` means "less than or equal to." You can also type `>=` or `<=` — they're normalized automatically.
 
+### Percentile Die as d10
+
+The d100 (percentile/d00) die — which shows faces 00, 10, 20 … 90 — can always be used as a d10 during prompted rolls. When a `/pix` prompt is waiting for a d10 and no d100 slot is pending, rolling the percentile die converts its value to the 1–10 range (divide by 10; the 00 face counts as 10). This works unconditionally, regardless of the dice substitution setting.
+
 ### Exploding Dice
 
 When a die triggers an explosion condition (e.g., rolling max on `2d6!`), a new slot appears in the overlay automatically. Roll the extra die to fill it. If that roll also explodes, another slot appears — and so on, until the chain stops or the safety limit (20 explosions per group) is reached.
