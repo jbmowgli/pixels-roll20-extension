@@ -511,6 +511,23 @@ body {
   text-overflow: ellipsis;
 }
 
+.known-dice-name.clickable {
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+  transition: background-color 0.15s ease;
+}
+
+.known-dice-name.clickable:hover {
+  background-color: rgba(74, 158, 255, 0.15);
+  color: #4a9eff;
+}
+
+.known-dice-name.clickable:active {
+  background-color: rgba(74, 158, 255, 0.25);
+}
+
 .known-dice-icon {
   flex-shrink: 0;
   color: #666666;
@@ -576,4 +593,35 @@ body {
 
 .known-dice-battery.battery-critical {
   color: #f87171;
+}
+
+/* Roll Window Slider */
+.roll-window-container {
+  margin-left: 24px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.roll-window-container.hidden {
+  display: none;
+}
+
+.roll-window-label {
+  font-size: 12px;
+  color: #999999;
+  white-space: nowrap;
+}
+
+.roll-window-value {
+  font-weight: bold;
+  color: #cccccc;
+}
+
+.roll-window-slider {
+  flex: 1;
+  height: 4px;
+  accent-color: #4a9eff;
+  cursor: pointer;
 }
