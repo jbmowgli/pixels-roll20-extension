@@ -1,7 +1,7 @@
 {
-  "name": "Pixels Roll20 Integration",
+  "name": "PixelLink for Roll20",
   "version": "1.1.0",
-  "description": "Connect Pixels dice to Roll20 via Bluetooth with advanced modifier support and seamless integration.",
+  "description": "Connect Pixels dice to Roll20 via Bluetooth. System-independent — works with any game, no character sheet required.",
   "permissions": ["activeTab", "storage"],
   "background": {
     "service_worker": "background/background.js"

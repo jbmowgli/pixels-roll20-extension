@@ -1,22 +1,30 @@
-# Pixels Roll20 Integration
+# PixelLink for Roll20
 
-Connect your Pixels dice to Roll20 via Bluetooth for seamless physical dice rolling.
+Connect your Pixels dice to Roll20 via Bluetooth — system-independent, no character sheet required.
+
+PixelLink works with any Roll20 game regardless of the game system, character sheet template, or campaign settings. It operates entirely through Roll20's chat, so there are zero dependencies on a specific character sheet, compendium, or API scripts. If you can type in Roll20's chat box, PixelLink works.
 
 ## Acknowledgments
 
-This project was originally inspired by the [Pixels on Roll20](https://github.com/obasille/PixelsRoll20ChromeExtension) extension by [Olivier Basille](https://github.com/obasille). While this implementation has evolved into a completely different codebase with extensive new features, modular architecture, and comprehensive testing, we acknowledge the original work that sparked the idea.
+This project is a fork of [jbmowgli/pixels-roll20-extension](https://github.com/jbmowgli/pixels-roll20-extension), which built on the original [Pixels Dice for Roll20](https://chromewebstore.google.com/detail/pixels-dice-for-roll20/lalcogidjgmjlfddpbiflchacijfdban) extension by [Olivier Basille](https://github.com/obasille) ([source](https://github.com/GameWithPixels/PixelsRoll20ChromeExtension)). Both are solid, fully functional extensions for connecting Pixels dice to Roll20. PixelLink takes the project in a different direction — focused on the `/pix` prompted-roll workflow, full Roll20 dice syntax support, and a system-independent design — but the foundation those authors built made this possible.
 
-**Key Differences from Original:**
+**PixelLink Features:**
 
-- Complete rewrite with modular architecture (7 focused modules)
-- Advanced modifier box with drag/drop, theming, and persistence
-- Comprehensive test suite (210+ automated tests)
-- Modern Manifest V3 Chrome extension
-- Professional documentation and publication readiness
-- Extensive UI enhancements and error handling
+- Full Roll20 dice syntax via `/pix` commands (keep/drop, exploding, count successes, reroll, compounding, penetrating)
+- System-independent design — no character sheet, compendium, or API script dependencies
+- Multi-dice roll batching with configurable roll window
+- Modifier profiles with import/export (portable across browsers)
+- Pop-out modifier box (Document Picture-in-Picture, always-on-top)
+- Silent auto-reconnect via `watchAdvertisements()` / exponential-backoff polling
+- BLE die-type detection for all Pixels shapes (d4–d20, d00)
+- Percentile (d%) combo handling and dice substitution
+- Comprehensive test suite (240+ automated tests)
+- Modular ES-module architecture built with webpack (Manifest V3)
 
 ## Features
 
+- **System-independent** — works with D&D 5e, Pathfinder, Shadowrun, FATE, or any system on Roll20
+- **No character sheet dependency** — communicates via Roll20 chat only, never touches sheet macros or API scripts
 - Connect Pixels dice via Bluetooth
 - Multi-dice roll grouping with formula display (e.g., "Rolling 2d6")
 - `/pixels` chat command for prompted rolls with full Roll20 dice syntax
@@ -46,7 +54,7 @@ This project was originally inspired by the [Pixels on Roll20](https://github.co
 
 1. Download `pixels-roll20-extension-store.zip`
 2. Extract → Load `dist/` folder in `chrome://extensions/`
-3. Go to Roll20 → Click Pixels icon → Connect dice → Roll!
+3. Go to Roll20 → Click PixelLink icon → Connect dice → Roll!
 
 **Alternative**: Build from source - see **[Installation Guide](docs/INSTALLATION.md)**.
 
@@ -75,6 +83,8 @@ npm run build:prod  # Creates dist/ folder for Chrome
 - **Import/Export**: Back up or move profiles between browsers via the popup's "Export All"/"Import" buttons, or "Export" a single profile from its row
 - **Roll dice**: Physical rolls automatically appear in chat
 
+**Works with every system** — Roll20 doesn't need to know about PixelLink. There's nothing to configure on the campaign, no API scripts to install, and no character sheet integration to set up. Just connect your dice and roll.
+
 ### Chat Display Behavior
 
 | Modifier box visible                         | Modifier box hidden               |
@@ -97,15 +107,12 @@ npm run build:prod  # Creates dist/ folder for Chrome
 
 ## Technical Notes
 
+- **System-Independent**: Works with any Roll20 game — no character sheet, compendium, or API dependencies
 - **Modular Architecture**: Clean, maintainable codebase with focused modules
 - **Comprehensive Testing**: 210+ automated tests ensuring reliability
 - **Chrome Extension Manifest V3** compliant for modern browser support
 - **Bluetooth Web API** for direct dice communication
-- **Roll20 Integration** via chat injection and macro system
-
-## License
-
-MIT License - see LICENSE file for details.
+- **Roll20 Integration** via chat injection (no macros or sheet workers required)
 
 ## Quick Troubleshooting
 

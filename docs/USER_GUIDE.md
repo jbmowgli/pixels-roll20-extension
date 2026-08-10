@@ -2,10 +2,13 @@
 
 ## Overview
 
-The Pixels Roll20 Chrome Extension connects your physical Pixels dice to Roll20 via Bluetooth, allowing your physical dice rolls to appear automatically in the Roll20 chat with optional modifier support.
+PixelLink for Roll20 connects your physical Pixels dice to Roll20 via Bluetooth, allowing your physical dice rolls to appear automatically in the Roll20 chat with optional modifier support.
+
+**System-independent**: PixelLink works with any Roll20 game — D&D 5e, Pathfinder, Shadowrun, FATE, Call of Cthulhu, or any other system. It has no dependencies on a specific character sheet, compendium, API scripts, or campaign configuration. It communicates entirely through Roll20's chat, so if you can type a message in chat, PixelLink works.
 
 ### Key Features
 
+- **Works with any game system** — no character sheet integration or API scripts needed
 - **Multi-Dice Grouping**: Physical rolls from multiple dice are grouped into a single formula display
 - **Prompted Rolls**: Use `/pix` in chat to specify exactly which dice to roll
 - **Auto-Reconnect**: Previously connected dice reconnect silently on page load
