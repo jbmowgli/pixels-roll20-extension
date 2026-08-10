@@ -23,7 +23,6 @@ describe('Roll20.js - Comprehensive Tests', () => {
     require('../../src/content/modules/Roll20Integration.js');
     require('../../src/content/modules/StorageManager.js');
     require('../../src/content/modules/ModifierBoxManager.js');
-    require('../../src/content/modules/PixelsBluetooth.js');
     require('../../src/content/roll20.js');
 
     // The main roll20.js module auto-initializes via DOM ready or timeout
@@ -345,8 +344,10 @@ describe('Roll20.js - Comprehensive Tests', () => {
       loadAllModules();
     });
 
-    test('should set up status monitoring', () => {
-      expect(global.setInterval).toHaveBeenCalled();
+    test('should set up status monitoring via message listener', () => {
+      // Status monitoring is now event-driven via chrome.runtime.onMessage
+      // rather than polling with setInterval
+      expect(mockChrome.runtime.onMessage.addListener).toHaveBeenCalled();
     });
 
     test('should send initial status', () => {

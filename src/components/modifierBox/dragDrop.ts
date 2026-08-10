@@ -2,7 +2,6 @@
  * Drag and Drop functionality for modifier rows
  */
 
-import { curry, reduce } from 'ramda';
 import { getThemeColors } from '../../utils/themeDetector';
 
 // Functional helpers
@@ -15,32 +14,28 @@ const createElement = (
   return element;
 };
 
-const setStyle = curry(
-  (styles: Record<string, string>, element: HTMLElement): HTMLElement => {
-    Object.entries(styles).forEach(([prop, value]) => {
-      element.style.setProperty(prop, value, 'important');
-    });
-    return element;
-  }
-);
+const setStyle = (
+  styles: Record<string, string>,
+  element: HTMLElement
+): HTMLElement => {
+  Object.entries(styles).forEach(([prop, value]) => {
+    element.style.setProperty(prop, value, 'important');
+  });
+  return element;
+};
 
-const addClass = curry(
-  (className: string, element: HTMLElement): HTMLElement => {
-    element.classList.add(className);
-    return element;
-  }
-);
+const addClass = (className: string, element: HTMLElement): HTMLElement => {
+  element.classList.add(className);
+  return element;
+};
 
-const removeClass = curry(
-  (className: string, element: HTMLElement): HTMLElement => {
-    element.classList.remove(className);
-    return element;
-  }
-);
+const removeClass = (className: string, element: HTMLElement): HTMLElement => {
+  element.classList.remove(className);
+  return element;
+};
 
-const closest = curry((selector: string, element: Element): Element | null =>
-  element.closest(selector)
-);
+const findClosest = (selector: string, element: Element): Element | null =>
+  element.closest(selector);
 
 // Factory function to create drag and drop functionality
 export const createRowDragDrop: RowDragDropFactory = (
@@ -101,16 +96,16 @@ export const createRowDragDrop: RowDragDropFactory = (
 
   const handleMouseDown = (e: MouseEvent): void => {
     const target = e.target as Element;
-    const handle = closest('.drag-handle', target);
+    const handle = findClosest('.drag-handle', target);
     if (!handle) return;
 
-    const row = closest(rowSelector, handle) as HTMLElement | null;
+    const row = findClosest(rowSelector, handle) as HTMLElement | null;
     if (!row) return;
 
     e.preventDefault(); // Prevent text selection
 
     draggedElement = row;
-    container = closest(containerSelector, row);
+    container = findClosest(containerSelector, row);
     _dragHandle = handle as HTMLElement;
 
     // Store initial mouse position
@@ -219,7 +214,7 @@ export const createRowDragDrop: RowDragDropFactory = (
       rowManagerInstance &&
       typeof rowManagerInstance.reindexRows === 'function'
     ) {
-      const modifierBox = closest(
+      const modifierBox = findClosest(
         '#pixels-modifier-box',
         container!
       ) as HTMLElement | null;
@@ -244,25 +239,24 @@ export const createRowDragDrop: RowDragDropFactory = (
       ...containerElement.querySelectorAll(`${rowSelector}:not(.dragging)`),
     ];
 
-    return reduce(
+    return draggableElements.reduce(
       (
-        closest: { offset: number; element: Element | undefined },
+        currentClosest: { offset: number; element: Element | undefined },
         child: Element
       ) => {
         const box = child.getBoundingClientRect();
         const offset = y - box.top - box.height / 2;
 
-        if (offset < 0 && offset > closest.offset) {
+        if (offset < 0 && offset > currentClosest.offset) {
           return { offset: offset, element: child };
         } else {
-          return closest;
+          return currentClosest;
         }
       },
       {
         offset: Number.NEGATIVE_INFINITY,
         element: undefined as Element | undefined,
-      },
-      draggableElements
+      }
     ).element;
   };
 

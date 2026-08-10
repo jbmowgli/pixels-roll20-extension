@@ -54,7 +54,7 @@ npm run zip:store
   - `Roll20Integration.js` - Roll20 chat integration
   - `StorageManager.js` - Chrome storage management
   - `ModifierBoxManager.js` - Modifier box lifecycle
-  - `PixelsBluetooth.js` - Bluetooth dice connection with multi-device support
+  - `PixelsBridge.js` - BLE dice connection via @scooper4711/pixels-ble
 
 **UI Components (ES Modules):**
 

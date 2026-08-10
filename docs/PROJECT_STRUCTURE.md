@@ -18,7 +18,7 @@ PixelsRoll20ChromeExtension/
 │   │   │   ├── Roll20Integration.js  # Roll20 platform integration
 │   │   │   ├── StorageManager.js     # Settings persistence management
 │   │   │   ├── ModifierBoxManager.js # Modifier box coordination
-│   │   │   └── PixelsBluetooth.js    # Bluetooth dice management
+│   │   │   └── PixelsBridge.js       # BLE dice management (via @scooper4711/pixels-ble)
 │   │   └── roll20.js             # Main coordinator (loads and coordinates modules)
 │   ├── components/               # UI components
 │   │   ├── modifierBox/          # Modifier box component (camelCase naming)
@@ -138,8 +138,8 @@ The Roll20 integration has been refactored into focused, single-responsibility m
   - Coordinates between the main script and ModifierBox component
   - Manages modifier box lifecycle and state
   - Handles show/hide operations and user interactions
-- **PixelsBluetooth.js**: Bluetooth dice management
-  - Bluetooth connection management with Pixels dice
+- **PixelsBridge.js**: BLE dice management
+  - Adapter between @scooper4711/pixels-ble DiceManager and Roll20 extension
   - Dice roll event handling and processing
   - Connection state monitoring and error recovery
 
@@ -311,7 +311,7 @@ Content scripts are injected in the order defined by `src/manifest.json` (paths 
   'content/modules/Roll20Integration.js', // Roll20 platform integration
   'content/modules/StorageManager.js', // Storage coordination
   'content/modules/ModifierBoxManager.js', // ModifierBox coordination
-  'content/modules/PixelsBluetooth.js', // Bluetooth management
+  'content/modules/PixelsBridge.js', // BLE management (via @scooper4711/pixels-ble)
   'content/roll20.js', // Main coordinator (loads last)
 ];
 ```

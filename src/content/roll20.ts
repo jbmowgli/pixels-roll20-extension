@@ -6,13 +6,14 @@
  */
 
 import {
-  initialize as initializePixelsBluetooth,
+  initialize as initializePixelsBridge,
   connectToPixel,
   connectToPixelByName,
   disconnectAllPixels,
   getPixels,
   findPixelByName,
-} from './modules/PixelsBluetooth';
+  diceManager,
+} from './modules/PixelsBridge';
 import { setupChatInterception } from './modules/PixelsCommand';
 import {
   sendTextToExtension,
@@ -44,7 +45,7 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
 
     log('Starting Pixels Roll20 extension');
 
-    initializePixelsBluetooth();
+    initializePixelsBridge();
     setupChatInterception();
 
     window.connectToPixel = connectToPixel;
@@ -198,22 +199,22 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
                 break;
 
               case 'disconnectByName': {
-                const pixel = findPixelByName(msg.name as string, getPixels());
+                const pixel = findPixelByName(msg.name as string);
                 if (pixel) {
-                  pixel.disconnect();
-                  log(`Disconnected ${msg.name}`);
+                  pixel
+                    .disconnect()
+                    .catch((err: Error) =>
+                      log(`Disconnect failed for ${msg.name}: ${err.message}`)
+                    );
                 }
                 break;
               }
 
               case 'blinkByName': {
-                const pixelToBlink = findPixelByName(
-                  msg.name as string,
-                  getPixels()
-                );
+                const pixelToBlink = findPixelByName(msg.name as string);
                 if (pixelToBlink && pixelToBlink.isConnected) {
                   pixelToBlink
-                    .blink()
+                    .blink({ r: 0xcc, g: 0x66, b: 0x00 })
                     .catch((err: Error) =>
                       log(`Blink failed for ${msg.name}: ${err.message}`)
                     );
@@ -222,31 +223,13 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
               }
 
               case 'forgetByName': {
-                const pixelToForget = findPixelByName(
-                  msg.name as string,
-                  getPixels()
-                );
+                const pixelToForget = findPixelByName(msg.name as string);
                 if (pixelToForget) {
-                  const device = pixelToForget.device;
-                  pixelToForget.destroy();
-                  if (
-                    device &&
-                    (
-                      device as BluetoothDevice & {
-                        forget?: () => Promise<void>;
-                      }
-                    ).forget
-                  ) {
-                    (
-                      device as BluetoothDevice & {
-                        forget: () => Promise<void>;
-                      }
-                    )
-                      .forget()
-                      .catch((err: Error) =>
-                        log(`Could not un-pair ${msg.name}: ${err.message}`)
-                      );
-                  }
+                  diceManager
+                    .forget(pixelToForget.systemId)
+                    .catch((err: Error) =>
+                      log(`Could not forget ${msg.name}: ${err.message}`)
+                    );
                 }
                 break;
               }

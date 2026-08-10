@@ -39,7 +39,6 @@
     "@eslint/js": "^9.30.0",
     "@types/chrome": "^0.2.5",
     "@types/jest": "^29.5.11",
-    "@types/ramda": "^0.32.0",
     "@types/web-bluetooth": "^0.0.21",
     "babel-jest": "^30.0.2",
     "babel-loader": "^10.0.0",
@@ -99,7 +98,7 @@
       "^.+\\.js$": "babel-jest"
     },
     "transformIgnorePatterns": [
-      "node_modules/(?!(ramda)/)"
+      "node_modules/"
     ],
     "moduleNameMapper": {
       "^(.*)\\.js$": "$1",
@@ -123,8 +122,7 @@
     ]
   },
   "dependencies": {
-    "@3d-dice/dice-roller-parser": "^0.2.6",
-    "eslint": "^9.30.0",
-    "ramda": "^0.31.3"
+    "@3d-dice/dice-roller-parser": "github:scooper4711/dice-roller-parser#fix/grouped-roll-modifiers",
+    "eslint": "^9.30.0"
   }
 }

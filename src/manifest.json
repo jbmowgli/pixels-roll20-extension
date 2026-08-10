@@ -45,7 +45,6 @@
         "content/modules/PixelsCommand.js",
         "content/modules/StorageManager.js",
         "content/modules/ModifierBoxManager.js",
-        "content/modules/PixelsBluetooth.js",
         "content/roll20.js"
       ]
     }

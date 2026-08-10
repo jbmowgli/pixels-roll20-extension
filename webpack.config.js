@@ -30,8 +30,6 @@ module.exports = {
     'content/modules/StorageManager': './src/content/modules/StorageManager.ts',
     'content/modules/ModifierBoxManager':
       './src/content/modules/ModifierBoxManager.ts',
-    'content/modules/PixelsBluetooth':
-      './src/content/modules/PixelsBluetooth.ts',
 
     // Modifier box components
     'components/modifierBox/modifierBox':
@@ -81,7 +79,7 @@ module.exports = {
       },
       {
         test: /\.js$/,
-        exclude: /node_modules/,
+        exclude: [/node_modules/, /pixels-ble\/dist/],
         use: {
           loader: 'babel-loader',
           options: {

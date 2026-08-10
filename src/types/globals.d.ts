@@ -7,40 +7,8 @@
  */
 
 // --- Pixel Die Object ---
-
-interface PixelDie {
-  readonly name: string;
-  readonly deviceId: string;
-  readonly isConnected: boolean;
-  readonly device: BluetoothDevice | null;
-  readonly server: BluetoothRemoteGATTServer | null;
-  readonly lastActivity: number;
-  readonly lastFaceUp: number | null;
-  readonly dieType: number | null;
-  readonly batteryLevel: number | null;
-  setNotifyCharacteristic(notify: BluetoothRemoteGATTCharacteristic): void;
-  startConnectionMonitoring(): void;
-  markDisconnected(): void;
-  reconnect(
-    server: BluetoothRemoteGATTServer,
-    notify: BluetoothRemoteGATTCharacteristic | null,
-    device?: BluetoothDevice
-  ): void;
-  disconnect(): void;
-  destroy(): void;
-  handleNotifications(event: Event): void;
-  updateActivity(): void;
-  blink(color?: number, count?: number, duration?: number): Promise<void>;
-  // Internal compatibility properties
-  readonly _name: string;
-  readonly _deviceId: string;
-  readonly _isConnected: boolean;
-  readonly _device: BluetoothDevice | null;
-  readonly _server: BluetoothRemoteGATTServer | null;
-  readonly _lastActivity: number;
-  _reconnectAttempts: number;
-  _hasDisconnectListener: boolean;
-}
+// The PixelDie interface has been replaced by the Pixel class from @scooper4711/pixels-ble.
+// See: import { Pixel } from '@scooper4711/pixels-ble'
 
 // --- Modifier Box Interfaces ---
 
@@ -149,22 +117,6 @@ interface RollBatcherModule {
   parseDieType(dieName: string, faceValue: number): number;
   flushRolls(): void;
   setWindowMs(ms: number): void;
-}
-
-interface PixelsBluetoothModule {
-  connectToPixel(): Promise<PixelDie | null>;
-  disconnectAllPixels(): void;
-  getPixels(): PixelDie[];
-  initialize(): object;
-  createPixel(
-    name: string,
-    server: BluetoothRemoteGATTServer,
-    device: BluetoothDevice
-  ): PixelDie;
-  getPixelByDeviceId?(
-    deviceId: string,
-    pixelList: PixelDie[]
-  ): PixelDie | undefined;
 }
 
 interface PixelsProfileStorageModule {
@@ -302,7 +254,6 @@ interface Window {
   };
   PixelsCommand: PixelsCommandModule;
   RollBatcher: RollBatcherModule;
-  PixelsBluetooth: PixelsBluetoothModule;
   PixelsProfileStorage: PixelsProfileStorageModule;
   PixelsSessionStorage: {
     saveModifierSettings(): void;
@@ -356,10 +307,12 @@ interface Window {
   modifierRowDragDrop: RowDragDropInstance | undefined;
 
   // Legacy individual global functions
-  connectToPixel(): Promise<PixelDie | null>;
-  connectToPixelByName(name: string): Promise<PixelDie | null>;
+  connectToPixel(): Promise<import('@scooper4711/pixels-ble').Pixel | null>;
+  connectToPixelByName(
+    name: string
+  ): Promise<import('@scooper4711/pixels-ble').Pixel | null>;
   disconnectAllPixels(): void;
-  getPixels(): PixelDie[];
+  getPixels(): import('@scooper4711/pixels-ble').Pixel[];
   sendTextToExtension(txt: string): void;
   sendStatusToExtension(): Promise<void>;
   postChatMessage(message: string): void;
@@ -375,7 +328,7 @@ interface Window {
   clearAllModifierSettings(): void;
 
   // Extension state
-  pixels: PixelDie[];
+  pixels: import('@scooper4711/pixels-ble').Pixel[];
   pixelsAllowUnprompted: boolean;
   pixelsAllowDiceSubstitution: boolean;
   pixelsModifier: number;

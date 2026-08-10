@@ -10,12 +10,46 @@ import {
   exportProfile,
   importProfiles,
 } from '../../utils/profileStorage';
-import { getKnownDice, removeKnownDie } from '../../utils/knownDiceStorage';
-
 interface KnownDie {
   name: string;
+  systemId?: string;
   lastConnected: number;
   dieType: number | null;
+}
+
+const KNOWN_DICE_KEY = 'pixels_known_dice';
+
+function getKnownDice(): Promise<KnownDie[]> {
+  return new Promise(resolve => {
+    if (typeof chrome === 'undefined' || !chrome.storage) {
+      resolve([]);
+      return;
+    }
+    chrome.storage.local.get(
+      KNOWN_DICE_KEY,
+      (result: { [key: string]: KnownDie[] }) => {
+        resolve(result[KNOWN_DICE_KEY] || []);
+      }
+    );
+  });
+}
+
+function removeKnownDie(name: string): Promise<void> {
+  return new Promise(resolve => {
+    if (typeof chrome === 'undefined' || !chrome.storage) {
+      resolve();
+      return;
+    }
+    chrome.storage.local.get(
+      KNOWN_DICE_KEY,
+      (result: { [key: string]: KnownDie[] }) => {
+        const dice = (result[KNOWN_DICE_KEY] || []).filter(
+          (d: KnownDie) => d.name !== name
+        );
+        chrome.storage.local.set({ [KNOWN_DICE_KEY]: dice }, resolve);
+      }
+    );
+  });
 }
 
 interface DiceStatusResponse {

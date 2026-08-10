@@ -3,8 +3,29 @@
  * Handles communication between the content script and the Chrome extension
  */
 
-import { filter } from 'ramda';
-import { getKnownDice } from '../utils/knownDiceStorage';
+const KNOWN_DICE_KEY = 'pixels_known_dice';
+
+interface StoredKnownDie {
+  name: string;
+  systemId?: string;
+  lastConnected: number;
+  dieType: number | null;
+}
+
+function getKnownDice(): Promise<StoredKnownDie[]> {
+  return new Promise(resolve => {
+    if (typeof chrome === 'undefined' || !chrome.storage) {
+      resolve([]);
+      return;
+    }
+    chrome.storage.local.get(
+      KNOWN_DICE_KEY,
+      (result: { [key: string]: StoredKnownDie[] }) => {
+        resolve(result[KNOWN_DICE_KEY] || []);
+      }
+    );
+  });
+}
 
 interface ExtensionMessage {
   action: string;
@@ -41,21 +62,17 @@ export const sendTextToExtension = (txt: string): void => {
 };
 
 export const sendStatusToExtension = async (): Promise<void> => {
-  const pixels: PixelDie[] = window.pixels || [];
+  const pixels =
+    typeof window.getPixels === 'function' ? window.getPixels() : [];
 
-  // Verify actual GATT state for each pixel, not just cached _isConnected
-  const connectedPixels = filter((p: PixelDie) => {
+  // Verify actual GATT state for each pixel, not just cached isConnected
+  const connectedPixels = pixels.filter(p => {
     try {
-      return (
-        p.isConnected &&
-        p.device !== null &&
-        p.device.gatt !== undefined &&
-        p.device.gatt!.connected
-      );
+      return p.isConnected;
     } catch {
       return false;
     }
-  }, pixels);
+  });
 
   // Use known dice count as the total so status shows progress toward full reconnection
   let knownTotal = 0;
