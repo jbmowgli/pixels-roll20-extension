@@ -1,5 +1,5 @@
 /**
- * StorageManager.js
+ * StorageManager.ts
  *
  * Handles localStorage operations for modifier settings persistence.
  */
@@ -11,7 +11,7 @@ import {
   loadModifierSettings,
   updateModifierSettings,
   clearAllModifierSettings,
-} from '../../utils/modifierSettings.js';
+} from '../../utils/modifierSettings';
 
 // Re-export all functions from modifierSettings for coordination
 export {
@@ -33,7 +33,8 @@ export default StorageManager;
 
 // Legacy global exports for backward compatibility (temporary)
 if (typeof window !== 'undefined') {
-  window.StorageManager = StorageManager;
+  (window as unknown as Record<string, unknown>).StorageManager =
+    StorageManager;
   window.saveModifierSettings = saveModifierSettings;
   window.loadModifierSettings = loadModifierSettings;
   window.updateModifierSettings = updateModifierSettings;

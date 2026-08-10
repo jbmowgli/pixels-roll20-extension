@@ -4,13 +4,13 @@
 // Theme Manager Module - Handles styling and theme updates for the modifier box
 //
 
-import { loadMultipleCSS } from '../../utils/cssLoader.js';
-import { getThemeColors, onThemeChange } from '../../utils/themeDetector.js';
+import { loadMultipleCSS } from '../../utils/cssLoader';
+import { getThemeColors, onThemeChange } from '../../utils/themeDetector';
 
 // Theme observer instance
-let themeObserver = null;
+let themeObserver: MutationObserver | null = null;
 
-function addModifierBoxStyles() {
+function addModifierBoxStyles(): void {
   // Check if CSSLoader is available
   if (!loadMultipleCSS) {
     console.error(
@@ -41,7 +41,7 @@ function addModifierBoxStyles() {
     .then(() => {
       // CSS files loaded successfully
     })
-    .catch(error => {
+    .catch((error: unknown) => {
       console.error(
         'Failed to load CSS files, falling back to inline styles:',
         error
@@ -51,7 +51,7 @@ function addModifierBoxStyles() {
 }
 
 // Fallback function for inline styles (keeping the original functionality)
-function addInlineStyles() {
+function addInlineStyles(): void {
   const styleId = 'pixels-modifier-box-styles-fallback';
   if (document.getElementById(styleId)) {
     return;
@@ -84,13 +84,13 @@ function addInlineStyles() {
   document.head.appendChild(style);
 }
 
-function updateTheme(modifierBox) {
+function updateTheme(modifierBox: HTMLElement | null): void {
   if (!modifierBox) {
     return;
   }
 
   // Get current theme colors
-  const colors = getThemeColors
+  const colors: ThemeColors = getThemeColors
     ? getThemeColors()
     : {
         theme: 'dark',
@@ -113,9 +113,11 @@ function updateTheme(modifierBox) {
   // Let CSS handle the styling now that we have the proper theme class applied
 }
 
-function startThemeMonitoring(onThemeChangeCallback) {
+function startThemeMonitoring(
+  onThemeChangeCallback: (theme: string, colors: ThemeColors) => void
+): void {
   if (onThemeChange && !themeObserver) {
-    themeObserver = onThemeChange((newTheme, colors) => {
+    themeObserver = onThemeChange((newTheme: string, colors: ThemeColors) => {
       if (onThemeChangeCallback) {
         onThemeChangeCallback(newTheme, colors);
       }
@@ -123,7 +125,7 @@ function startThemeMonitoring(onThemeChangeCallback) {
   }
 }
 
-function stopThemeMonitoring() {
+function stopThemeMonitoring(): void {
   if (themeObserver) {
     themeObserver.disconnect();
     themeObserver = null;
@@ -131,13 +133,13 @@ function stopThemeMonitoring() {
 }
 
 // Helper function for force theme refresh
-function forceThemeRefresh(modifierBox) {
+function forceThemeRefresh(modifierBox: HTMLElement | null): void {
   // Force an immediate theme refresh
   updateTheme(modifierBox);
 }
 
 // Helper function for force element updates
-function forceElementUpdates(modifierBox) {
+function forceElementUpdates(modifierBox: HTMLElement | null): void {
   // Now that we use CSS classes, just re-apply the theme class to ensure proper styling
   if (!modifierBox) {
     return;
@@ -152,7 +154,7 @@ function forceElementUpdates(modifierBox) {
 }
 
 // Helper function to reset module state (for testing)
-function resetState() {
+function resetState(): void {
   if (themeObserver) {
     themeObserver.disconnect();
     themeObserver = null;

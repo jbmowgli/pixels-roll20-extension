@@ -5,19 +5,21 @@
 
 'use strict';
 
-export function setupMinimizeControls(modifierBox) {
+export function setupMinimizeControls(modifierBox: HTMLElement): void {
   if (!modifierBox) {
     console.error('setupMinimizeControls: modifierBox is required');
     return;
   }
 
-  const minimizeBtn = modifierBox.querySelector('.pixels-minimize');
+  const minimizeBtn = modifierBox.querySelector(
+    '.pixels-minimize'
+  ) as HTMLButtonElement | null;
   if (!minimizeBtn) {
     console.error('Minimize button not found!');
     return;
   }
 
-  minimizeBtn.addEventListener('click', e => {
+  minimizeBtn.addEventListener('click', (e: Event) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -30,7 +32,7 @@ export function setupMinimizeControls(modifierBox) {
 }
 
 // Persist the minimized flag (per-device preference) via the storage wrapper.
-function persistMinimizedState(minimized) {
+function persistMinimizedState(minimized: boolean): void {
   try {
     if (
       typeof window !== 'undefined' &&
@@ -46,13 +48,18 @@ function persistMinimizedState(minimized) {
 
 // Apply the minimized/restored visual state without persisting. Used both by
 // the toggle handler and by the restore-on-load path in the initializer.
-export function applyMinimizedState(modifierBox, minimized) {
+export function applyMinimizedState(
+  modifierBox: HTMLElement,
+  minimized: boolean
+): void {
   if (!modifierBox) {
     console.error('applyMinimizedState: modifierBox is required');
     return;
   }
 
-  const minimizeBtn = modifierBox.querySelector('.pixels-minimize');
+  const minimizeBtn = modifierBox.querySelector(
+    '.pixels-minimize'
+  ) as HTMLButtonElement | null;
   if (!minimizeBtn) {
     console.error('Minimize button not found!');
     return;
@@ -67,7 +74,9 @@ export function applyMinimizedState(modifierBox, minimized) {
 
 // Read the persisted minimized flag and apply it to the box. Async because the
 // storage wrapper is Promise-based.
-export async function restoreMinimizedState(modifierBox) {
+export async function restoreMinimizedState(
+  modifierBox: HTMLElement
+): Promise<void> {
   if (!modifierBox) {
     return;
   }
@@ -87,10 +96,13 @@ export async function restoreMinimizedState(modifierBox) {
   }
 }
 
-function minimizeModifierBox(modifierBox, minimizeBtn) {
+function minimizeModifierBox(
+  modifierBox: HTMLElement,
+  minimizeBtn: HTMLButtonElement
+): void {
   const rect = modifierBox.getBoundingClientRect();
-  modifierBox.setAttribute('data-original-width', rect.width);
-  modifierBox.setAttribute('data-original-height', rect.height);
+  modifierBox.setAttribute('data-original-width', String(rect.width));
+  modifierBox.setAttribute('data-original-height', String(rect.height));
 
   modifierBox.classList.add('minimized');
   modifierBox.style.setProperty('width', '200px', 'important');
@@ -103,7 +115,10 @@ function minimizeModifierBox(modifierBox, minimizeBtn) {
 }
 
 // Restore the modifier box from minimized state
-function restoreModifierBox(modifierBox, minimizeBtn) {
+function restoreModifierBox(
+  modifierBox: HTMLElement,
+  minimizeBtn: HTMLButtonElement
+): void {
   const originalWidth = modifierBox.getAttribute('data-original-width');
   const originalHeight = modifierBox.getAttribute('data-original-height');
 
@@ -122,7 +137,10 @@ function restoreModifierBox(modifierBox, minimizeBtn) {
   minimizeBtn.title = 'Minimize';
 }
 
-export function setupClearAllControls(modifierBox, clearAllCallback) {
+export function setupClearAllControls(
+  modifierBox: HTMLElement,
+  clearAllCallback: () => void
+): void {
   if (!modifierBox) {
     console.error('setupClearAllControls: modifierBox is required');
     return;
@@ -133,20 +151,22 @@ export function setupClearAllControls(modifierBox, clearAllCallback) {
     return;
   }
 
-  const clearAllBtn = modifierBox.querySelector('.clear-all-btn');
+  const clearAllBtn = modifierBox.querySelector(
+    '.clear-all-btn'
+  ) as HTMLButtonElement | null;
   if (!clearAllBtn) {
     console.error('Clear All button not found!');
     return;
   }
 
-  clearAllBtn.addEventListener('click', e => {
+  clearAllBtn.addEventListener('click', (e: Event) => {
     e.preventDefault();
     e.stopPropagation();
     clearAllCallback();
   });
 }
 
-const UIControls = {
+const UIControls: ModifierBoxUIControlsModule = {
   setupMinimizeControls,
   setupClearAllControls,
   applyMinimizedState,

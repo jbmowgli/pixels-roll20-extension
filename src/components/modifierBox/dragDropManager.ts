@@ -3,19 +3,25 @@
 //
 // Drag and Drop Manager Module - Handles reordering modifier rows
 //
-import { addDragHandle } from './dragDrop.js';
+import { addDragHandle } from './dragDrop';
 
-let draggedElement = null;
-let placeholder = null;
+interface ContentElementWithRef extends HTMLElement {
+  _modifierBox: HTMLElement;
+}
+
+let draggedElement: HTMLElement | null = null;
+let placeholder: HTMLElement | null = null;
 let isDragging = false;
 
-function setupDragAndDrop(modifierBox) {
+function setupDragAndDrop(modifierBox: HTMLElement): void {
   if (!modifierBox) {
     console.error('setupDragAndDrop: modifierBox is required');
     return;
   }
 
-  const content = modifierBox.querySelector('.pixels-content');
+  const content = modifierBox.querySelector(
+    '.pixels-content'
+  ) as ContentElementWithRef | null;
   if (!content) {
     console.error('setupDragAndDrop: content area not found');
     return;
@@ -28,16 +34,16 @@ function setupDragAndDrop(modifierBox) {
   setupEventDelegation(content, modifierBox);
 }
 
-function addDragHandlesToRows(content) {
+function addDragHandlesToRows(content: HTMLElement): void {
   const rows = content.querySelectorAll('.modifier-row');
   rows.forEach(row => {
     if (!row.querySelector('.drag-handle')) {
-      addDragHandleToRow(row);
+      addDragHandleToRow(row as HTMLElement);
     }
   });
 }
 
-function addDragHandleToRow(row) {
+function addDragHandleToRow(row: HTMLElement): void {
   // Use the imported ES module function
   addDragHandle(row);
 
@@ -45,7 +51,10 @@ function addDragHandleToRow(row) {
   row.classList.add('draggable-row');
 }
 
-function setupEventDelegation(content, modifierBox) {
+function setupEventDelegation(
+  content: ContentElementWithRef,
+  modifierBox: HTMLElement
+): void {
   // Mouse events for drag initiation
   content.addEventListener('mousedown', handleMouseDown);
   document.addEventListener('mousemove', handleMouseMove);
@@ -62,28 +71,34 @@ function setupEventDelegation(content, modifierBox) {
   content._modifierBox = modifierBox;
 }
 
-function handleMouseDown(e) {
-  const dragHandle = e.target.closest('.drag-handle');
+function handleMouseDown(e: MouseEvent): void {
+  const target = e.target as HTMLElement;
+  const dragHandle = target.closest('.drag-handle');
   if (!dragHandle) {
     return;
   }
 
   e.preventDefault();
-  startDrag(dragHandle.parentElement, e.clientX, e.clientY);
+  startDrag(dragHandle.parentElement as HTMLElement, e.clientX, e.clientY);
 }
 
-function handleTouchStart(e) {
-  const dragHandle = e.target.closest('.drag-handle');
+function handleTouchStart(e: TouchEvent): void {
+  const target = e.target as HTMLElement;
+  const dragHandle = target.closest('.drag-handle');
   if (!dragHandle) {
     return;
   }
 
   e.preventDefault();
   const touch = e.touches[0];
-  startDrag(dragHandle.parentElement, touch.clientX, touch.clientY);
+  startDrag(
+    dragHandle.parentElement as HTMLElement,
+    touch.clientX,
+    touch.clientY
+  );
 }
 
-function startDrag(row, clientX, clientY) {
+function startDrag(row: HTMLElement, clientX: number, clientY: number): void {
   if (isDragging) {
     return;
   }
@@ -92,7 +107,7 @@ function startDrag(row, clientX, clientY) {
   draggedElement = row;
 
   // Create placeholder
-  placeholder = row.cloneNode(true);
+  placeholder = row.cloneNode(true) as HTMLElement;
   placeholder.classList.add('drag-placeholder');
   placeholder.style.opacity = '0.5';
   placeholder.style.pointerEvents = 'none';
@@ -106,7 +121,7 @@ function startDrag(row, clientX, clientY) {
   row.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
 
   // Insert placeholder
-  row.parentNode.insertBefore(placeholder, row.nextSibling);
+  row.parentNode!.insertBefore(placeholder, row.nextSibling);
 
   // Position the dragged element
   updateDragPosition(clientX, clientY);
@@ -118,7 +133,7 @@ function startDrag(row, clientX, clientY) {
   }
 }
 
-function handleMouseMove(e) {
+function handleMouseMove(e: MouseEvent): void {
   if (!isDragging) {
     return;
   }
@@ -127,7 +142,7 @@ function handleMouseMove(e) {
   updateDropTarget(e.clientX, e.clientY);
 }
 
-function handleTouchMove(e) {
+function handleTouchMove(e: TouchEvent): void {
   if (!isDragging) {
     return;
   }
@@ -137,7 +152,7 @@ function handleTouchMove(e) {
   updateDropTarget(touch.clientX, touch.clientY);
 }
 
-function updateDragPosition(clientX, clientY) {
+function updateDragPosition(clientX: number, clientY: number): void {
   if (!draggedElement) {
     return;
   }
@@ -147,7 +162,7 @@ function updateDragPosition(clientX, clientY) {
   draggedElement.style.top = `${clientY - 20}px`;
 }
 
-function updateDropTarget(clientX, clientY) {
+function updateDropTarget(clientX: number, clientY: number): void {
   if (!draggedElement || !placeholder) {
     return;
   }
@@ -159,9 +174,9 @@ function updateDropTarget(clientX, clientY) {
 
   const rows = Array.from(content.querySelectorAll('.modifier-row')).filter(
     row => row !== draggedElement && row !== placeholder
-  );
+  ) as HTMLElement[];
 
-  let insertBeforeElement = null;
+  let insertBeforeElement: ChildNode | null = null;
   let minDistance = Infinity;
 
   rows.forEach(row => {
@@ -181,27 +196,29 @@ function updateDropTarget(clientX, clientY) {
   }
 }
 
-function handleMouseUp(_e) {
+function handleMouseUp(_e: MouseEvent): void {
   if (!isDragging) {
     return;
   }
   endDrag();
 }
 
-function handleTouchEnd(_e) {
+function handleTouchEnd(_e: TouchEvent): void {
   if (!isDragging) {
     return;
   }
   endDrag();
 }
 
-function endDrag() {
+function endDrag(): void {
   if (!isDragging || !draggedElement || !placeholder) {
     return;
   }
 
-  const content = draggedElement.closest('.pixels-content');
-  const modifierBox = content._modifierBox;
+  const content = draggedElement.closest(
+    '.pixels-content'
+  ) as ContentElementWithRef | null;
+  const modifierBox = content?._modifierBox;
 
   // Reset dragged element styles
   draggedElement.classList.remove('dragging');
@@ -214,7 +231,7 @@ function endDrag() {
   draggedElement.style.top = '';
 
   // Place the dragged element at the placeholder position
-  placeholder.parentNode.insertBefore(draggedElement, placeholder);
+  placeholder.parentNode!.insertBefore(draggedElement, placeholder);
   placeholder.remove();
 
   // Remove visual feedback
@@ -233,7 +250,7 @@ function endDrag() {
   isDragging = false;
 }
 
-function cleanup() {
+function cleanup(): void {
   // Remove event listeners if needed
   isDragging = false;
   draggedElement = null;
@@ -245,26 +262,19 @@ if (window.ModifierBoxRowManager) {
   const originalAddRow = window.ModifierBoxRowManager.addModifierRow;
   if (originalAddRow) {
     window.ModifierBoxRowManager.addModifierRow = function (
-      modifierBox,
-      updateSelectedModifierCallback
-    ) {
-      const result = originalAddRow.call(
-        this,
-        modifierBox,
-        updateSelectedModifierCallback
-      );
+      modifierBox: HTMLElement
+    ): void {
+      originalAddRow.call(this, modifierBox);
 
       // Add drag handle to the newly created row
       const content = modifierBox.querySelector('.pixels-content');
       if (content) {
         const rows = content.querySelectorAll('.modifier-row');
-        const lastRow = rows[rows.length - 1];
+        const lastRow = rows[rows.length - 1] as HTMLElement | undefined;
         if (lastRow && !lastRow.querySelector('.drag-handle')) {
           addDragHandleToRow(lastRow);
         }
       }
-
-      return result;
     };
   }
 }

@@ -1,64 +1,71 @@
 /**
- * Drag and Drop functionality  let container = null;
-  let draggedElement = null;
-  let placeholder = null;
-  let    dragHandle = null;// Track drag handle for cleanup
-  let startX = 0;
-  let startY = 0;
-  let isDragging = false;difier rows
+ * Drag and Drop functionality for modifier rows
  */
 
-import { curry, pipe, reduce } from 'ramda';
-import { getThemeColors } from '../../utils/themeDetector.js';
+import { curry, reduce } from 'ramda';
+import { getThemeColors } from '../../utils/themeDetector';
 
 // Functional helpers
-const createElement = (tagName, className = '') => {
+const createElement = (
+  tagName: string,
+  className: string = ''
+): HTMLElement => {
   const element = document.createElement(tagName);
   if (className) element.className = className;
   return element;
 };
 
-const setStyle = curry((styles, element) => {
-  Object.entries(styles).forEach(([prop, value]) => {
-    element.style.setProperty(prop, value, 'important');
-  });
-  return element;
-});
+const setStyle = curry(
+  (styles: Record<string, string>, element: HTMLElement): HTMLElement => {
+    Object.entries(styles).forEach(([prop, value]) => {
+      element.style.setProperty(prop, value, 'important');
+    });
+    return element;
+  }
+);
 
-const addClass = curry((className, element) => {
-  element.classList.add(className);
-  return element;
-});
+const addClass = curry(
+  (className: string, element: HTMLElement): HTMLElement => {
+    element.classList.add(className);
+    return element;
+  }
+);
 
-const removeClass = curry((className, element) => {
-  element.classList.remove(className);
-  return element;
-});
+const removeClass = curry(
+  (className: string, element: HTMLElement): HTMLElement => {
+    element.classList.remove(className);
+    return element;
+  }
+);
 
-const closest = curry((selector, element) => element.closest(selector));
+const closest = curry((selector: string, element: Element): Element | null =>
+  element.closest(selector)
+);
 
 // Factory function to create drag and drop functionality
-export const createRowDragDrop = (
-  containerSelector,
-  rowSelector,
-  rowManagerInstance
-) => {
-  let container = null;
-  let draggedElement = null;
-  let placeholder = null;
-  let _dragHandle = null; // Track drag handle for cleanup
+export const createRowDragDrop: RowDragDropFactory = (
+  containerSelector: string,
+  rowSelector: string,
+  rowManagerInstance: ModifierBoxRowManagerModule
+): RowDragDropInstance => {
+  let container: Element | null = null;
+  let draggedElement: HTMLElement | null = null;
+  let placeholder: HTMLElement | null = null;
+  let _dragHandle: HTMLElement | null = null; // Track drag handle for cleanup
   let startX = 0;
   let startY = 0;
   let isDragging = false;
 
   // Create placeholder element with theme-aware styling
-  const createPlaceholder = () => {
+  const createPlaceholder = (): HTMLElement => {
     const element = createElement('div', 'modifier-row-placeholder');
     updatePlaceholderTheme(element);
     return element;
   };
 
-  const updatePlaceholderTheme = (placeholderElement = placeholder) => {
+  const updatePlaceholderTheme = (
+    placeholderElement: HTMLElement | null = placeholder
+  ): void => {
     if (!placeholderElement) return;
 
     // Get theme colors if available
@@ -76,7 +83,7 @@ export const createRowDragDrop = (
     setStyle({ background: gradient }, placeholderElement);
   };
 
-  const attachEventListeners = () => {
+  const attachEventListeners = (): void => {
     // Use mouse-based drag and drop for better reliability
     document.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('mousemove', handleMouseMove);
@@ -86,24 +93,25 @@ export const createRowDragDrop = (
     document.addEventListener('selectstart', preventSelect);
   };
 
-  const preventSelect = e => {
+  const preventSelect = (e: Event): void => {
     if (draggedElement) {
       e.preventDefault();
     }
   };
 
-  const handleMouseDown = e => {
-    const handle = closest('.drag-handle', e.target);
+  const handleMouseDown = (e: MouseEvent): void => {
+    const target = e.target as Element;
+    const handle = closest('.drag-handle', target);
     if (!handle) return;
 
-    const row = closest(rowSelector, handle);
+    const row = closest(rowSelector, handle) as HTMLElement | null;
     if (!row) return;
 
     e.preventDefault(); // Prevent text selection
 
     draggedElement = row;
     container = closest(containerSelector, row);
-    _dragHandle = handle;
+    _dragHandle = handle as HTMLElement;
 
     // Store initial mouse position
     startX = e.clientX;
@@ -114,7 +122,7 @@ export const createRowDragDrop = (
     document.body.style.cursor = 'grabbing';
   };
 
-  const handleMouseMove = e => {
+  const handleMouseMove = (e: MouseEvent): void => {
     if (!draggedElement) return;
 
     // Start dragging only after moving a few pixels (prevent accidental drags)
@@ -131,24 +139,25 @@ export const createRowDragDrop = (
     }
   };
 
-  const startDrag = () => {
+  const startDrag = (): void => {
     if (!draggedElement) return;
 
     isDragging = true;
 
     // Add visual feedback using functional approach
-    pipe(
-      addClass('dragging'),
-      setStyle({
+    addClass('dragging', draggedElement);
+    setStyle(
+      {
         opacity: '0.7',
         transform: 'rotate(2deg)',
         zIndex: '10000',
-      })
-    )(draggedElement);
+      },
+      draggedElement
+    );
   };
 
-  const updateDragPosition = e => {
-    if (!draggedElement || !container) return;
+  const updateDragPosition = (e: MouseEvent): void => {
+    if (!draggedElement || !container || !placeholder) return;
 
     const afterElement = getDragAfterElement(container, e.clientY);
     const rows = container.querySelectorAll(rowSelector);
@@ -161,24 +170,24 @@ export const createRowDragDrop = (
     // Update placeholder theme before showing it
     updatePlaceholderTheme();
 
-    if (afterElement === null) {
+    if (afterElement === undefined) {
       // Insert at the end
       const lastRow = Array.from(rows)
         .filter(row => row !== draggedElement)
         .pop();
       if (lastRow) {
-        lastRow.parentNode.insertBefore(placeholder, lastRow.nextSibling);
+        lastRow.parentNode!.insertBefore(placeholder, lastRow.nextSibling);
       } else {
         // If no other rows, insert at the beginning
         container.appendChild(placeholder);
       }
     } else if (afterElement !== draggedElement) {
       // Insert before the afterElement
-      afterElement.parentNode.insertBefore(placeholder, afterElement);
+      afterElement.parentNode!.insertBefore(placeholder, afterElement);
     }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (): void => {
     if (!draggedElement) return;
 
     document.body.style.cursor = '';
@@ -191,8 +200,8 @@ export const createRowDragDrop = (
     }
   };
 
-  const completeDrag = () => {
-    if (!draggedElement || !placeholder.parentNode) {
+  const completeDrag = (): void => {
+    if (!draggedElement || !placeholder || !placeholder.parentNode) {
       cleanup();
       return;
     }
@@ -210,7 +219,10 @@ export const createRowDragDrop = (
       rowManagerInstance &&
       typeof rowManagerInstance.reindexRows === 'function'
     ) {
-      const modifierBox = closest('#pixels-modifier-box', container);
+      const modifierBox = closest(
+        '#pixels-modifier-box',
+        container!
+      ) as HTMLElement | null;
       if (modifierBox) {
         rowManagerInstance.reindexRows(modifierBox);
 
@@ -224,13 +236,19 @@ export const createRowDragDrop = (
     cleanup();
   };
 
-  const getDragAfterElement = (containerElement, y) => {
+  const getDragAfterElement = (
+    containerElement: Element,
+    y: number
+  ): Element | undefined => {
     const draggableElements = [
       ...containerElement.querySelectorAll(`${rowSelector}:not(.dragging)`),
     ];
 
     return reduce(
-      (closest, child) => {
+      (
+        closest: { offset: number; element: Element | undefined },
+        child: Element
+      ) => {
         const box = child.getBoundingClientRect();
         const offset = y - box.top - box.height / 2;
 
@@ -240,21 +258,25 @@ export const createRowDragDrop = (
           return closest;
         }
       },
-      { offset: Number.NEGATIVE_INFINITY },
+      {
+        offset: Number.NEGATIVE_INFINITY,
+        element: undefined as Element | undefined,
+      },
       draggableElements
     ).element;
   };
 
-  const cleanup = () => {
+  const cleanup = (): void => {
     if (draggedElement) {
-      pipe(
-        setStyle({
+      setStyle(
+        {
           opacity: '',
           transform: '',
           zIndex: '',
-        }),
-        removeClass('dragging')
-      )(draggedElement);
+        },
+        draggedElement
+      );
+      removeClass('dragging', draggedElement);
       draggedElement = null;
     }
 
@@ -284,7 +306,7 @@ export const createRowDragDrop = (
 };
 
 // Utility functions for drag handles
-export const addDragHandle = row => {
+export const addDragHandle = (row: HTMLElement): void => {
   // Check if drag handle already exists
   if (row.querySelector('.drag-handle')) {
     return;
@@ -298,7 +320,7 @@ export const addDragHandle = row => {
   row.insertBefore(dragHandle, row.firstChild);
 };
 
-export const removeDragHandle = row => {
+export const removeDragHandle = (row: HTMLElement): void => {
   const dragHandle = row.querySelector('.drag-handle');
   if (dragHandle) {
     dragHandle.remove();

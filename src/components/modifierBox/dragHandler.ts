@@ -4,7 +4,14 @@
 // Drag Handler Module - Handles drag functionality for the modifier box
 //
 
-function setupDragFunctionality(modifierBox) {
+interface DragOffset {
+  x: number;
+  y: number;
+  initialWidth: number;
+  initialHeight: number;
+}
+
+function setupDragFunctionality(modifierBox: HTMLElement): void {
   if (!modifierBox) {
     console.error('setupDragFunctionality: modifierBox is required');
     return;
@@ -12,15 +19,22 @@ function setupDragFunctionality(modifierBox) {
 
   let isDragging = false;
   let isResizing = false;
-  const dragOffset = { x: 0, y: 0 };
+  const dragOffset: DragOffset = {
+    x: 0,
+    y: 0,
+    initialWidth: 0,
+    initialHeight: 0,
+  };
 
   // Store original dimensions for restore functionality
-  const originalDimensions = {
+  const originalDimensions: { width: number; height: number | null } = {
     width: 400,
     height: null, // Will be set after content is loaded
   };
 
-  const header = modifierBox.querySelector('.pixels-header');
+  const header = modifierBox.querySelector(
+    '.pixels-header'
+  ) as HTMLElement | null;
   if (!header) {
     console.error('setupDragFunctionality: header not found');
     return;
@@ -43,7 +57,7 @@ function setupDragFunctionality(modifierBox) {
   modifierBox.appendChild(resizeHandle);
 
   // Add double-click to restore original size
-  resizeHandle.addEventListener('dblclick', e => {
+  resizeHandle.addEventListener('dblclick', (e: MouseEvent) => {
     modifierBox.style.setProperty(
       'width',
       `${originalDimensions.width}px`,
@@ -91,15 +105,16 @@ function setupDragFunctionality(modifierBox) {
   }, 100);
 
   // Drag functionality
-  header.addEventListener('mousedown', e => {
+  header.addEventListener('mousedown', (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
     // Skip if clicking on buttons or other interactive elements
     if (
-      e.target.tagName === 'BUTTON' ||
-      e.target.classList.contains('pixels-close') ||
-      e.target.classList.contains('pixels-minimize') ||
-      e.target.classList.contains('add-modifier-btn') ||
-      e.target === resizeHandle ||
-      e.target.closest('button')
+      target.tagName === 'BUTTON' ||
+      target.classList.contains('pixels-close') ||
+      target.classList.contains('pixels-minimize') ||
+      target.classList.contains('add-modifier-btn') ||
+      target === resizeHandle ||
+      target.closest('button')
     ) {
       return;
     }
@@ -116,7 +131,7 @@ function setupDragFunctionality(modifierBox) {
   });
 
   // Resize functionality
-  resizeHandle.addEventListener('mousedown', e => {
+  resizeHandle.addEventListener('mousedown', (e: MouseEvent) => {
     isResizing = true;
     const rect = modifierBox.getBoundingClientRect();
     // Store initial dimensions and mouse position
@@ -130,7 +145,7 @@ function setupDragFunctionality(modifierBox) {
     e.stopPropagation();
   });
 
-  function onMouseMove(e) {
+  function onMouseMove(e: MouseEvent): void {
     if (isDragging) {
       const newLeft = e.clientX - dragOffset.x;
       const newTop = e.clientY - dragOffset.y;
@@ -185,7 +200,7 @@ function setupDragFunctionality(modifierBox) {
     }
   }
 
-  function onMouseUp() {
+  function onMouseUp(): void {
     isDragging = false;
     isResizing = false;
     document.removeEventListener('mousemove', onMouseMove);

@@ -4,7 +4,7 @@
 'use strict';
 
 // Parse color string to RGB values
-export const parseColor = colorStr => {
+export const parseColor = (colorStr: string | null): RGBColor | null => {
   if (!colorStr) {
     return null;
   }
@@ -43,7 +43,7 @@ export const parseColor = colorStr => {
 };
 
 // Detect current Roll20 theme
-export const detectTheme = () => {
+export const detectTheme = (): string => {
   // First priority: Check Roll20's localStorage colorTheme setting
   try {
     const roll20Theme = localStorage.getItem('colorTheme');
@@ -67,7 +67,6 @@ export const detectTheme = () => {
   const body = document.body;
   const html = document.documentElement;
 
-  // Roll20 typically uses these selectors for themes
   if (
     body.classList.contains('darkmode') ||
     html.classList.contains('darkmode')
@@ -82,11 +81,11 @@ export const detectTheme = () => {
   }
 
   // Check for data attributes
-  if (body.dataset.theme) {
-    return body.dataset.theme;
+  if ((body as HTMLElement).dataset.theme) {
+    return (body as HTMLElement).dataset.theme!;
   }
-  if (html.dataset.theme) {
-    return html.dataset.theme;
+  if ((html as HTMLElement).dataset.theme) {
+    return (html as HTMLElement).dataset.theme!;
   }
 
   // Check CSS custom properties
@@ -124,11 +123,11 @@ export const detectTheme = () => {
 };
 
 // Get Roll20 theme colors
-export const getThemeColors = () => {
+export const getThemeColors = (): ThemeColors => {
   const theme = detectTheme();
 
   // Define static, clean theme colors
-  const colors =
+  const colors: ThemeColors =
     theme === 'dark'
       ? {
           theme: 'dark',
@@ -160,13 +159,17 @@ export const getThemeColors = () => {
   return colors;
 };
 
+type ThemeChangeCallback = (theme: string, colors: ThemeColors) => void;
+
 // Monitor theme changes
-export const onThemeChange = callback => {
+export const onThemeChange = (
+  callback: ThemeChangeCallback
+): MutationObserver => {
   let currentTheme = detectTheme();
 
   // Monitor localStorage changes for Roll20's colorTheme
   const originalSetItem = localStorage.setItem;
-  localStorage.setItem = function (key, value) {
+  localStorage.setItem = function (key: string, value: string) {
     if (key === 'colorTheme' && (value === 'dark' || value === 'light')) {
       const newTheme = value;
       if (newTheme !== currentTheme) {
@@ -174,11 +177,11 @@ export const onThemeChange = callback => {
         callback(newTheme, getThemeColors());
       }
     }
-    return originalSetItem.apply(this, arguments);
+    return originalSetItem.apply(this, [key, value]);
   };
 
   // Listen for storage events (changes from other tabs/windows)
-  window.addEventListener('storage', e => {
+  window.addEventListener('storage', (e: StorageEvent) => {
     if (
       e.key === 'colorTheme' &&
       (e.newValue === 'dark' || e.newValue === 'light')
@@ -192,7 +195,7 @@ export const onThemeChange = callback => {
   });
 
   // Create mutation observer to watch for theme changes (fallback)
-  const observer = new MutationObserver(_mutations => {
+  const observer = new MutationObserver(() => {
     const newTheme = detectTheme();
     if (newTheme !== currentTheme) {
       currentTheme = newTheme;

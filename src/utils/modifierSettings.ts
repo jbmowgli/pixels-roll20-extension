@@ -4,15 +4,15 @@
  * Modifier Settings — DEPRECATED
  *
  * This module previously managed active modifier persistence. Modifiers have
- * been replaced by saved roll formulas (managed by rowManager.js). These
+ * been replaced by saved roll formulas (managed by rowManager.ts). These
  * functions are retained as no-ops for backward compatibility with any
  * remaining callers during the transition.
  */
 
-export const saveModifierSettings = () => {};
-export const loadModifierSettings = () => false;
-export const updateModifierSettings = () => {};
-export const clearAllModifierSettings = () => {};
+export const saveModifierSettings = (): void => {};
+export const loadModifierSettings = (): false => false;
+export const updateModifierSettings = (): void => {};
+export const clearAllModifierSettings = (): void => {};
 
 const PixelsSessionStorage = {
   saveModifierSettings,

@@ -7,13 +7,14 @@
     "test:fast": "jest --maxWorkers=1 --no-cache --no-watchman",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lint": "eslint \"src/**/*.js\"",
-    "lint:fix": "eslint \"src/**/*.js\" --fix",
-    "format": "prettier --write \"**/*.{js,json,html,css,md}\"",
-    "format:check": "prettier --check \"**/*.{js,json,html,css,md}\"",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" --fix",
+    "format": "prettier --write \"**/*.{ts,js,json,html,css,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,js,json,html,css,md}\"",
     "build": "webpack --mode=development",
     "build:prod": "webpack --mode=production",
-    "build:store": "npm run lint && npm run test && webpack --mode=production",
+    "build:store": "npm run typecheck && npm run lint && npm run test && webpack --mode=production",
     "package:store": "scripts/package-for-store.sh",
     "package:store:force": "scripts/package-for-store.sh --skip-tests",
     "zip:store": "cd dist && zip -r ../pixels-roll20-extension-store.zip . && cd .. && echo 'Extension packaged as pixels-roll20-extension-store.zip'",
@@ -36,7 +37,10 @@
     "@babel/preset-env": "^7.27.2",
     "@babel/runtime": "^7.27.6",
     "@eslint/js": "^9.30.0",
+    "@types/chrome": "^0.2.5",
     "@types/jest": "^29.5.11",
+    "@types/ramda": "^0.32.0",
+    "@types/web-bluetooth": "^0.0.21",
     "babel-jest": "^30.0.2",
     "babel-loader": "^10.0.0",
     "copy-webpack-plugin": "^14.0.0",
@@ -48,6 +52,10 @@
     "lint-staged": "^16.1.2",
     "prettier": "^3.6.2",
     "style-loader": "^4.0.0",
+    "ts-jest": "^29.4.12",
+    "ts-loader": "^9.6.2",
+    "typescript": "~5.8",
+    "typescript-eslint": "^8.66.0",
     "webpack": "^5.99.9",
     "webpack-cli": "^6.0.1",
     "webpack-merge": "^6.0.1"
@@ -59,13 +67,16 @@
     ],
     "testMatch": [
       "<rootDir>/tests/jest/**/*.test.js",
-      "!<rootDir>/tests/jest/experimental/**/*.test.js"
+      "<rootDir>/tests/jest/**/*.test.ts",
+      "!<rootDir>/tests/jest/experimental/**/*.test.js",
+      "!<rootDir>/tests/jest/experimental/**/*.test.ts"
     ],
     "collectCoverageFrom": [
-      "src/content/**/*.js",
-      "!src/content/**/*.test.js"
+      "src/content/**/*.ts",
+      "!src/content/**/*.test.ts"
     ],
     "moduleFileExtensions": [
+      "ts",
       "js"
     ],
     "testPathIgnorePatterns": [
@@ -79,23 +90,40 @@
     "cache": false,
     "watchman": false,
     "transform": {
+      "^.+\\.ts$": [
+        "ts-jest",
+        {
+          "tsconfig": "tsconfig.json"
+        }
+      ],
       "^.+\\.js$": "babel-jest"
     },
     "transformIgnorePatterns": [
       "node_modules/(?!(ramda)/)"
-    ]
+    ],
+    "moduleNameMapper": {
+      "^(.*)\\.js$": "$1",
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "^@utils/(.*)$": "<rootDir>/src/utils/$1",
+      "^@components/(.*)$": "<rootDir>/src/components/$1",
+      "^@content/(.*)$": "<rootDir>/src/content/$1",
+      "^@core/(.*)$": "<rootDir>/src/core/$1"
+    }
   },
   "lint-staged": {
-    "*.js": [
+    "*.ts": [
       "prettier --write",
       "eslint --fix"
+    ],
+    "*.js": [
+      "prettier --write"
     ],
     "*.{json,html,css,md}": [
       "prettier --write"
     ]
   },
   "dependencies": {
-    "@3d-dice/dice-roller-parser": "0.2.6",
+    "@3d-dice/dice-roller-parser": "^0.2.6",
     "eslint": "^9.30.0",
     "ramda": "^0.31.3"
   }

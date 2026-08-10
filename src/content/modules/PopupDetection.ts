@@ -1,5 +1,5 @@
 /**
- * PopupDetection.js
+ * PopupDetection.ts
  *
  * Handles detection of Roll20 popup windows to prevent modifier box display
  * in journal entries, character sheets, and other popout windows.
@@ -8,7 +8,7 @@
 'use strict';
 
 // Pure function to check if a URL indicates a Roll20 popup window
-export const checkUrlForPopup = url => {
+export const checkUrlForPopup = (url: string | null | undefined): boolean => {
   if (!url || typeof url !== 'string') {
     return false;
   }
@@ -21,7 +21,7 @@ export const checkUrlForPopup = url => {
 };
 
 // Detect if this is a Roll20 popup window (journal entry, character sheet, etc.)
-export const isRoll20PopupWindow = () => {
+export const isRoll20PopupWindow = (): boolean => {
   try {
     const url = window.location.href;
     const isPopup = checkUrlForPopup(url);

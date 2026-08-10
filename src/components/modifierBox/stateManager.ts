@@ -6,7 +6,7 @@
 'use strict';
 
 // Singleton instance variables
-let modifierBox = null;
+let modifierBox: HTMLElement | null = null;
 let modifierBoxVisible = false;
 let modifierBoxCreated = false;
 
@@ -14,45 +14,47 @@ let modifierBoxCreated = false;
 const moduleInitialized = true;
 
 // Get the modifier box element
-export function getModifierBoxElement() {
+export function getModifierBoxElement(): HTMLElement | null {
   return modifierBox;
 }
 
 // Check if modifier box is visible
-export function isModifierBoxVisible() {
+export function isModifierBoxVisible(): boolean {
   return modifierBoxVisible;
 }
 
 // Check if module is initialized
-export function isModifierBoxInitialized() {
+export function isModifierBoxInitialized(): boolean {
   return moduleInitialized;
 }
 
 // Check if modifier box has been created
-export function isModifierBoxCreated() {
+export function isModifierBoxCreated(): boolean {
   return modifierBoxCreated;
 }
 
 // Set the modifier box element
-export function setModifierBoxElement(element) {
+export function setModifierBoxElement(
+  element: HTMLElement | null
+): HTMLElement | null {
   modifierBox = element;
   return modifierBox;
 }
 
 // Set visibility state
-export function setModifierBoxVisible(visible) {
+export function setModifierBoxVisible(visible: boolean): boolean {
   modifierBoxVisible = Boolean(visible);
   return modifierBoxVisible;
 }
 
 // Set created state
-export function setModifierBoxCreated(created) {
+export function setModifierBoxCreated(created: boolean): boolean {
   modifierBoxCreated = Boolean(created);
   return modifierBoxCreated;
 }
 
 // Check if modifier box already exists in DOM
-export function findExistingModifierBox() {
+export function findExistingModifierBox(): HTMLElement | null {
   const existingBox = document.getElementById('pixels-modifier-box');
   if (existingBox) {
     modifierBox = existingBox;
@@ -63,7 +65,7 @@ export function findExistingModifierBox() {
 }
 
 // Reset module state (for testing)
-export function resetState() {
+export function resetState(): void {
   // Remove existing element from DOM if it exists
   if (modifierBox && modifierBox.parentNode) {
     modifierBox.parentNode.removeChild(modifierBox);
@@ -86,10 +88,12 @@ export function resetState() {
 }
 
 // Update first row default values to match current standards (migration helper)
-export function updateLegacyDefaults(modifierBox) {
+export function updateLegacyDefaults(modifierBox: HTMLElement | null): void {
   if (!modifierBox) return;
 
-  const firstNameInput = modifierBox.querySelector('.modifier-name');
+  const firstNameInput = modifierBox.querySelector(
+    '.modifier-name'
+  ) as HTMLInputElement | null;
   if (
     firstNameInput &&
     (firstNameInput.value === 'None' || firstNameInput.value === 'D20')
@@ -100,7 +104,9 @@ export function updateLegacyDefaults(modifierBox) {
 }
 
 // Ensure modifier box is in DOM and visible
-export function ensureModifierBoxInDOM(modifierBox) {
+export function ensureModifierBoxInDOM(
+  modifierBox: HTMLElement | null
+): boolean {
   if (!modifierBox) return false;
 
   // Ensure it's in the DOM
@@ -114,7 +120,7 @@ export function ensureModifierBoxInDOM(modifierBox) {
   return true;
 }
 
-export function validatePosition(modifierBox) {
+export function validatePosition(modifierBox: HTMLElement | null): void {
   if (!modifierBox) return;
 
   const currentTop = parseInt(modifierBox.style.top) || 0;
@@ -134,7 +140,7 @@ export function validatePosition(modifierBox) {
 }
 
 // Get current state summary
-export function getStateSummary() {
+export function getStateSummary(): StateSummary {
   return {
     hasElement: !!modifierBox,
     isVisible: modifierBoxVisible,
@@ -146,7 +152,7 @@ export function getStateSummary() {
 }
 
 // Export for legacy compatibility
-const StateManager = {
+const StateManager: ModifierBoxStateManagerModule = {
   getModifierBoxElement,
   isModifierBoxVisible,
   isModifierBoxInitialized,

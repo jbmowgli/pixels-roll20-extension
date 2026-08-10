@@ -1,40 +1,89 @@
 /**
- * FormulaEvaluator.js
+ * FormulaEvaluator.ts
  *
  * Wraps @3d-dice/dice-roller-parser to provide:
  * 1. Formula parsing and validation
  * 2. Slot determination from parsed AST (which physical dice to collect)
  * 3. Explosion/reroll condition checking (should a new slot be added?)
  * 4. Final evaluation with predetermined physical dice values
- *
- * The key challenge: dice-roller-parser expects a synchronous random function,
- * but we collect physical dice interactively. So we:
- *   - parse() to understand what dice are needed
- *   - Walk the AST ourselves to build initial slots and detect modifiers
- *   - Check explosion conditions as each die fills
- *   - Once all values are collected, feed them through the roller for evaluation
  */
 
 'use strict';
 
 import { DiceRoller } from '@3d-dice/dice-roller-parser';
+import type { RootType, ParsedType } from '@3d-dice/dice-roller-parser';
+import type { RollBase } from '@3d-dice/dice-roller-parser';
 
 // Safety limit for exploding dice to prevent infinite loops
 const MAX_EXPLOSIONS_PER_GROUP = 20;
 
+// --- Local Types ---
+
+type DieSize = number | 'fate';
+
+interface Slot {
+  type: DieSize;
+  value: number | null;
+  groupIndex: number;
+  isExplosion: boolean;
+  isReroll: boolean;
+}
+
+interface ModTarget {
+  mod?: string;
+  value?: ParsedType;
+  expr?: ParsedType;
+}
+
+interface DieMod {
+  type: string;
+  target?: ModTarget;
+}
+
+interface DieGroup {
+  dieSize: DieSize;
+  count: number;
+  mods: DieMod[];
+  targets: ParsedType[];
+  match: ParsedType | null;
+  slotIndices: number[];
+  explosionMod: DieMod | null;
+  rerollMod: DieMod | null;
+}
+
+interface PromptData {
+  slots: Slot[];
+  groups: DieGroup[];
+  formula: string;
+  ast: RootType;
+  whisper?: boolean;
+}
+
+interface EvaluationValue {
+  face: number;
+  dieSize: DieSize;
+}
+
+// AST node shape (loose — the PEG parser produces untyped sub-nodes)
+interface AstNode {
+  type: string;
+  die?: ParsedType;
+  count?: ParsedType;
+  mods?: DieMod[];
+  targets?: ParsedType[];
+  match?: ParsedType | null;
+  head?: AstNode;
+  ops?: Array<{ tail?: AstNode }>;
+  rolls?: AstNode[];
+  expr?: AstNode;
+  value?: number;
+}
+
 /**
  * Parse a dice formula string and return structured information.
  * Returns null if the formula is invalid.
  */
-/**
- * Parse a dice formula string and return structured information.
- * Returns null if the formula is invalid.
- *
- * Normalizes Roll20-style operators: the library uses Roll20 semantics where
- * ">" means ">=" and "<" means "<=". The ">=" and "<=" tokens aren't
- * recognized by the PEG grammar, so we normalize them before parsing.
- */
-function parseFormula(formulaStr) {
+function parseFormula(formulaStr: string): RootType | null {
   if (!formulaStr || !formulaStr.trim()) {
     return null;
   }
@@ -51,30 +100,19 @@ function parseFormula(formulaStr) {
 
 /**
  * Normalize comparison operators to match library expectations.
- * Roll20 semantics: ">" means >=, "<" means <=.
- * Users might type ">=" or "<=" which the parser doesn't handle,
- * so convert them to ">" and "<" respectively.
  */
-function normalizeOperators(formula) {
+function normalizeOperators(formula: string): string {
   return formula.replace(/>=/g, '>').replace(/<=/g, '<');
 }
 
 /**
  * Extract the initial set of dice slots needed from a parsed AST.
- * Each slot represents one physical die the user needs to roll.
- *
- * Returns: {
- *   slots: [{type, value, groupIndex, exploding, rerolling}],
- *   groups: [{dieSize, count, mods, targets, slots: [indices]}],
- *   formula: string (original formula),
- *   ast: object (parsed AST for later evaluation)
- * }
  */
-function buildSlotsFromAst(ast, formulaStr) {
-  const slots = [];
-  const groups = [];
+function buildSlotsFromAst(ast: RootType, formulaStr: string): PromptData {
+  const slots: Slot[] = [];
+  const groups: DieGroup[] = [];
 
-  walkForDice(ast, slots, groups);
+  walkForDice(ast as unknown as AstNode, slots, groups);
 
   return {
     slots,
@@ -87,27 +125,31 @@ function buildSlotsFromAst(ast, formulaStr) {
 /**
  * Recursively walk the AST to find all die nodes and build slots.
  */
-function walkForDice(node, slots, groups) {
+function walkForDice(
+  node: AstNode | null,
+  slots: Slot[],
+  groups: DieGroup[]
+): void {
   if (!node) {
     return;
   }
 
   if (node.type === 'die') {
-    const dieSize = extractDieSize(node.die);
-    const count = extractCount(node.count);
+    const dieSize = extractDieSize(node.die as AstNode | undefined);
+    const count = extractCount(node.count as AstNode | undefined);
 
     if (dieSize === null || count === 0) {
       return;
     }
 
-    const mods = node.mods || [];
-    const targets = node.targets || [];
+    const mods: DieMod[] = node.mods || [];
+    const targets: ParsedType[] = node.targets || [];
     const groupIndex = groups.length;
 
     const explosionMod = findExplosionMod(mods);
     const rerollMod = findRerollMod(mods);
 
-    const group = {
+    const group: DieGroup = {
       dieSize,
       count,
       mods,
@@ -136,7 +178,7 @@ function walkForDice(node, slots, groups) {
 
   // Expression: head + ops
   if (node.type === 'expression' || node.type === 'diceExpression') {
-    walkForDice(node.head, slots, groups);
+    walkForDice(node.head || null, slots, groups);
     if (node.ops) {
       for (const op of node.ops) {
         if (op.tail) {
@@ -159,7 +201,7 @@ function walkForDice(node, slots, groups) {
 
   // Inline expression
   if (node.type === 'inline') {
-    walkForDice(node.expr, slots, groups);
+    walkForDice(node.expr || null, slots, groups);
     return;
   }
 }
@@ -167,14 +209,13 @@ function walkForDice(node, slots, groups) {
 /**
  * Extract numeric die size from a die node.
  */
-function extractDieSize(dieNode) {
+function extractDieSize(dieNode: AstNode | undefined): DieSize | null {
   if (!dieNode) {
     return null;
   }
   if (dieNode.type === 'number') {
-    return dieNode.value;
+    return dieNode.value!;
   }
-  // Fate dice
   if (dieNode.type === 'fate') {
     return 'fate';
   }
@@ -184,21 +225,20 @@ function extractDieSize(dieNode) {
 /**
  * Extract numeric count from a count node.
  */
-function extractCount(countNode) {
+function extractCount(countNode: AstNode | undefined): number {
   if (!countNode) {
     return 1;
   }
   if (countNode.type === 'number') {
-    return countNode.value;
+    return countNode.value!;
   }
   return 1;
 }
 
 /**
  * Find an explosion modifier in the mods array.
- * Types: "explode", "compound", "penetrate"
  */
-function findExplosionMod(mods) {
+function findExplosionMod(mods: DieMod[] | null): DieMod | null {
   if (!mods) {
     return null;
   }
@@ -212,9 +252,8 @@ function findExplosionMod(mods) {
 
 /**
  * Find a reroll modifier in the mods array.
- * Types: "reroll", "rerollOnce"
  */
-function findRerollMod(mods) {
+function findRerollMod(mods: DieMod[] | null): DieMod | null {
   if (!mods) {
     return null;
   }
@@ -223,15 +262,13 @@ function findRerollMod(mods) {
 
 /**
  * Check if a rolled value triggers an explosion for the given group.
- * Returns true if a new slot should be added.
  */
-function checkExplosion(value, group) {
+function checkExplosion(value: number, group: DieGroup): boolean {
   const mod = group.explosionMod;
   if (!mod) {
     return false;
   }
 
-  // Count current explosions to enforce safety limit
   const explosionCount = group.slotIndices.length - group.count;
   if (explosionCount >= MAX_EXPLOSIONS_PER_GROUP) {
     return false;
@@ -242,9 +279,12 @@ function checkExplosion(value, group) {
 
 /**
  * Check if a value meets an explosion target condition.
- * Default (no target specified): explodes on max value.
  */
-function meetsExplosionTarget(value, dieSize, mod) {
+function meetsExplosionTarget(
+  value: number,
+  dieSize: DieSize,
+  mod: DieMod
+): boolean {
   const target = mod.target;
 
   // No target: explode on max
@@ -252,14 +292,13 @@ function meetsExplosionTarget(value, dieSize, mod) {
     return value === dieSize;
   }
 
-  return compareValue(value, target.mod, extractTargetValue(target));
+  return compareValue(value, target.mod || '=', extractTargetValue(target));
 }
 
 /**
  * Check if a rolled value triggers a reroll for the given group.
- * Returns true if this slot should be rerolled (value replaced).
  */
-function checkReroll(value, group) {
+function checkReroll(value: number, group: DieGroup): boolean {
   const mod = group.rerollMod;
   if (!mod) {
     return false;
@@ -270,9 +309,12 @@ function checkReroll(value, group) {
 
 /**
  * Check if a value meets a reroll target condition.
- * Default (no target specified): reroll on 1.
  */
-function meetsRerollTarget(value, dieSize, mod) {
+function meetsRerollTarget(
+  value: number,
+  _dieSize: DieSize,
+  mod: DieMod
+): boolean {
   const target = mod.target;
 
   // No target: reroll on min (1)
@@ -280,21 +322,21 @@ function meetsRerollTarget(value, dieSize, mod) {
     return value === 1;
   }
 
-  return compareValue(value, target.mod, extractTargetValue(target));
+  return compareValue(value, target.mod || '=', extractTargetValue(target));
 }
 
 /**
  * Extract the numeric value from a target node.
  */
-function extractTargetValue(target) {
+function extractTargetValue(target: ModTarget): number | null {
   if (!target) {
     return null;
   }
-  if (target.value && target.value.type === 'number') {
-    return target.value.value;
+  if (target.value && (target.value as AstNode).type === 'number') {
+    return (target.value as AstNode).value!;
   }
-  if (target.expr && target.expr.type === 'number') {
-    return target.expr.value;
+  if (target.expr && (target.expr as AstNode).type === 'number') {
+    return (target.expr as AstNode).value!;
   }
   return null;
 }
@@ -302,7 +344,11 @@ function extractTargetValue(target) {
 /**
  * Compare a value against a target using the given comparison operator.
  */
-function compareValue(value, operator, targetValue) {
+function compareValue(
+  value: number,
+  operator: string,
+  targetValue: number | null
+): boolean {
   if (targetValue === null) {
     return false;
   }
@@ -319,16 +365,14 @@ function compareValue(value, operator, targetValue) {
     case '<=':
       return value <= targetValue;
     default:
-      // Default: equal
       return value === targetValue;
   }
 }
 
 /**
  * Add an explosion slot to a group.
- * Returns the index of the new slot.
  */
-function addExplosionSlot(promptData, groupIndex) {
+function addExplosionSlot(promptData: PromptData, groupIndex: number): number {
   const group = promptData.groups[groupIndex];
   const newSlotIndex = promptData.slots.length;
 
@@ -346,25 +390,19 @@ function addExplosionSlot(promptData, groupIndex) {
 
 /**
  * Mark a slot for reroll (clear its value so it needs to be filled again).
- * For "rerollOnce" the slot is cleared once. For "reroll" it keeps clearing
- * until the condition is no longer met (handled by the caller checking again).
  */
-function markSlotForReroll(promptData, slotIndex) {
+function markSlotForReroll(promptData: PromptData, slotIndex: number): void {
   promptData.slots[slotIndex].value = null;
   promptData.slots[slotIndex].isReroll = true;
 }
 
 /**
  * Evaluate the final result using the library with collected physical dice values.
- * Feeds predetermined values through the roller's random function.
- *
- * Returns the DiceRoller result object with:
- *   - value: total numeric result (or success count for target rolls)
- *   - successes: number of successes (for target rolls)
- *   - failures: number of failures
- *   - rolls/dice: detailed breakdown
  */
-function evaluateWithValues(formulaStr, collectedValues) {
+function evaluateWithValues(
+  formulaStr: string,
+  collectedValues: EvaluationValue[]
+): RollBase {
   const values = [...collectedValues];
   let valueIndex = 0;
 
@@ -372,11 +410,10 @@ function evaluateWithValues(formulaStr, collectedValues) {
 
   const roller = new DiceRoller(() => {
     if (valueIndex >= values.length) {
-      // Fallback: shouldn't happen if slots are correctly filled
       return Math.random();
     }
     const { face, dieSize } = values[valueIndex++];
-    return (face - 1) / dieSize;
+    return (face - 1) / (dieSize as number);
   });
 
   return roller.roll(normalized);
@@ -384,37 +421,22 @@ function evaluateWithValues(formulaStr, collectedValues) {
 
 /**
  * Build the ordered list of (face, dieSize) pairs from filled slots.
- * The order must match the order the library's roller will request random values.
- *
- * The roller uses a breadth-first explosion pattern:
- * 1. Roll all original dice for the group
- * 2. Roll one explosion for each die that exploded (round 1)
- * 3. Roll one explosion for each round-1 explosion that also exploded (round 2)
- * 4. Continue until no more explosions trigger
- *
- * Example: 2d6! where both originals explode and one explosion also explodes:
- *   Call order: orig1, orig2, exp-of-1, exp-of-2, exp-of-exp-of-1
- *
- * Groups are processed in AST order (the order they appear in the formula).
  */
-function buildEvaluationOrder(promptData) {
-  const values = [];
+function buildEvaluationOrder(promptData: PromptData): EvaluationValue[] {
+  const values: EvaluationValue[] = [];
 
   for (const group of promptData.groups) {
     const groupSlots = group.slotIndices.map(i => promptData.slots[i]);
 
-    // Separate originals from explosions, preserving insertion order
     const originals = groupSlots.filter(s => !s.isExplosion);
     const explosions = groupSlots.filter(s => s.isExplosion);
 
-    // Originals always come first
     for (const slot of originals) {
-      values.push({ face: slot.value, dieSize: group.dieSize });
+      values.push({ face: slot.value!, dieSize: group.dieSize });
     }
 
-    // Explosions follow in BFS order (the order they were added)
     for (const slot of explosions) {
-      values.push({ face: slot.value, dieSize: group.dieSize });
+      values.push({ face: slot.value!, dieSize: group.dieSize });
     }
   }
 
@@ -423,9 +445,8 @@ function buildEvaluationOrder(promptData) {
 
 /**
  * Determine if the formula is a "count successes" type roll.
- * These have targets on the die node (e.g., 8d6>5).
  */
-function isSuccessCountRoll(promptData) {
+function isSuccessCountRoll(promptData: PromptData): boolean {
   return promptData.groups.some(
     g =>
       g.targets &&
@@ -436,21 +457,21 @@ function isSuccessCountRoll(promptData) {
 /**
  * Get a display-friendly formula string from the parsed data.
  */
-function getFormulaDisplay(formulaStr) {
+function getFormulaDisplay(formulaStr: string): string {
   return formulaStr.trim();
 }
 
 /**
  * Validate that a formula can be parsed and contains at least one die.
  */
-function isValidFormula(formulaStr) {
+function isValidFormula(formulaStr: string): boolean {
   const ast = parseFormula(formulaStr);
   if (!ast) {
     return false;
   }
-  const slots = [];
-  const groups = [];
-  walkForDice(ast, slots, groups);
+  const slots: Slot[] = [];
+  const groups: DieGroup[] = [];
+  walkForDice(ast as unknown as AstNode, slots, groups);
   return slots.length > 0;
 }
 
@@ -467,7 +488,6 @@ const FormulaEvaluator = {
   getFormulaDisplay,
   isValidFormula,
   normalizeOperators,
-  // Exported for testing
   walkForDice,
   compareValue,
   extractDieSize,
@@ -496,5 +516,7 @@ export {
   meetsExplosionTarget,
   meetsRerollTarget,
 };
+
+export type { Slot, DieGroup, PromptData, EvaluationValue, DieSize };
 
 export default FormulaEvaluator;

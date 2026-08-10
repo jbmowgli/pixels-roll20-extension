@@ -1,5 +1,5 @@
 /**
- * RollBatcher.js
+ * RollBatcher.ts
  *
  * Groups individual dice roll events that occur within a short time window
  * into a single combined roll message. When multiple Pixels dice are rolled
@@ -29,11 +29,11 @@ try {
 }
 
 // Resolve dependencies lazily at call time to avoid load-order issues
-function getPostChatMessage() {
+function getPostChatMessage(): (message: string) => void {
   return window.postChatMessage || function () {};
 }
 
-function getSendTextToExtension() {
+function getSendTextToExtension(): (txt: string) => void {
   return window.sendTextToExtension || function () {};
 }
 
@@ -42,7 +42,7 @@ function getSendTextToExtension() {
  * Pixels dice are typically named like "PixelD6_XXXX", "MyD20", etc.
  * Falls back to inferring from the rolled value when name doesn't help.
  */
-function parseDieType(dieName, faceValue) {
+function parseDieType(dieName: string, faceValue: number): number {
   const match = dieName.match(/d(\d+)/i);
   if (match) {
     return parseInt(match[1], 10);
@@ -54,7 +54,7 @@ function parseDieType(dieName, faceValue) {
  * Infer die size from a face value when the name doesn't contain type info.
  * Uses standard RPG die sizes.
  */
-function inferDieSize(faceValue) {
+function inferDieSize(faceValue: number): number {
   const standardDice = [4, 6, 8, 10, 12, 20, 100];
   for (const size of standardDice) {
     if (faceValue <= size) {
@@ -65,14 +65,14 @@ function inferDieSize(faceValue) {
 }
 
 // Batched roll entries
-let pendingRolls = [];
-let batchTimer = null;
+let pendingRolls: RollData[] = [];
+let batchTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Add a roll to the current batch. If this is the first roll, start the
  * grouping timer. When the timer fires, flush all collected rolls.
  */
-function addRoll(rollData) {
+function addRoll(rollData: RollData): void {
   pendingRolls.push(rollData);
 
   if (batchTimer !== null) {
@@ -84,7 +84,7 @@ function addRoll(rollData) {
 /**
  * Flush all pending rolls as either a single roll message or a grouped message.
  */
-function flushRolls() {
+function flushRolls(): void {
   batchTimer = null;
   const rolls = pendingRolls.slice();
   pendingRolls = [];
@@ -103,7 +103,7 @@ function flushRolls() {
 /**
  * Post a single-die roll result to Roll20 chat.
  */
-function postSingleRoll(roll) {
+function postSingleRoll(roll: RollData): void {
   const { dieName, dieType, faceValue } = roll;
 
   const formula = buildSingleSimpleFormula(faceValue, dieType, dieName);
@@ -114,7 +114,7 @@ function postSingleRoll(roll) {
 /**
  * Post a grouped multi-dice roll with formula, individual results, and sum.
  */
-function postGroupedRoll(rolls) {
+function postGroupedRoll(rolls: RollData[]): void {
   // Detect percentile combo: exactly one d% and one d10
   const percentileRolls = rolls.filter(r => r.dieType === 100);
   const d10Rolls = rolls.filter(r => r.dieType === 10);
@@ -126,7 +126,7 @@ function postGroupedRoll(rolls) {
       d10Rolls[0].faceValue
     );
     // Combine into a single virtual "d%" roll
-    const combinedRolls = [
+    const combinedRolls: RollData[] = [
       ...otherRolls,
       {
         dieName: `${percentileRolls[0].dieName}+${d10Rolls[0].dieName}`,
@@ -151,10 +151,11 @@ function postGroupedRoll(rolls) {
 
 /**
  * Compute percentile value from d% and d10 face values.
- * d10 value of 10 represents the "0" face for percentile purposes.
- * d%=100 (the "00" face), d10=10 → 100; d%=100, d10=X → X; otherwise d%+d10.
  */
-function computePercentileValue(percentileFace, d10Face) {
+function computePercentileValue(
+  percentileFace: number,
+  d10Face: number
+): number {
   const d10AsZero = d10Face === 10 ? 0 : d10Face;
   if (percentileFace === 100 && d10AsZero === 0) {
     return 100;
@@ -168,7 +169,7 @@ function computePercentileValue(percentileFace, d10Face) {
 /**
  * Post a grouped roll from a pre-processed list of rolls.
  */
-function postGroupedRollFromList(rolls) {
+function postGroupedRollFromList(rolls: RollData[]): void {
   const rollsByType = groupRollsByDieType(rolls);
   const totalDiceValue = rolls.reduce((sum, r) => sum + r.faceValue, 0);
 
@@ -194,10 +195,10 @@ function postGroupedRollFromList(rolls) {
 }
 
 /**
- * Group rolls by die type and return counts, e.g. { 6: [5, 4], 20: [17] }
+ * Group rolls by die type and return counts.
  */
-function groupRollsByDieType(rolls) {
-  const groups = {};
+function groupRollsByDieType(rolls: RollData[]): Record<number, number[]> {
+  const groups: Record<number, number[]> = {};
   for (const roll of rolls) {
     const type = roll.dieType;
     if (!groups[type]) {
@@ -211,13 +212,13 @@ function groupRollsByDieType(rolls) {
 /**
  * Build the dice formula string like "2d6" or "2d6 + 1d8".
  */
-function buildDiceFormulaParts(rollsByType) {
+function buildDiceFormulaParts(rollsByType: Record<number, number[]>): string {
   const sortedTypes = Object.keys(rollsByType)
     .map(Number)
     .sort((a, b) => a - b);
   return sortedTypes
     .map(type => {
-      let label;
+      let label: string;
       if (type === 101) {
         label = 'd%';
       } else if (type === 100) {
@@ -233,7 +234,11 @@ function buildDiceFormulaParts(rollsByType) {
 /**
  * Build a single-die chat message (no modifier).
  */
-function buildSingleSimpleFormula(faceValue, dieType, dieName) {
+function buildSingleSimpleFormula(
+  faceValue: number,
+  dieType: number,
+  dieName: string
+): string {
   const diceWithHover = `<span title="${dieName}">${faceValue}</span>`;
   const dieLabel =
     dieType === 101 ? 'd%' : dieType === 100 ? 'd00' : `d${dieType}`;
@@ -248,7 +253,7 @@ function buildSingleSimpleFormula(faceValue, dieType, dieName) {
 /**
  * Update the roll batching window duration.
  */
-function setWindowMs(ms) {
+function setWindowMs(ms: number): void {
   rollWindowMs = ms;
 }
 

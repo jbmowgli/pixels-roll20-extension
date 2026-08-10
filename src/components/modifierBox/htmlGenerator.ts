@@ -7,8 +7,8 @@
 
 // Generate the modifier box HTML structure
 export function generateModifierBoxHTML(
-  logoUrl = 'assets/images/logo-128.png'
-) {
+  logoUrl: string = 'assets/images/logo-128.png'
+): string {
   return `
     <div class="pixels-header">
         <span class="pixels-title">
@@ -33,7 +33,7 @@ export function generateModifierBoxHTML(
   `;
 }
 
-export function getLogoUrl() {
+export function getLogoUrl(): string {
   let logoUrl = 'assets/images/logo-128.png';
   try {
     if (
@@ -49,7 +49,7 @@ export function getLogoUrl() {
   return logoUrl;
 }
 
-export function createModifierBoxElement() {
+export function createModifierBoxElement(): HTMLElement {
   const modifierBox = document.createElement('div');
   modifierBox.id = 'pixels-modifier-box';
   modifierBox.setAttribute('data-testid', 'pixels-modifier-box');
@@ -61,14 +61,19 @@ export function createModifierBoxElement() {
   return modifierBox;
 }
 
-export function processTemplateHTML(htmlTemplate, logoUrl = null) {
+export function processTemplateHTML(
+  htmlTemplate: string,
+  logoUrl: string | null = null
+): string {
   if (!logoUrl) {
     logoUrl = getLogoUrl();
   }
   return htmlTemplate.replace('{{logoUrl}}', logoUrl);
 }
 
-export function extractModifierBoxFromTemplate(processedHTML) {
+export function extractModifierBoxFromTemplate(
+  processedHTML: string
+): Element | null {
   const tempContainer = document.createElement('div');
   tempContainer.innerHTML = processedHTML;
   return tempContainer.firstElementChild;

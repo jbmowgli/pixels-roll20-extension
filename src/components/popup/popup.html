@@ -22,6 +22,21 @@
               <span class="toggle-text">Allow unprompted rolls</span>
             </label>
           </div>
+          <div class="roll-window-container" id="rollWindowContainer">
+            <label class="roll-window-label">
+              Roll window:
+              <span id="rollWindowValue" class="roll-window-value">2</span>s
+            </label>
+            <input
+              type="range"
+              id="rollWindowSlider"
+              class="roll-window-slider"
+              min="1"
+              max="10"
+              value="2"
+              step="1"
+            />
+          </div>
           <div class="toggle-container">
             <label class="toggle-label">
               <input type="checkbox" id="allowDiceSubstitution" />

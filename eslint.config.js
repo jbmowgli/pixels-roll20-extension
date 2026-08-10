@@ -1,11 +1,17 @@
 const js = require('@eslint/js');
+const tseslint = require('typescript-eslint');
 
 module.exports = [
   {
-    files: ['src/**/*.js'],
+    files: ['src/**/*.ts'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
+      parser: tseslint.parser,
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: __dirname,
+      },
       globals: {
         // Browser/Extension globals
         window: 'readonly',
@@ -26,43 +32,32 @@ module.exports = [
         URL: 'readonly',
         FileReader: 'readonly',
         AbortController: 'readonly',
-
-        // Extension-specific globals
-        postChatMessage: 'readonly',
-        sendTextToExtension: 'readonly',
-        sendStatusToExtension: 'readonly',
-        pixelsModifier: 'writable',
-        pixelsModifierName: 'writable',
-        connectToPixel: 'writable',
-        pixels: 'writable',
-        Pixel: 'writable',
-        ModifierBox: 'writable',
-        ModifierBoxRowManager: 'writable',
-        ModifierBoxThemeManager: 'writable',
-        ModifierBoxDragHandler: 'writable',
-        PixelsBluetooth: 'writable',
-        log: 'readonly',
-        global: 'writable',
       },
+    },
+    plugins: {
+      '@typescript-eslint': tseslint.plugin,
     },
     rules: {
       ...js.configs.recommended.rules,
-      // Customize rules for Chrome extension development
-      'no-unused-vars': [
+      // Disable base rules that conflict with TS versions
+      'no-unused-vars': 'off',
+      'no-undef': 'off', // TypeScript handles this
+      'no-redeclare': 'off', // TypeScript handles interface merging
+      // TypeScript-specific rules
+      '@typescript-eslint/no-unused-vars': [
         'warn',
         {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
         },
       ],
-      'no-undef': 'error',
       'prefer-const': 'warn',
       'no-var': 'error',
     },
   },
   {
     // Test files configuration
-    files: ['tests/**/*.js'],
+    files: ['tests/**/*.js', 'tests/**/*.ts'],
     languageOptions: {
       globals: {
         // Jest globals
@@ -79,7 +74,8 @@ module.exports = [
       },
     },
     rules: {
-      'no-unused-vars': 'off', // Allow unused vars in tests
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
     },
   },
 ];

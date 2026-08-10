@@ -1,16 +1,16 @@
 /**
- * ModifierBoxManager.js
+ * ModifierBoxManager.ts
  *
  * Handles showing and hiding the modifier box based on context.
  */
 
 'use strict';
 
-import { log } from './Utils.js';
-import { isRoll20PopupWindow } from './PopupDetection.js';
+import { log } from './Utils';
+import { isRoll20PopupWindow } from './PopupDetection';
 
 // Show modifier box (respects popup detection)
-export const showModifierBox = () => {
+export const showModifierBox = (): void => {
   // Don't show modifier box in Roll20 popup windows
   if (isRoll20PopupWindow && isRoll20PopupWindow()) {
     log('Skipping modifier box display - this is a Roll20 popup window');
@@ -22,12 +22,11 @@ export const showModifierBox = () => {
       log('ModifierBox module not initialized yet');
     }
     // Handle async show function
-    if (window.ModifierBox.show.constructor.name === 'AsyncFunction') {
-      window.ModifierBox.show().catch(error => {
+    const result = window.ModifierBox.show();
+    if (result && typeof result.catch === 'function') {
+      result.catch((error: Error) => {
         console.error('Failed to show modifier box:', error);
       });
-    } else {
-      window.ModifierBox.show();
     }
   } else {
     log('ModifierBox module not loaded');
@@ -35,7 +34,7 @@ export const showModifierBox = () => {
 };
 
 // Hide modifier box
-export const hideModifierBox = () => {
+export const hideModifierBox = (): void => {
   if (typeof window.ModifierBox !== 'undefined') {
     window.ModifierBox.hide();
   } else {
@@ -53,7 +52,8 @@ export default ModifierBoxManager;
 
 // Legacy global exports for backward compatibility (temporary)
 if (typeof window !== 'undefined') {
-  window.ModifierBoxManager = ModifierBoxManager;
-  window.showModifierBox = showModifierBox;
+  (window as unknown as Record<string, unknown>).ModifierBoxManager =
+    ModifierBoxManager;
+  window.showModifierBox = showModifierBox as unknown as () => Promise<void>;
   window.hideModifierBox = hideModifierBox;
 }

@@ -15,7 +15,7 @@ const POPPED_OUT_CLASS = 'pixels-popped-out';
 // Injected <style> elements we mirror into the pop-out document. cssLoader
 // fetches each stylesheet and injects it as an inline <style id="...">, so
 // cloning these nodes carries the full CSS text across (no URL resolution).
-const STYLE_IDS = [
+const STYLE_IDS: string[] = [
   'pixels-modifier-box-base-styles',
   'pixels-modifier-box-minimized-styles',
   'pixels-modifier-box-light-theme-styles',
@@ -24,20 +24,22 @@ const STYLE_IDS = [
 
 const POPOUT_STYLE_ID = 'pixels-modifier-box-popout-styles';
 
-let pipWindow = null;
-let placeholder = null;
-let themeSyncObserver = null;
+let pipWindow: DocumentPictureInPictureWindow | null = null;
+let placeholder: Comment | null = null;
+let themeSyncObserver: MutationObserver | null = null;
 
-function isSupported() {
+function isSupported(): boolean {
   return typeof window !== 'undefined' && 'documentPictureInPicture' in window;
 }
 
-export function setupPopoutControls(modifierBox) {
+export function setupPopoutControls(modifierBox: HTMLElement): void {
   if (!modifierBox) {
     return;
   }
 
-  const btn = modifierBox.querySelector('.pixels-popout');
+  const btn = modifierBox.querySelector(
+    '.pixels-popout'
+  ) as HTMLButtonElement | null;
   if (!btn) {
     return;
   }
@@ -48,7 +50,7 @@ export function setupPopoutControls(modifierBox) {
     return;
   }
 
-  btn.addEventListener('click', async e => {
+  btn.addEventListener('click', async (e: Event) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -61,7 +63,7 @@ export function setupPopoutControls(modifierBox) {
   });
 }
 
-async function openPopout(modifierBox) {
+async function openPopout(modifierBox: HTMLElement): Promise<void> {
   const rect = modifierBox.getBoundingClientRect();
 
   try {
@@ -93,7 +95,7 @@ async function openPopout(modifierBox) {
   });
 }
 
-function restore(modifierBox) {
+function restore(modifierBox: HTMLElement): void {
   stopThemeSync();
   modifierBox.classList.remove(POPPED_OUT_CLASS);
 
@@ -108,7 +110,7 @@ function restore(modifierBox) {
 }
 
 // Clone our injected stylesheets into the pop-out document.
-function copyStyles(targetDoc) {
+function copyStyles(targetDoc: Document): void {
   STYLE_IDS.forEach(id => {
     const source = document.getElementById(id);
     if (source && !targetDoc.getElementById(id)) {
@@ -119,7 +121,7 @@ function copyStyles(targetDoc) {
 
 // Layout overrides so the box fills the pop-out window instead of floating.
 // The id+class selector out-specifies the base `#pixels-modifier-box` rules.
-function injectPopoutStyles(targetDoc) {
+function injectPopoutStyles(targetDoc: Document): void {
   if (targetDoc.getElementById(POPOUT_STYLE_ID)) {
     return;
   }
@@ -148,16 +150,16 @@ function injectPopoutStyles(targetDoc) {
 
 // Mirror the page's `roll20-*-theme` class onto the pop-out body so the
 // light-theme rules (scoped under `.roll20-light-theme`) still match.
-function syncThemeClass(targetDoc) {
+function syncThemeClass(targetDoc: Document): void {
   const themeClasses = Array.from(document.body.classList).filter(
-    c => c.startsWith('roll20-') && c.endsWith('-theme')
+    (c: string) => c.startsWith('roll20-') && c.endsWith('-theme')
   );
   targetDoc.body.classList.remove('roll20-light-theme', 'roll20-dark-theme');
   themeClasses.forEach(c => targetDoc.body.classList.add(c));
 }
 
 // Keep the pop-out theme in sync if the page theme changes while popped out.
-function startThemeSync(targetDoc) {
+function startThemeSync(targetDoc: Document): void {
   if (typeof MutationObserver === 'undefined') {
     return;
   }
@@ -168,14 +170,14 @@ function startThemeSync(targetDoc) {
   });
 }
 
-function stopThemeSync() {
+function stopThemeSync(): void {
   if (themeSyncObserver) {
     themeSyncObserver.disconnect();
     themeSyncObserver = null;
   }
 }
 
-const PopoutManager = {
+const PopoutManager: ModifierBoxPopoutManagerModule = {
   setupPopoutControls,
   isSupported,
 };

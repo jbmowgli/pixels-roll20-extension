@@ -1,13 +1,10 @@
 /**
- * PixelsCommand.js
+ * PixelsCommand.ts
  *
  * Intercepts /pixels, /pixel, or /pix commands in the Roll20 chat input.
  * Parses a dice formula using @3d-dice/dice-roller-parser, shows a prompt
  * overlay that collects physical dice rolls by type, handles dynamic
  * explosion/reroll slots, and posts the evaluated result when complete.
- *
- * Supports Roll20 roll queries: ?{Prompt|default} and ?{Prompt|opt1|opt2}
- * are resolved via a modal before the formula is parsed.
  */
 
 'use strict';
@@ -23,24 +20,29 @@ import {
   buildEvaluationOrder,
   isSuccessCountRoll,
   getFormulaDisplay,
-} from './FormulaEvaluator.js';
+} from './FormulaEvaluator';
+import type { PromptData, Slot } from './FormulaEvaluator';
+import type { RollBase } from '@3d-dice/dice-roller-parser';
 
 const COMMAND_PATTERN = /^\/pix(?:el(?:s)?)?(?:\s+(.+))?$/i;
 const GM_COMMAND_PATTERN = /^\/gmpix(?:el(?:s)?)?(?:\s+(.+))?$/i;
 const ROLL_QUERY_PATTERN = /\?\{([^}]+)\}/g;
 
-let pendingPrompt = null;
+let pendingPrompt: PromptData | null = null;
 
 // --- Roll Query Resolution ---
 
-/**
- * Parse a roll query token like "Modifier|0" or "Damage|1d6|1d8|2d6".
- * Returns { label, defaultValue, options }.
- * - Single value after label: text input with that default
- * - Multiple values after label: dropdown with those options
- * - No value after label: text input with empty default
- */
-function parseQueryToken(token) {
+interface QueryToken {
+  label: string;
+  defaultValue: string;
+  options: string[] | null;
+}
+
+interface ExtractedQuery extends QueryToken {
+  fullMatch: string;
+}
+
+function parseQueryToken(token: string): QueryToken {
   const parts = token.split('|');
   const label = parts[0].trim();
 
@@ -50,27 +52,18 @@ function parseQueryToken(token) {
   if (parts.length === 2) {
     return { label, defaultValue: parts[1].trim(), options: null };
   }
-  // 3+ parts: dropdown options (first option is default/selected)
   const options = parts.slice(1).map(p => p.trim());
   return { label, defaultValue: options[0], options };
 }
 
-/**
- * Check if a formula contains roll queries.
- */
-function containsRollQueries(formula) {
+function containsRollQueries(formula: string): boolean {
   return ROLL_QUERY_PATTERN.test(formula);
 }
 
-/**
- * Extract all roll query tokens from a formula.
- * Returns an array of { label, defaultValue, options, fullMatch }.
- */
-function extractRollQueries(formula) {
-  const queries = [];
-  // Reset lastIndex since the regex is global
+function extractRollQueries(formula: string): ExtractedQuery[] {
+  const queries: ExtractedQuery[] = [];
   ROLL_QUERY_PATTERN.lastIndex = 0;
-  let match;
+  let match: RegExpExecArray | null;
   while ((match = ROLL_QUERY_PATTERN.exec(formula)) !== null) {
     const parsed = parseQueryToken(match[1]);
     queries.push({ ...parsed, fullMatch: match[0] });
@@ -78,11 +71,11 @@ function extractRollQueries(formula) {
   return queries;
 }
 
-/**
- * Show a modal to resolve all roll queries, then call onResolved with the
- * substituted formula string. Calls onCancelled if the user cancels.
- */
-function resolveRollQueries(formula, onResolved, onCancelled) {
+function resolveRollQueries(
+  formula: string,
+  onResolved: (resolved: string) => void,
+  onCancelled: () => void
+): void {
   const queries = extractRollQueries(formula);
   if (queries.length === 0) {
     onResolved(formula);
@@ -103,9 +96,9 @@ function resolveRollQueries(formula, onResolved, onCancelled) {
 
 // --- Roll Query Modal UI ---
 
-let queryModalElement = null;
+let queryModalElement: HTMLElement | null = null;
 
-function createQueryModal() {
+function createQueryModal(): HTMLElement {
   const modal = document.createElement('div');
   modal.id = 'pixels-query-modal';
   modal.innerHTML = `
@@ -123,13 +116,17 @@ function createQueryModal() {
   return modal;
 }
 
-function showQueryModal(queries, onSubmit, onCancel) {
+function showQueryModal(
+  queries: ExtractedQuery[],
+  onSubmit: (values: string[]) => void,
+  onCancel: () => void
+): void {
   if (!queryModalElement) {
     queryModalElement = createQueryModal();
   }
   queryModalElement.style.display = 'block';
 
-  const fieldsEl = queryModalElement.querySelector('.pixels-query-fields');
+  const fieldsEl = queryModalElement.querySelector('.pixels-query-fields')!;
   fieldsEl.innerHTML = '';
 
   for (let i = 0; i < queries.length; i++) {
@@ -147,7 +144,7 @@ function showQueryModal(queries, onSubmit, onCancel) {
       const select = document.createElement('select');
       select.className = 'pixels-query-select';
       select.id = `pixels-query-input-${i}`;
-      select.dataset.index = i;
+      select.dataset.index = String(i);
       for (const opt of query.options) {
         const optEl = document.createElement('option');
         optEl.value = opt;
@@ -161,7 +158,7 @@ function showQueryModal(queries, onSubmit, onCancel) {
       input.id = `pixels-query-input-${i}`;
       input.type = 'text';
       input.value = query.defaultValue;
-      input.dataset.index = i;
+      input.dataset.index = String(i);
       row.appendChild(input);
     }
 
@@ -169,30 +166,32 @@ function showQueryModal(queries, onSubmit, onCancel) {
   }
 
   // Wire up event handlers (replace old ones via cloneNode)
-  const cancelBtn = queryModalElement.querySelector('.pixels-query-cancel');
+  const cancelBtn = queryModalElement.querySelector('.pixels-query-cancel')!;
   const newCancelBtn = cancelBtn.cloneNode(true);
-  cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+  cancelBtn.parentNode!.replaceChild(newCancelBtn, cancelBtn);
 
-  const submitBtn = queryModalElement.querySelector('.pixels-query-submit');
+  const submitBtn = queryModalElement.querySelector('.pixels-query-submit')!;
   const newSubmitBtn = submitBtn.cloneNode(true);
-  submitBtn.parentNode.replaceChild(newSubmitBtn, submitBtn);
+  submitBtn.parentNode!.replaceChild(newSubmitBtn, submitBtn);
 
-  const collectValues = () => {
-    const values = [];
+  const collectValues = (): string[] => {
+    const values: string[] = [];
     for (let i = 0; i < queries.length; i++) {
-      const el = queryModalElement.querySelector(`#pixels-query-input-${i}`);
+      const el = queryModalElement!.querySelector(
+        `#pixels-query-input-${i}`
+      ) as HTMLInputElement | HTMLSelectElement;
       values.push(el.value);
     }
     return values;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (): void => {
     const values = collectValues();
     hideQueryModal();
     onSubmit(values);
   };
 
-  const handleCancel = () => {
+  const handleCancel = (): void => {
     hideQueryModal();
     if (onCancel) {
       onCancel();
@@ -202,28 +201,28 @@ function showQueryModal(queries, onSubmit, onCancel) {
   newCancelBtn.addEventListener('click', handleCancel);
   newSubmitBtn.addEventListener('click', handleSubmit);
 
-  // Submit on Enter from any input
-  fieldsEl.addEventListener('keydown', event => {
-    if (event.key === 'Enter') {
+  fieldsEl.addEventListener('keydown', (event: Event) => {
+    if ((event as KeyboardEvent).key === 'Enter') {
       event.preventDefault();
       handleSubmit();
     }
   });
 
-  // Focus the first input/select
-  const firstInput = fieldsEl.querySelector('input, select');
+  const firstInput = fieldsEl.querySelector(
+    'input, select'
+  ) as HTMLElement | null;
   if (firstInput) {
     setTimeout(() => firstInput.focus(), 0);
   }
 }
 
-function hideQueryModal() {
+function hideQueryModal(): void {
   if (queryModalElement) {
     queryModalElement.style.display = 'none';
   }
 }
 
-function injectQueryModalStyles() {
+function injectQueryModalStyles(): void {
   if (document.getElementById('pixels-query-styles')) {
     return;
   }
@@ -231,92 +230,24 @@ function injectQueryModalStyles() {
   style.id = 'pixels-query-styles';
   style.textContent = `
     #pixels-query-modal {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 1000002;
-      background: #2b2b2b;
-      border: 2px solid #4a9eff;
-      border-radius: 12px;
-      padding: 20px;
-      min-width: 280px;
-      max-width: 400px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-      font-family: Arial, sans-serif;
-      color: #ffffff;
-      display: none;
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      z-index: 1000002; background: #2b2b2b; border: 2px solid #4a9eff;
+      border-radius: 12px; padding: 20px; min-width: 280px; max-width: 400px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5); font-family: Arial, sans-serif;
+      color: #ffffff; display: none;
     }
-    .pixels-query-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-    .pixels-query-title {
-      font-size: 16px;
-      font-weight: bold;
-    }
-    .pixels-query-cancel {
-      background: none;
-      border: 1px solid #666;
-      border-radius: 4px;
-      color: #ccc;
-      font-size: 16px;
-      cursor: pointer;
-      padding: 2px 8px;
-    }
-    .pixels-query-cancel:hover {
-      background: #5a2a2a;
-      border-color: #f87171;
-      color: #f87171;
-    }
-    .pixels-query-fields {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-    .pixels-query-row {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .pixels-query-label {
-      font-size: 13px;
-      color: #ccc;
-    }
-    .pixels-query-input,
-    .pixels-query-select {
-      background: #1a1a1a;
-      border: 1px solid #555;
-      border-radius: 6px;
-      color: #fff;
-      font-size: 14px;
-      padding: 8px 10px;
-      outline: none;
-    }
-    .pixels-query-input:focus,
-    .pixels-query-select:focus {
-      border-color: #4a9eff;
-    }
-    .pixels-query-actions {
-      display: flex;
-      justify-content: flex-end;
-    }
-    .pixels-query-submit {
-      background: #4a9eff;
-      border: none;
-      border-radius: 6px;
-      color: #fff;
-      font-size: 14px;
-      font-weight: bold;
-      padding: 8px 20px;
-      cursor: pointer;
-    }
-    .pixels-query-submit:hover {
-      background: #3b82f6;
-    }
+    .pixels-query-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .pixels-query-title { font-size: 16px; font-weight: bold; }
+    .pixels-query-cancel { background: none; border: 1px solid #666; border-radius: 4px; color: #ccc; font-size: 16px; cursor: pointer; padding: 2px 8px; }
+    .pixels-query-cancel:hover { background: #5a2a2a; border-color: #f87171; color: #f87171; }
+    .pixels-query-fields { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+    .pixels-query-row { display: flex; flex-direction: column; gap: 4px; }
+    .pixels-query-label { font-size: 13px; color: #ccc; }
+    .pixels-query-input, .pixels-query-select { background: #1a1a1a; border: 1px solid #555; border-radius: 6px; color: #fff; font-size: 14px; padding: 8px 10px; outline: none; }
+    .pixels-query-input:focus, .pixels-query-select:focus { border-color: #4a9eff; }
+    .pixels-query-actions { display: flex; justify-content: flex-end; }
+    .pixels-query-submit { background: #4a9eff; border: none; border-radius: 6px; color: #fff; font-size: 14px; font-weight: bold; padding: 8px 20px; cursor: pointer; }
+    .pixels-query-submit:hover { background: #3b82f6; }
   `;
   document.head.appendChild(style);
 }
@@ -324,23 +255,17 @@ function injectQueryModalStyles() {
 /**
  * Start a prompted roll session from a parsed formula.
  */
-function startPrompt(promptData) {
+function startPrompt(promptData: PromptData): void {
   pendingPrompt = promptData;
   showPromptOverlay(pendingPrompt);
 }
 
-/**
- * Mapping from larger die types to the smaller die they can substitute for.
- * d8 → d4, d12 → d6, d20 → d10.
- */
-const SUBSTITUTION_MAP = { 8: 4, 12: 6, 20: 10 };
+const SUBSTITUTION_MAP: Record<number, number> = { 8: 4, 12: 6, 20: 10 };
 
-/**
- * Convert a face value from a larger die to fit the smaller die's range.
- * If the value exceeds half the larger die's max, subtract half.
- * Example: d20 rolls 19 → 19 > 10, so result is 19 - 10 = 9.
- */
-function convertSubstitutedValue(faceValue, largerDieType) {
+function convertSubstitutedValue(
+  faceValue: number,
+  largerDieType: number
+): number {
   const half = largerDieType / 2;
   return faceValue > half ? faceValue - half : faceValue;
 }
@@ -348,12 +273,11 @@ function convertSubstitutedValue(faceValue, largerDieType) {
 /**
  * Attempt to fill a slot with an incoming roll. Returns true if consumed.
  */
-function offerRoll(dieType, faceValue) {
+function offerRoll(dieType: number, faceValue: number): boolean {
   if (!pendingPrompt) {
     return false;
   }
 
-  // Find first unfilled slot matching this die type exactly
   const slot = pendingPrompt.slots.find(
     s => s.value === null && s.type === dieType
   );
@@ -362,8 +286,7 @@ function offerRoll(dieType, faceValue) {
     return fillSlot(slot, faceValue);
   }
 
-  // No exact match — d100 (percentile) always works as d10
-  // Convert tens (10,20...90,100) to 1-10 range
+  // d100 (percentile) always works as d10
   if (dieType === 100) {
     const d10Slot = pendingPrompt.slots.find(
       s => s.value === null && s.type === 10
@@ -374,12 +297,9 @@ function offerRoll(dieType, faceValue) {
     }
   }
 
-  // No exact match — try die substitution if enabled
+  // Die substitution if enabled
   if (window.pixelsAllowDiceSubstitution && dieType in SUBSTITUTION_MAP) {
     const smallerType = SUBSTITUTION_MAP[dieType];
-
-    // Only substitute if there is no unfilled slot that actually needs this
-    // larger die type (exact-match slots take priority)
     const exactSlotExists = pendingPrompt.slots.some(
       s => s.value === null && s.type === dieType
     );
@@ -394,39 +314,27 @@ function offerRoll(dieType, faceValue) {
     }
   }
 
-  // Wrong die type — signal rejection
   shakeOverlay();
-  return true; // Consumed (don't pass to batcher)
+  return true;
 }
 
-/**
- * Fill a slot with a value and handle explosion/reroll/completion checks.
- */
-function fillSlot(slot, value) {
+function fillSlot(slot: Slot, value: number): boolean {
   slot.value = value;
 
-  // Check for explosion: does this value trigger a new slot?
-  const group = pendingPrompt.groups[slot.groupIndex];
+  const group = pendingPrompt!.groups[slot.groupIndex];
   if (checkExplosion(value, group)) {
-    addExplosionSlot(pendingPrompt, slot.groupIndex);
+    addExplosionSlot(pendingPrompt!, slot.groupIndex);
   }
 
-  // Check for reroll: does this value need to be re-rolled?
-  // For "rerollOnce", clear the slot once and let the user roll again.
-  // For "reroll", keep clearing until the condition is no longer met.
-  // In practice, for physical dice we only support "rerollOnce" semantics
-  // since we can't force the user to keep rolling until a condition fails.
-  // We'll prompt for one re-roll and accept whatever comes.
   if (!slot.isReroll && checkReroll(value, group)) {
-    markSlotForReroll(pendingPrompt, pendingPrompt.slots.indexOf(slot));
-    updateOverlaySlots(pendingPrompt);
+    markSlotForReroll(pendingPrompt!, pendingPrompt!.slots.indexOf(slot));
+    updateOverlaySlots(pendingPrompt!);
     return true;
   }
 
-  updateOverlaySlots(pendingPrompt);
+  updateOverlaySlots(pendingPrompt!);
 
-  // Check if all slots are filled
-  const allFilled = pendingPrompt.slots.every(s => s.value !== null);
+  const allFilled = pendingPrompt!.slots.every(s => s.value !== null);
   if (allFilled) {
     completePrompt();
   }
@@ -434,38 +342,29 @@ function fillSlot(slot, value) {
   return true;
 }
 
-/**
- * Cancel the current prompt.
- */
-function cancelPrompt() {
+function cancelPrompt(): void {
   pendingPrompt = null;
   hideOverlay();
 }
 
-/**
- * Check if a prompt is currently active.
- */
-function isPromptActive() {
+function isPromptActive(): boolean {
   return pendingPrompt !== null;
 }
 
-/**
- * Post the completed roll result to chat.
- * Uses dice-roller-parser for full evaluation with collected physical values.
- */
-function completePrompt() {
-  const postChatMessage = window.postChatMessage || function () {};
-  const sendText = window.sendTextToExtension || function () {};
+function completePrompt(): void {
+  const postChatMessage: (msg: string) => void =
+    window.postChatMessage || function () {};
+  const sendText: (txt: string) => void =
+    window.sendTextToExtension || function () {};
 
-  const formulaStr = pendingPrompt.formula;
-  const isWhisper = pendingPrompt.whisper || false;
-  const evaluationOrder = buildEvaluationOrder(pendingPrompt);
+  const formulaStr = pendingPrompt!.formula;
+  const isWhisper = pendingPrompt!.whisper || false;
+  const evaluationOrder = buildEvaluationOrder(pendingPrompt!);
   const result = evaluateWithValues(formulaStr, evaluationOrder);
 
   const formulaDisplay = getFormulaDisplay(formulaStr);
-  const isSuccessRoll = isSuccessCountRoll(pendingPrompt);
+  const isSuccessRoll = isSuccessCountRoll(pendingPrompt!);
 
-  // Build the chat message
   const message = buildChatMessage(result, formulaDisplay, isSuccessRoll);
 
   if (isWhisper) {
@@ -474,7 +373,6 @@ function completePrompt() {
     postChatMessage(message);
   }
 
-  // Send status to extension popup
   const total = result.value;
   const whisperLabel = isWhisper ? ' (GM whisper)' : '';
   sendText(`Prompted roll: ${formulaDisplay} = ${total}${whisperLabel}`);
@@ -483,13 +381,14 @@ function completePrompt() {
   hideOverlay();
 }
 
-/**
- * Build a Roll20 chat message from the evaluation result.
- */
-function buildChatMessage(result, formulaDisplay, isSuccessRoll) {
+function buildChatMessage(
+  result: RollBase,
+  formulaDisplay: string,
+  isSuccessRoll: boolean
+): string {
   const diceDisplay = buildDiceDisplay(result);
 
-  let resultValue;
+  let resultValue: string;
   if (isSuccessRoll) {
     resultValue = `${result.value} success${result.value !== 1 ? 'es' : ''}`;
   } else {
@@ -504,46 +403,38 @@ function buildChatMessage(result, formulaDisplay, isSuccessRoll) {
   );
 }
 
-/**
- * Build the dice display string from evaluation result.
- * Shows individual die values, with dropped values as strikethrough
- * and exploded dice marked.
- */
-function buildDiceDisplay(result) {
-  const parts = [];
+function buildDiceDisplay(result: RollBase): string {
+  const parts: string[] = [];
   collectDiceDisplayParts(result, parts);
   return `( ${parts.join(' + ')} )`;
 }
 
-/**
- * Recursively collect display parts from the result tree.
- * Roll20 template fields support *italic* and **bold** markdown.
- * Bold requires whitespace before/after the ** markers.
- * - Dropped: italic parenthesized (de-emphasized)
- * - Exploding: bold with "!" suffix
- * - Successes: bold
- * - Non-successes: italic (de-emphasized against successes)
- * - Normal kept: plain
- */
-function collectDiceDisplayParts(node, parts) {
+interface DiceRollNode extends RollBase {
+  rolls?: Array<{
+    roll: number;
+    valid: boolean;
+    explode?: boolean;
+    success?: boolean;
+  }>;
+  dice?: RollBase[];
+}
+
+function collectDiceDisplayParts(node: RollBase | null, parts: string[]): void {
   if (!node) {
     return;
   }
 
-  // Single die group with rolls
-  if (node.type === 'die' && node.rolls) {
-    for (const roll of node.rolls) {
+  const diceNode = node as DiceRollNode;
+
+  if (node.type === 'die' && diceNode.rolls) {
+    for (const roll of diceNode.rolls!) {
       if (!roll.valid) {
-        // Dropped (keep/drop) — italic parenthesized
         parts.push(`*(${roll.roll})*`);
       } else if (roll.explode) {
-        // Exploded — bold with bang suffix
         parts.push(`**${roll.roll}!**`);
       } else if (roll.success === true) {
-        // Success — bold
         parts.push(`**${roll.roll}**`);
       } else if (roll.success === false) {
-        // Non-success — italic
         parts.push(`*${roll.roll}*`);
       } else {
         parts.push(`${roll.roll}`);
@@ -552,20 +443,18 @@ function collectDiceDisplayParts(node, parts) {
     return;
   }
 
-  // Expression with multiple dice groups
   if (node.type === 'expressionroll' || node.type === 'diceexpressionroll') {
-    if (node.dice) {
-      for (const die of node.dice) {
+    if (diceNode.dice) {
+      for (const die of diceNode.dice) {
         collectDiceDisplayParts(die, parts);
       }
     }
     return;
   }
 
-  // Group roll
   if (node.type === 'grouproll') {
-    if (node.dice) {
-      for (const die of node.dice) {
+    if (diceNode.dice) {
+      for (const die of diceNode.dice) {
         collectDiceDisplayParts(die, parts);
       }
     }
@@ -575,9 +464,9 @@ function collectDiceDisplayParts(node, parts) {
 
 // --- Overlay UI ---
 
-let overlayElement = null;
+let overlayElement: HTMLElement | null = null;
 
-function createOverlayElement() {
+function createOverlayElement(): HTMLElement {
   const overlay = document.createElement('div');
   overlay.id = 'pixels-command-overlay';
   overlay.innerHTML = `
@@ -590,44 +479,42 @@ function createOverlayElement() {
     <div class="pixels-cmd-hint">Roll the highlighted dice to fill each slot</div>
   `;
   overlay
-    .querySelector('.pixels-cmd-cancel')
+    .querySelector('.pixels-cmd-cancel')!
     .addEventListener('click', cancelPrompt);
   document.body.appendChild(overlay);
   injectOverlayStyles();
   return overlay;
 }
 
-function showPromptOverlay(prompt) {
+function showPromptOverlay(prompt: PromptData): void {
   if (!overlayElement) {
     overlayElement = createOverlayElement();
   }
   overlayElement.style.display = 'block';
 
-  // Update title for whisper rolls
-  const titleEl = overlayElement.querySelector('.pixels-cmd-title');
+  const titleEl = overlayElement.querySelector('.pixels-cmd-title')!;
   titleEl.textContent = prompt.whisper
     ? 'Roll Your Dice (GM Only)'
     : 'Roll Your Dice';
 
-  // Show the formula
-  const formulaEl = overlayElement.querySelector('.pixels-cmd-formula');
+  const formulaEl = overlayElement.querySelector('.pixels-cmd-formula')!;
   formulaEl.textContent = getFormulaDisplay(prompt.formula);
 
   updateOverlaySlots(prompt);
 }
 
-function updateOverlaySlots(prompt) {
+function updateOverlaySlots(prompt: PromptData): void {
   if (!overlayElement) {
     return;
   }
-  const slotsEl = overlayElement.querySelector('.pixels-cmd-slots');
+  const slotsEl = overlayElement.querySelector('.pixels-cmd-slots')!;
   slotsEl.innerHTML = '';
 
   for (const slot of prompt.slots) {
     const slotDiv = document.createElement('div');
     const baseClass = 'pixels-cmd-slot';
 
-    let stateClass;
+    let stateClass: string;
     if (slot.value !== null) {
       stateClass = 'filled';
     } else if (slot.isReroll) {
@@ -663,161 +550,57 @@ function updateOverlaySlots(prompt) {
   }
 }
 
-function shakeOverlay() {
+function shakeOverlay(): void {
   if (!overlayElement) {
     return;
   }
   overlayElement.classList.remove('shake');
-  void overlayElement.offsetWidth; // Force reflow
+  void overlayElement.offsetWidth;
   overlayElement.classList.add('shake');
 }
 
-function hideOverlay() {
+function hideOverlay(): void {
   if (overlayElement) {
     overlayElement.style.display = 'none';
     overlayElement.classList.remove('shake');
   }
 }
 
-function injectOverlayStyles() {
+function injectOverlayStyles(): void {
   if (document.getElementById('pixels-cmd-styles')) {
     return;
   }
   const style = document.createElement('style');
   style.id = 'pixels-cmd-styles';
   style.textContent = `
-    #pixels-command-overlay {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 1000001;
-      background: #2b2b2b;
-      border: 2px solid #4a9eff;
-      border-radius: 12px;
-      padding: 20px;
-      min-width: 280px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-      font-family: Arial, sans-serif;
-      color: #ffffff;
-      display: none;
-    }
-    #pixels-command-overlay.shake {
-      animation: pixels-shake 0.3s ease;
-    }
-    @keyframes pixels-shake {
-      0%, 100% { transform: translate(-50%, -50%); }
-      25% { transform: translate(calc(-50% - 8px), -50%); }
-      75% { transform: translate(calc(-50% + 8px), -50%); }
-    }
-    .pixels-cmd-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-    .pixels-cmd-title {
-      font-size: 16px;
-      font-weight: bold;
-    }
-    .pixels-cmd-cancel {
-      background: none;
-      border: 1px solid #666;
-      border-radius: 4px;
-      color: #ccc;
-      font-size: 16px;
-      cursor: pointer;
-      padding: 2px 8px;
-    }
-    .pixels-cmd-cancel:hover {
-      background: #5a2a2a;
-      border-color: #f87171;
-      color: #f87171;
-    }
-    .pixels-cmd-formula {
-      text-align: center;
-      font-size: 18px;
-      font-weight: bold;
-      color: #4a9eff;
-      margin-bottom: 16px;
-    }
-    .pixels-cmd-slots {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center;
-      margin-bottom: 12px;
-    }
-    .pixels-cmd-slot {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      width: 56px;
-      height: 64px;
-      border-radius: 8px;
-      border: 2px solid #555;
-      background: #1a1a1a;
-    }
-    .pixels-cmd-slot.waiting {
-      border-color: #4a9eff;
-      animation: pixels-pulse 1.5s infinite;
-    }
-    .pixels-cmd-slot.filled {
-      border-color: #4ade80;
-      background: #1a2e1a;
-    }
-    .pixels-cmd-slot.explosion {
-      border-color: #f59e0b;
-      animation: pixels-pulse-explosion 1.5s infinite;
-    }
-    .pixels-cmd-slot.reroll {
-      border-color: #a855f7;
-      animation: pixels-pulse-reroll 1.5s infinite;
-    }
-    @keyframes pixels-pulse {
-      0%, 100% { border-color: #4a9eff; }
-      50% { border-color: #2a6ecf; }
-    }
-    @keyframes pixels-pulse-explosion {
-      0%, 100% { border-color: #f59e0b; }
-      50% { border-color: #d97706; }
-    }
-    @keyframes pixels-pulse-reroll {
-      0%, 100% { border-color: #a855f7; }
-      50% { border-color: #7c3aed; }
-    }
-    .slot-placeholder {
-      font-size: 24px;
-      color: #666;
-    }
-    .slot-value {
-      font-size: 22px;
-      font-weight: bold;
-      color: #4ade80;
-    }
-    .slot-type {
-      font-size: 11px;
-      color: #999;
-      margin-top: 2px;
-    }
-    .pixels-cmd-hint {
-      text-align: center;
-      font-size: 12px;
-      color: #888;
-    }
+    #pixels-command-overlay { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000001; background: #2b2b2b; border: 2px solid #4a9eff; border-radius: 12px; padding: 20px; min-width: 280px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); font-family: Arial, sans-serif; color: #ffffff; display: none; }
+    #pixels-command-overlay.shake { animation: pixels-shake 0.3s ease; }
+    @keyframes pixels-shake { 0%, 100% { transform: translate(-50%, -50%); } 25% { transform: translate(calc(-50% - 8px), -50%); } 75% { transform: translate(calc(-50% + 8px), -50%); } }
+    .pixels-cmd-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .pixels-cmd-title { font-size: 16px; font-weight: bold; }
+    .pixels-cmd-cancel { background: none; border: 1px solid #666; border-radius: 4px; color: #ccc; font-size: 16px; cursor: pointer; padding: 2px 8px; }
+    .pixels-cmd-cancel:hover { background: #5a2a2a; border-color: #f87171; color: #f87171; }
+    .pixels-cmd-formula { text-align: center; font-size: 18px; font-weight: bold; color: #4a9eff; margin-bottom: 16px; }
+    .pixels-cmd-slots { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 12px; }
+    .pixels-cmd-slot { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 56px; height: 64px; border-radius: 8px; border: 2px solid #555; background: #1a1a1a; }
+    .pixels-cmd-slot.waiting { border-color: #4a9eff; animation: pixels-pulse 1.5s infinite; }
+    .pixels-cmd-slot.filled { border-color: #4ade80; background: #1a2e1a; }
+    .pixels-cmd-slot.explosion { border-color: #f59e0b; animation: pixels-pulse-explosion 1.5s infinite; }
+    .pixels-cmd-slot.reroll { border-color: #a855f7; animation: pixels-pulse-reroll 1.5s infinite; }
+    @keyframes pixels-pulse { 0%, 100% { border-color: #4a9eff; } 50% { border-color: #2a6ecf; } }
+    @keyframes pixels-pulse-explosion { 0%, 100% { border-color: #f59e0b; } 50% { border-color: #d97706; } }
+    @keyframes pixels-pulse-reroll { 0%, 100% { border-color: #a855f7; } 50% { border-color: #7c3aed; } }
+    .slot-placeholder { font-size: 24px; color: #666; }
+    .slot-value { font-size: 22px; font-weight: bold; color: #4ade80; }
+    .slot-type { font-size: 11px; color: #999; margin-top: 2px; }
+    .pixels-cmd-hint { text-align: center; font-size: 12px; color: #888; }
   `;
   document.head.appendChild(style);
 }
 
 // --- Chat Interception ---
 
-/**
- * Set up interception of the Roll20 chat input.
- * Listens for form submit and Enter key on the textarea.
- */
-function setupChatInterception() {
-  // Wait for Roll20's chat to be available
+function setupChatInterception(): void {
   const observer = new MutationObserver(() => {
     const chatInput = document.getElementById('textchat-input');
     if (chatInput && !chatInput.dataset.pixelsIntercepted) {
@@ -828,7 +611,6 @@ function setupChatInterception() {
   });
   observer.observe(document.body, { childList: true, subtree: true });
 
-  // Also try immediately in case it already exists
   const chatInput = document.getElementById('textchat-input');
   if (chatInput && !chatInput.dataset.pixelsIntercepted) {
     chatInput.dataset.pixelsIntercepted = 'true';
@@ -836,14 +618,14 @@ function setupChatInterception() {
   }
 }
 
-function attachChatListeners(chatInput) {
+function attachChatListeners(chatInput: HTMLElement): void {
   const textarea = chatInput.querySelector('textarea');
   const button = chatInput.querySelector('button');
 
   if (textarea) {
     textarea.addEventListener(
       'keydown',
-      event => {
+      (event: KeyboardEvent) => {
         if (event.key === 'Enter' && !event.shiftKey) {
           if (interceptCommand(textarea)) {
             event.preventDefault();
@@ -858,7 +640,7 @@ function attachChatListeners(chatInput) {
   if (button) {
     button.addEventListener(
       'click',
-      event => {
+      (event: MouseEvent) => {
         const ta = chatInput.querySelector('textarea');
         if (ta && interceptCommand(ta)) {
           event.preventDefault();
@@ -870,15 +652,10 @@ function attachChatListeners(chatInput) {
   }
 }
 
-/**
- * Check if the textarea contains a /pixels or /gmpixels command.
- * If so, parse the formula and start a prompt.
- * Returns true if the command was intercepted.
- */
-function interceptCommand(textarea) {
+function interceptCommand(textarea: HTMLTextAreaElement): boolean {
   const text = textarea.value.trim();
 
-  let formulaStr = null;
+  let formulaStr: string | null | undefined = null;
   let isWhisper = false;
 
   const gmMatch = text.match(GM_COMMAND_PATTERN);
@@ -894,9 +671,9 @@ function interceptCommand(textarea) {
   }
 
   if (!formulaStr) {
-    // No formula — show help
     textarea.value = '';
-    const postChat = window.postChatMessage || function () {};
+    const postChat: (msg: string) => void =
+      window.postChatMessage || function () {};
     const prefix = isWhisper ? '/gmpixels' : '/pixels';
     postChat(
       `Usage: ${prefix} 2d6+1d8+3 — prompts you to roll physical dice. ` +
@@ -908,12 +685,11 @@ function interceptCommand(textarea) {
 
   textarea.value = '';
 
-  // If formula contains roll queries, resolve them via modal first
   if (containsRollQueries(formulaStr)) {
     resolveRollQueries(
       formulaStr,
       resolved => processFormula(resolved, isWhisper),
-      () => {} // cancelled — do nothing
+      () => {}
     );
   } else {
     processFormula(formulaStr, isWhisper);
@@ -922,11 +698,9 @@ function interceptCommand(textarea) {
   return true;
 }
 
-/**
- * Process a fully resolved formula string: parse, validate, and start prompt.
- */
-function processFormula(formulaStr, isWhisper) {
-  const postChat = window.postChatMessage || function () {};
+function processFormula(formulaStr: string, isWhisper: boolean): void {
+  const postChat: (msg: string) => void =
+    window.postChatMessage || function () {};
 
   const ast = parseFormula(formulaStr);
   if (!ast) {
@@ -944,30 +718,24 @@ function processFormula(formulaStr, isWhisper) {
   startPrompt(promptData);
 }
 
-/**
- * Programmatic entry point for executing a dice formula.
- * Called by the saved rolls panel when the user clicks a "Roll" button.
- * Parses the formula, validates it, and starts the roll prompt overlay.
- * Returns true if the formula was accepted, false otherwise.
- */
-function interceptFormula(formulaStr) {
+function interceptFormula(formulaStr: string): boolean {
   if (!formulaStr || !formulaStr.trim()) {
     return false;
   }
 
   const trimmed = formulaStr.trim();
 
-  // If formula contains roll queries, resolve them via modal first
   if (containsRollQueries(trimmed)) {
     resolveRollQueries(
       trimmed,
       resolved => processFormula(resolved, false),
-      () => {} // cancelled
+      () => {}
     );
     return true;
   }
 
-  const postChat = window.postChatMessage || function () {};
+  const postChat: (msg: string) => void =
+    window.postChatMessage || function () {};
 
   const ast = parseFormula(trimmed);
   if (!ast) {

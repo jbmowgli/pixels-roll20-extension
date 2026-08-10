@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * profileStorage.js
+ * profileStorage.ts
  *
  * Persistence wrapper for the Pixels Roll20 extension.
  *
@@ -23,9 +23,11 @@ const MINIMIZED_KEY = 'pixels_minimized';
 const ACTIVE_KEY = 'pixels_active_profile';
 const EXPORT_TYPE = 'pixels-roll20-profiles';
 
+type StorageAreaName = 'local' | 'sync';
+
 // Resolve a chrome.storage area ('local' | 'sync'), or null if it is not
 // available in this context (e.g. test environment without a storage mock).
-function area(name) {
+function area(name: StorageAreaName): chrome.storage.StorageArea | null {
   try {
     if (
       typeof chrome !== 'undefined' &&
@@ -40,7 +42,7 @@ function area(name) {
   return null;
 }
 
-function hasLastError() {
+function hasLastError(): boolean {
   try {
     return Boolean(
       typeof chrome !== 'undefined' &&
@@ -52,16 +54,15 @@ function hasLastError() {
   }
 }
 
-// Promise wrapper around chrome.storage[area].get for a single key. Resolves
-// undefined if the area is unavailable or the read fails; never rejects.
-function readArea(name, key) {
+// Promise wrapper around chrome.storage[area].get for a single key.
+function readArea(name: StorageAreaName, key: string): Promise<unknown> {
   const a = area(name);
   if (!a) {
     return Promise.resolve(undefined);
   }
   return new Promise(resolve => {
     try {
-      a.get(key, result => {
+      a.get(key, (result: Record<string, unknown>) => {
         if (hasLastError()) {
           resolve(undefined);
           return;
@@ -74,10 +75,12 @@ function readArea(name, key) {
   });
 }
 
-// Promise wrapper around chrome.storage[area].set. Resolves true on success,
-// false on failure (e.g. sync quota exceeded). Never rejects, so a failed sync
-// write cannot break a save.
-function writeArea(name, key, value) {
+// Promise wrapper around chrome.storage[area].set.
+function writeArea(
+  name: StorageAreaName,
+  key: string,
+  value: unknown
+): Promise<boolean> {
   const a = area(name);
   if (!a) {
     return Promise.resolve(false);
@@ -94,8 +97,11 @@ function writeArea(name, key, value) {
 }
 
 // Merge two profile maps, keeping the newer entry per name by savedAt.
-function mergeProfiles(localProfiles, syncProfiles) {
-  const merged = { ...(localProfiles || {}) };
+function mergeProfiles(
+  localProfiles: ProfileMap | null | undefined,
+  syncProfiles: ProfileMap | null | undefined
+): ProfileMap {
+  const merged: ProfileMap = { ...(localProfiles || {}) };
   Object.entries(syncProfiles || {}).forEach(([name, profile]) => {
     const existing = merged[name];
     if (!existing || (profile?.savedAt || 0) >= (existing.savedAt || 0)) {
@@ -106,17 +112,22 @@ function mergeProfiles(localProfiles, syncProfiles) {
 }
 
 // Return all saved profiles as a { name: { rows, selectedIndex, savedAt } } map.
-async function getProfiles() {
+async function getProfiles(): Promise<ProfileMap> {
   const [localProfiles, syncProfiles] = await Promise.all([
     readArea('local', PROFILES_KEY),
     readArea('sync', PROFILES_KEY),
   ]);
-  return mergeProfiles(localProfiles, syncProfiles);
+  return mergeProfiles(
+    localProfiles as ProfileMap | null,
+    syncProfiles as ProfileMap | null
+  );
 }
 
 // Save (or overwrite) a profile by name. `data` is { rows, selectedIndex }.
-// Returns true if the local (source-of-truth) write succeeded.
-async function saveProfile(name, data) {
+async function saveProfile(
+  name: string,
+  data: { rows?: RowEntry[]; selectedIndex?: number }
+): Promise<boolean> {
   if (!name || typeof name !== 'string') {
     return false;
   }
@@ -124,7 +135,7 @@ async function saveProfile(name, data) {
   profiles[name] = {
     rows: Array.isArray(data?.rows) ? data.rows : [],
     selectedIndex: Number.isInteger(data?.selectedIndex)
-      ? data.selectedIndex
+      ? data.selectedIndex!
       : -1,
     savedAt: Date.now(),
   };
@@ -136,7 +147,7 @@ async function saveProfile(name, data) {
 }
 
 // Delete a profile by name from both storage areas. Returns true if it existed.
-async function deleteProfile(name) {
+async function deleteProfile(name: string): Promise<boolean> {
   const profiles = await getProfiles();
   if (!name || !(name in profiles)) {
     return false;
@@ -150,28 +161,27 @@ async function deleteProfile(name) {
 }
 
 // Minimized flag — per-device UI preference, stored in local only.
-async function getMinimized() {
+async function getMinimized(): Promise<boolean> {
   const value = await readArea('local', MINIMIZED_KEY);
   return value === true;
 }
 
-async function setMinimized(value) {
+async function setMinimized(value: boolean): Promise<boolean> {
   return writeArea('local', MINIMIZED_KEY, Boolean(value));
 }
 
-// Active profile — which saved profile is currently loaded. Per-device, stored
-// in local only. Returns null when none is active.
-async function getActiveProfile() {
+// Active profile — which saved profile is currently loaded.
+async function getActiveProfile(): Promise<string | null> {
   const value = await readArea('local', ACTIVE_KEY);
   return typeof value === 'string' && value ? value : null;
 }
 
-async function setActiveProfile(name) {
+async function setActiveProfile(name: string): Promise<boolean> {
   return writeArea('local', ACTIVE_KEY, typeof name === 'string' ? name : '');
 }
 
 // Build a serializable bundle of all profiles for export to a file.
-async function exportProfiles() {
+async function exportProfiles(): Promise<ProfileExportBundle> {
   const profiles = await getProfiles();
   return {
     type: EXPORT_TYPE,
@@ -181,10 +191,10 @@ async function exportProfiles() {
   };
 }
 
-// Build an export bundle containing a single profile by name. Returns null if
-// the profile does not exist. Same shape as exportProfiles so it imports back
-// identically.
-async function exportProfile(name) {
+// Build an export bundle containing a single profile by name.
+async function exportProfile(
+  name: string
+): Promise<ProfileExportBundle | null> {
   const profiles = await getProfiles();
   if (!name || !(name in profiles)) {
     return null;
@@ -197,9 +207,8 @@ async function exportProfile(name) {
   };
 }
 
-// Return a name not already present in `existingNames` (a Set), appending
-// " (2)", " (3)", ... as needed. Implements the keep-both import strategy.
-function uniqueName(base, existingNames) {
+// Return a name not already present in `existingNames`.
+function uniqueName(base: string, existingNames: Set<string>): string {
   if (!existingNames.has(base)) {
     return base;
   }
@@ -212,10 +221,16 @@ function uniqueName(base, existingNames) {
   return candidate;
 }
 
-// Merge an exported bundle into the saved profiles. On name collision the
-// incoming profile is kept under a renamed key (never overwrites existing).
-// Returns { imported, skipped }.
-async function importProfiles(bundle) {
+interface ImportResult {
+  imported: number;
+  skipped: number;
+  error?: string;
+}
+
+// Merge an exported bundle into the saved profiles.
+async function importProfiles(
+  bundle: ProfileExportBundle | null
+): Promise<ImportResult> {
   const incoming =
     bundle && bundle.profiles && typeof bundle.profiles === 'object'
       ? bundle.profiles

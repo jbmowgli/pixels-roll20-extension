@@ -5,15 +5,12 @@
 //
 
 // Track loaded CSS files to prevent duplicates
-const loadedCSS = new Set();
+const loadedCSS = new Set<string>();
 
 /**
  * Load a single CSS file into the document head
- * @param {string} cssPath - Path to the CSS file
- * @param {string} id - Unique ID for the style element
- * @returns {Promise} - Resolves when CSS is loaded
  */
-export const loadCSS = (cssPath, id) => {
+export const loadCSS = (cssPath: string, id: string): Promise<void> => {
   return new Promise((resolve, reject) => {
     // Check if already loaded
     if (loadedCSS.has(id)) {
@@ -51,26 +48,30 @@ export const loadCSS = (cssPath, id) => {
       })
       .catch(error => {
         console.error(`Failed to load CSS ${cssPath}:`, error);
-        reject(error);
+        reject(error as Error);
       });
   });
 };
 
+interface CSSFileDescriptor {
+  path: string;
+  id: string;
+}
+
 /**
  * Load multiple CSS files
- * @param {Array} cssFiles - Array of {path, id} objects
- * @returns {Promise} - Resolves when all CSS files are loaded
  */
-export const loadMultipleCSS = cssFiles => {
+export const loadMultipleCSS = (
+  cssFiles: CSSFileDescriptor[]
+): Promise<void[]> => {
   const promises = cssFiles.map(({ path, id }) => loadCSS(path, id));
   return Promise.all(promises);
 };
 
 /**
  * Remove a loaded CSS file
- * @param {string} id - ID of the CSS to remove
  */
-export const removeCSS = id => {
+export const removeCSS = (id: string): void => {
   const element = document.getElementById(id);
   if (element) {
     element.remove();
@@ -81,10 +82,8 @@ export const removeCSS = id => {
 
 /**
  * Check if a CSS file is loaded
- * @param {string} id - ID of the CSS to check
- * @returns {boolean} - True if loaded
  */
-export const isLoaded = id => {
+export const isLoaded = (id: string): boolean => {
   return loadedCSS.has(id);
 };
 

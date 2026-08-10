@@ -4,9 +4,9 @@ import {
   forceThemeRefresh as forceThemeRefreshFromThemeManager,
   forceElementUpdates,
   stopThemeMonitoring,
-} from './themeManager.js';
-import { loadTemplate } from '../../utils/htmlLoader.js';
-import { setupModifierBoxComponents } from './componentInitializer.js';
+} from './themeManager';
+import { loadTemplate } from '../../utils/htmlLoader';
+import { setupModifierBoxComponents } from './componentInitializer';
 import {
   getModifierBoxElement,
   isModifierBoxVisible,
@@ -15,20 +15,23 @@ import {
   setModifierBoxVisible,
   setModifierBoxCreated,
   resetState,
-} from './stateManager.js';
-function _resetStateWrapper() {
+} from './stateManager';
+
+function _resetStateWrapper(): void {
   resetState();
 }
 
-const _getModifierBoxElementWrapper = () => getModifierBoxElement();
-const isModifierBoxVisibleFunc = () => isModifierBoxVisible();
-const _isModifierBoxInitializedWrapper = () => isModifierBoxInitialized();
+const _getModifierBoxElementWrapper = (): HTMLElement | null =>
+  getModifierBoxElement();
+const isModifierBoxVisibleFunc = (): boolean => isModifierBoxVisible();
+const _isModifierBoxInitializedWrapper = (): boolean =>
+  isModifierBoxInitialized();
 
 // No-op: modifier selection is removed. Kept for backward compatibility.
-const updateSelectedModifierWrapper = () => {};
+const updateSelectedModifierWrapper = (): void => {};
 
 // Function to update theme using imported function
-const updateThemeWrapper = () => {
+const updateThemeWrapper = (): void => {
   const modifierBox = getModifierBoxElement();
   if (modifierBox) {
     if (
@@ -43,7 +46,7 @@ const updateThemeWrapper = () => {
 };
 
 // Function to force theme refresh using imported functions
-const forceThemeRefreshWrapper = () => {
+const forceThemeRefreshWrapper = (): void => {
   const modifierBox = getModifierBoxElement();
   if (modifierBox) {
     if (
@@ -66,9 +69,9 @@ const forceThemeRefreshWrapper = () => {
 };
 
 // No-op: modifier sync removed. Kept for backward compatibility with content script callers.
-const syncGlobalVars = () => {};
+const syncGlobalVars = (): void => {};
 
-async function createModifierBox() {
+async function createModifierBox(): Promise<HTMLElement | null> {
   const hasThemeManager =
     window.ModifierBoxThemeManager &&
     typeof window.ModifierBoxThemeManager.addStyles === 'function';
@@ -99,7 +102,9 @@ async function createModifierBox() {
     setModifierBoxVisible(existingBox.style.display !== 'none');
 
     // Legacy migration: old modifier names no longer relevant
-    const firstNameInput = existingBox.querySelector('.modifier-name');
+    const firstNameInput = existingBox.querySelector(
+      '.modifier-name'
+    ) as HTMLInputElement | null;
     if (
       firstNameInput &&
       (firstNameInput.value === 'None' || firstNameInput.value === 'D20')
@@ -144,7 +149,7 @@ async function createModifierBox() {
     const tempContainer = document.createElement('div');
     tempContainer.innerHTML = processedHTML;
 
-    const newModifierBox = tempContainer.firstElementChild;
+    const newModifierBox = tempContainer.firstElementChild as HTMLElement;
     setModifierBoxElement(newModifierBox);
 
     setupModifierBoxComponents(newModifierBox, clearAllModifiers);
@@ -160,7 +165,7 @@ async function createModifierBox() {
   }
 }
 
-function createModifierBoxFallback() {
+function createModifierBoxFallback(): HTMLElement {
   const newModifierBox = document.createElement('div');
   newModifierBox.id = 'pixels-modifier-box';
   newModifierBox.setAttribute('data-testid', 'pixels-modifier-box');
@@ -201,12 +206,6 @@ function createModifierBoxFallback() {
                     <button class="remove-row-btn" type="button">×</button>
                 </div>
             </div>
-            <div class="pixels-roll-window">
-                <label class="roll-window-label">
-                    Roll window: <span class="roll-window-value">2</span>s
-                </label>
-                <input type="range" class="roll-window-slider" min="1" max="10" value="2" step="1">
-            </div>
             <div class="pixels-resize-handle"></div>
         `;
 
@@ -219,7 +218,7 @@ function createModifierBoxFallback() {
   return newModifierBox;
 }
 
-function _setupCleanupHandlers() {
+function _setupCleanupHandlers(): void {
   window.addEventListener('beforeunload', () => {
     if (
       window.ModifierBoxThemeManager &&
@@ -232,7 +231,7 @@ function _setupCleanupHandlers() {
   });
 }
 
-async function showModifierBox() {
+async function showModifierBox(): Promise<void> {
   let modifierBox = getModifierBoxElement();
   if (!modifierBox) {
     const result = await createModifierBox();
@@ -269,8 +268,10 @@ async function showModifierBox() {
       window.ModifierBoxThemeManager.forceElementUpdates(modifierBox);
 
       setTimeout(() => {
-        window.ModifierBoxThemeManager.updateTheme(modifierBox);
-        window.ModifierBoxThemeManager.forceElementUpdates(modifierBox);
+        if (modifierBox) {
+          window.ModifierBoxThemeManager.updateTheme(modifierBox);
+          window.ModifierBoxThemeManager.forceElementUpdates(modifierBox);
+        }
       }, 100);
     }
   }
@@ -280,7 +281,7 @@ async function showModifierBox() {
   }
 }
 
-function hideModifierBox() {
+function hideModifierBox(): void {
   const modifierBox = getModifierBoxElement();
   if (modifierBox) {
     modifierBox.style.setProperty('display', 'none', 'important');
@@ -288,7 +289,7 @@ function hideModifierBox() {
   }
 }
 
-function clearAllModifiers() {
+function clearAllModifiers(): void {
   const modifierBox = getModifierBoxElement();
   if (!modifierBox) {
     console.error('Cannot clear saved rolls - modifierBox is null');

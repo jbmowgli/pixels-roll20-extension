@@ -3,7 +3,7 @@
 //
 // Row Manager Module - Handles adding, removing, and managing saved roll formula rows
 //
-import { forceElementUpdates } from './themeManager.js';
+import { forceElementUpdates } from './themeManager';
 
 let rowCounter = 1; // Start from 1 since we have row 0
 
@@ -16,7 +16,7 @@ const CURRENT_VERSION = 2;
  * v1 row: { name, value, originalIndex }
  * v2 row: { name, formula }
  */
-function migrateRowData(stored) {
+function migrateRowData(stored: RowData | null): RowData | null {
   if (!stored || !Array.isArray(stored.rows)) {
     return null;
   }
@@ -27,11 +27,11 @@ function migrateRowData(stored) {
   }
 
   // v1 → v2: convert numeric value to formula string
-  const migratedRows = stored.rows.map(row => {
+  const migratedRows: RowEntry[] = stored.rows.map(row => {
     if (typeof row.formula === 'string') {
       return { name: row.name || 'Roll', formula: row.formula };
     }
-    const numericValue = parseInt(row.value) || 0;
+    const numericValue = parseInt(row.value || '0') || 0;
     const formula =
       numericValue === 0
         ? '1d20'
@@ -45,7 +45,7 @@ function migrateRowData(stored) {
 /**
  * Execute a formula by invoking the /pixels command programmatically.
  */
-function executeFormula(formula) {
+function executeFormula(formula: string): void {
   if (!formula || !formula.trim()) {
     return;
   }
@@ -66,8 +66,8 @@ window.ModifierBoxRowManager = {
   addModifierRow: addFormulaRow,
   removeModifierRow: removeRow,
   updateEventListeners: updateEventListeners,
-  updateSelectedModifier: function () {}, // No-op for backward compatibility
-  clearModifierState: function () {}, // No-op for backward compatibility
+  updateSelectedModifier: function (): void {}, // No-op for backward compatibility
+  clearModifierState: function (): void {}, // No-op for backward compatibility
   reindexRows: reindexRows,
   serializeRows: serializeRows,
   applyRows: applyRows,
@@ -77,18 +77,22 @@ window.ModifierBoxRowManager = {
   clearStoredModifierRows: clearStoredRows,
   resetAllRows: resetAllRows,
   executeFormula: executeFormula,
-  getRowCounter: () => rowCounter,
-  setRowCounter: value => (rowCounter = value),
+  getRowCounter: (): number => rowCounter,
+  setRowCounter: (value: number): void => {
+    rowCounter = value;
+  },
 };
 
-function setupRowLogic(modifierBox) {
+function setupRowLogic(modifierBox: HTMLElement): void {
   if (!modifierBox) {
     console.error('setupRowLogic: modifierBox is required');
     return;
   }
 
   // Add event listener for the add button (only if not already added)
-  const addButton = modifierBox.querySelector('.add-modifier-btn');
+  const addButton = modifierBox.querySelector(
+    '.add-modifier-btn'
+  ) as HTMLButtonElement | null;
   if (addButton && !addButton.hasAttribute('data-listener-added')) {
     addButton.addEventListener('click', () => {
       addFormulaRow(modifierBox);
@@ -100,7 +104,7 @@ function setupRowLogic(modifierBox) {
   updateEventListeners(modifierBox);
 }
 
-function addFormulaRow(modifierBox) {
+function addFormulaRow(modifierBox: HTMLElement): void {
   if (!modifierBox) {
     console.error('addFormulaRow: modifierBox is required');
     return;
@@ -134,7 +138,9 @@ function addFormulaRow(modifierBox) {
   saveRows(modifierBox);
 
   // Move focus to the new row's name field, selecting its text for quick edit
-  const newNameInput = newRow.querySelector('.modifier-name');
+  const newNameInput = newRow.querySelector(
+    '.modifier-name'
+  ) as HTMLInputElement | null;
   if (newNameInput) {
     newNameInput.focus();
     newNameInput.select();
@@ -151,7 +157,7 @@ function addFormulaRow(modifierBox) {
   }
 }
 
-function removeRow(rowElement, modifierBox) {
+function removeRow(rowElement: HTMLElement, modifierBox: HTMLElement): void {
   if (!rowElement) {
     console.error('removeRow: rowElement is null or undefined');
     return;
@@ -167,11 +173,15 @@ function removeRow(rowElement, modifierBox) {
 
   // If this is the only row left, reset it to default values instead of removing
   if (totalRows === 1) {
-    const nameInput = rowElement.querySelector('.modifier-name');
-    const formulaInput = rowElement.querySelector('.formula-input');
+    const nameInput = rowElement.querySelector(
+      '.modifier-name'
+    ) as HTMLInputElement | null;
+    const formulaInput = rowElement.querySelector(
+      '.formula-input'
+    ) as HTMLInputElement | null;
 
-    nameInput.value = 'Roll';
-    formulaInput.value = '1d20';
+    if (nameInput) nameInput.value = 'Roll';
+    if (formulaInput) formulaInput.value = '1d20';
 
     // Save the updated state to localStorage
     saveRows(modifierBox);
@@ -189,11 +199,15 @@ function removeRow(rowElement, modifierBox) {
 }
 
 // Function to reindex all rows after deletion
-function reindexRows(modifierBox) {
+function reindexRows(modifierBox: HTMLElement): void {
   const rows = modifierBox.querySelectorAll('.modifier-row');
   rows.forEach((row, index) => {
-    const nameInput = row.querySelector('.modifier-name');
-    const formulaInput = row.querySelector('.formula-input');
+    const nameInput = row.querySelector(
+      '.modifier-name'
+    ) as HTMLInputElement | null;
+    const formulaInput = row.querySelector(
+      '.formula-input'
+    ) as HTMLInputElement | null;
 
     if (nameInput) {
       nameInput.setAttribute('data-index', index.toString());
@@ -204,7 +218,7 @@ function reindexRows(modifierBox) {
   });
 }
 
-function updateEventListeners(modifierBox) {
+function updateEventListeners(modifierBox: HTMLElement): void {
   if (!modifierBox) {
     console.error('updateEventListeners: modifierBox is required');
     return;
@@ -213,10 +227,18 @@ function updateEventListeners(modifierBox) {
   const rows = modifierBox.querySelectorAll('.modifier-row');
 
   rows.forEach(row => {
-    const nameInput = row.querySelector('.modifier-name');
-    const formulaInput = row.querySelector('.formula-input');
-    const rollButton = row.querySelector('.roll-formula-btn');
-    const removeButton = row.querySelector('.remove-row-btn');
+    const nameInput = row.querySelector(
+      '.modifier-name'
+    ) as HTMLInputElement | null;
+    const formulaInput = row.querySelector(
+      '.formula-input'
+    ) as HTMLInputElement | null;
+    const rollButton = row.querySelector(
+      '.roll-formula-btn'
+    ) as HTMLButtonElement | null;
+    const removeButton = row.querySelector(
+      '.remove-row-btn'
+    ) as HTMLButtonElement | null;
 
     // Save on input changes
     if (nameInput) {
@@ -230,7 +252,7 @@ function updateEventListeners(modifierBox) {
       });
 
       // Allow Enter key in formula input to trigger roll
-      formulaInput.addEventListener('keydown', event => {
+      formulaInput.addEventListener('keydown', (event: KeyboardEvent) => {
         if (event.key === 'Enter') {
           event.preventDefault();
           executeFormula(formulaInput.value);
@@ -240,8 +262,10 @@ function updateEventListeners(modifierBox) {
 
     // Roll button executes the formula
     if (rollButton) {
-      rollButton.onclick = function () {
-        const formula = row.querySelector('.formula-input');
+      rollButton.onclick = function (): void {
+        const formula = row.querySelector(
+          '.formula-input'
+        ) as HTMLInputElement | null;
         if (formula && formula.value.trim()) {
           executeFormula(formula.value);
         } else {
@@ -259,8 +283,8 @@ function updateEventListeners(modifierBox) {
 
     // Remove button
     if (removeButton) {
-      removeButton.onclick = function () {
-        removeRow(row, modifierBox);
+      removeButton.onclick = function (): void {
+        removeRow(row as HTMLElement, modifierBox);
       };
     }
   });
@@ -270,8 +294,8 @@ function updateEventListeners(modifierBox) {
  * Serialize the current rows in their DOM order.
  * Returns { rows: [{ name, formula }], version: 2 }.
  */
-function serializeRows(modifierBox) {
-  const rowsData = [];
+function serializeRows(modifierBox: HTMLElement | null): RowData {
+  const rowsData: RowEntry[] = [];
 
   if (!modifierBox) {
     return { rows: rowsData, version: CURRENT_VERSION };
@@ -279,8 +303,12 @@ function serializeRows(modifierBox) {
 
   const rows = modifierBox.querySelectorAll('.modifier-row');
   rows.forEach(row => {
-    const nameInput = row.querySelector('.modifier-name');
-    const formulaInput = row.querySelector('.formula-input');
+    const nameInput = row.querySelector(
+      '.modifier-name'
+    ) as HTMLInputElement | null;
+    const formulaInput = row.querySelector(
+      '.formula-input'
+    ) as HTMLInputElement | null;
 
     if (nameInput && formulaInput) {
       rowsData.push({
@@ -294,7 +322,7 @@ function serializeRows(modifierBox) {
 }
 
 // Save all rows to localStorage
-function saveRows(modifierBox) {
+function saveRows(modifierBox: HTMLElement): void {
   if (!modifierBox) {
     return;
   }
@@ -315,7 +343,7 @@ function saveRows(modifierBox) {
  * Accepts both v1 and v2 formats (auto-migrates v1).
  * Returns true on success.
  */
-function applyRows(modifierBox, data) {
+function applyRows(modifierBox: HTMLElement, data: RowData): boolean {
   const migrated = migrateRowData(data);
   if (!modifierBox || !migrated || !Array.isArray(migrated.rows)) {
     return false;
@@ -365,7 +393,7 @@ function applyRows(modifierBox, data) {
 }
 
 // Load rows from localStorage (tries new key first, then legacy key with migration)
-function loadRows(modifierBox) {
+function loadRows(modifierBox: HTMLElement): boolean {
   if (!modifierBox) {
     return false;
   }
@@ -378,7 +406,7 @@ function loadRows(modifierBox) {
       stored = localStorage.getItem(LEGACY_STORAGE_KEY);
       if (stored) {
         // Migrate: save under new key, remove legacy key
-        const parsed = JSON.parse(stored);
+        const parsed = JSON.parse(stored) as RowData;
         const migrated = migrateRowData(parsed);
         if (migrated) {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
@@ -392,7 +420,7 @@ function loadRows(modifierBox) {
       return false;
     }
 
-    const data = JSON.parse(stored);
+    const data = JSON.parse(stored) as RowData;
     if (!data.rows || !Array.isArray(data.rows)) {
       return false;
     }
@@ -413,7 +441,7 @@ function loadRows(modifierBox) {
  * Apply a saved profile's rows and persist to localStorage.
  * Returns true on success.
  */
-function applyProfileRows(modifierBox, profile) {
+function applyProfileRows(modifierBox: HTMLElement, profile: RowData): boolean {
   const applied = applyRows(modifierBox, profile);
   if (applied) {
     saveRows(modifierBox);
@@ -422,7 +450,7 @@ function applyProfileRows(modifierBox, profile) {
 }
 
 // Clear stored rows
-function clearStoredRows() {
+function clearStoredRows(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(LEGACY_STORAGE_KEY);
@@ -432,7 +460,7 @@ function clearStoredRows() {
 }
 
 // Reset all rows to a single default row
-function resetAllRows(modifierBox) {
+function resetAllRows(modifierBox: HTMLElement): void {
   if (!modifierBox) {
     console.error('resetAllRows: modifierBox is required');
     return;
@@ -473,7 +501,7 @@ function resetAllRows(modifierBox) {
 /**
  * Escape HTML special characters in a string for safe insertion into innerHTML.
  */
-function escapeHtml(text) {
+function escapeHtml(text: string): string {
   const div = document.createElement('div');
   div.textContent = text || '';
   return div.innerHTML;
@@ -494,15 +522,17 @@ export { resetAllRows };
 export { executeFormula };
 export { reindexRows };
 export { migrateRowData };
-export const getRowCounter = () => rowCounter;
-export const setRowCounter = value => (rowCounter = value);
+export const getRowCounter = (): number => rowCounter;
+export const setRowCounter = (value: number): void => {
+  rowCounter = value;
+};
 
 // No-op stubs for backward compatibility
-export const updateSelectedModifier = function () {};
-export const clearModifierState = function () {};
+export const updateSelectedModifier = function (): void {};
+export const clearModifierState = function (): void {};
 
 // Helper function to reset module state (for testing)
-export const resetState = () => {
+export const resetState = (): void => {
   rowCounter = 1;
 };
 
@@ -512,8 +542,8 @@ export default {
   addModifierRow: addFormulaRow,
   removeModifierRow: removeRow,
   updateEventListeners,
-  updateSelectedModifier: function () {},
-  clearModifierState: function () {},
+  updateSelectedModifier: function (): void {},
+  clearModifierState: function (): void {},
   reindexRows,
   serializeRows,
   applyRows,
@@ -534,8 +564,8 @@ if (typeof window !== 'undefined') {
     addModifierRow: addFormulaRow,
     removeModifierRow: removeRow,
     updateEventListeners,
-    updateSelectedModifier: function () {},
-    clearModifierState: function () {},
+    updateSelectedModifier: function (): void {},
+    clearModifierState: function (): void {},
     reindexRows,
     serializeRows,
     applyRows,

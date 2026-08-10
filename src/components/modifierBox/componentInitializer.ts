@@ -10,17 +10,20 @@ import {
   updateTheme as updateThemeFromThemeManager,
   startThemeMonitoring,
   stopThemeMonitoring,
-} from './themeManager.js';
-import { setupDragFunctionality } from './dragHandler.js';
-import { setupModifierRowLogic, loadModifierRows } from './rowManager.js';
+} from './themeManager';
+import { setupDragFunctionality } from './dragHandler';
+import { setupModifierRowLogic, loadModifierRows } from './rowManager';
 import {
   setupMinimizeControls,
   setupClearAllControls,
   restoreMinimizedState,
-} from './uiControls.js';
-import { setupPopoutControls } from './popoutManager.js';
+} from './uiControls';
+import { setupPopoutControls } from './popoutManager';
 
-export function setupModifierBoxComponents(modifierBox, clearAllCallback) {
+export function setupModifierBoxComponents(
+  modifierBox: HTMLElement,
+  clearAllCallback: () => void
+): boolean {
   if (!modifierBox) {
     console.error('setupModifierBoxComponents: modifierBox is null');
     return false;
@@ -38,7 +41,6 @@ export function setupModifierBoxComponents(modifierBox, clearAllCallback) {
     setupThemeManagement(modifierBox);
     setupDragAndDrop(modifierBox);
     setupPositioning(modifierBox);
-    setupRollWindowSlider(modifierBox);
     setupCleanupHandlers();
 
     modifierBox.setAttribute('data-components-setup', 'true');
@@ -49,7 +51,7 @@ export function setupModifierBoxComponents(modifierBox, clearAllCallback) {
   }
 }
 
-function setupStyles() {
+function setupStyles(): void {
   try {
     if (
       window.ModifierBoxThemeManager &&
@@ -66,7 +68,7 @@ function setupStyles() {
   }
 }
 
-function setupDragHandling(modifierBox) {
+function setupDragHandling(modifierBox: HTMLElement): void {
   try {
     if (
       window.ModifierBoxDragHandler &&
@@ -83,7 +85,7 @@ function setupDragHandling(modifierBox) {
   }
 }
 
-function setupRowManagement(modifierBox) {
+function setupRowManagement(modifierBox: HTMLElement): void {
   try {
     if (
       window.ModifierBoxRowManager &&
@@ -113,7 +115,10 @@ function setupRowManagement(modifierBox) {
   }
 }
 
-function setupUIControls(modifierBox, clearAllCallback) {
+function setupUIControls(
+  modifierBox: HTMLElement,
+  clearAllCallback: () => void
+): void {
   setupMinimizeControls(modifierBox);
   setupPopoutControls(modifierBox);
 
@@ -126,19 +131,19 @@ function setupUIControls(modifierBox, clearAllCallback) {
   restoreMinimizedState(modifierBox);
 }
 
-function setupThemeManagement(modifierBox) {
+function setupThemeManagement(modifierBox: HTMLElement): void {
   try {
     if (
       window.ModifierBoxThemeManager &&
       window.ModifierBoxThemeManager.startThemeMonitoring
     ) {
       window.ModifierBoxThemeManager.startThemeMonitoring(
-        (_newTheme, _colors) => {
+        (_newTheme: string, _colors: ThemeColors) => {
           window.ModifierBoxThemeManager.updateTheme(modifierBox);
         }
       );
     } else if (typeof startThemeMonitoring === 'function') {
-      startThemeMonitoring((_newTheme, _colors) => {
+      startThemeMonitoring((_newTheme: string, _colors: ThemeColors) => {
         if (typeof updateThemeFromThemeManager === 'function') {
           updateThemeFromThemeManager(modifierBox);
         } else if (
@@ -167,13 +172,13 @@ function setupThemeManagement(modifierBox) {
   }
 }
 
-function setupDragAndDrop(modifierBox) {
+function setupDragAndDrop(modifierBox: HTMLElement): void {
   if (window.RowDragDrop) {
     const existingRows = modifierBox.querySelectorAll('.modifier-row');
     existingRows.forEach(row => {
       if (!row.querySelector('.drag-handle')) {
         if (window.addDragHandle) {
-          window.addDragHandle(row);
+          window.addDragHandle(row as HTMLElement);
         }
       }
     });
@@ -188,53 +193,13 @@ function setupDragAndDrop(modifierBox) {
   }
 }
 
-function setupRollWindowSlider(modifierBox) {
-  const slider = modifierBox.querySelector('.roll-window-slider');
-  const valueDisplay = modifierBox.querySelector('.roll-window-value');
-  if (!slider || !valueDisplay) {
-    return;
-  }
-
-  // Load saved value from localStorage
-  try {
-    const saved = localStorage.getItem('pixels_roll_window_seconds');
-    if (saved) {
-      const savedValue = parseInt(saved, 10);
-      if (savedValue >= 1 && savedValue <= 10) {
-        slider.value = savedValue;
-        valueDisplay.textContent = savedValue;
-        if (window.RollBatcher) {
-          window.RollBatcher.setWindowMs(savedValue * 1000);
-        }
-      }
-    }
-  } catch {
-    // localStorage unavailable, use default
-  }
-
-  slider.addEventListener('input', () => {
-    const seconds = parseInt(slider.value, 10);
-    valueDisplay.textContent = seconds;
-
-    if (window.RollBatcher) {
-      window.RollBatcher.setWindowMs(seconds * 1000);
-    }
-
-    try {
-      localStorage.setItem('pixels_roll_window_seconds', seconds.toString());
-    } catch {
-      // localStorage unavailable
-    }
-  });
-}
-
-function setupPositioning(modifierBox) {
+function setupPositioning(modifierBox: HTMLElement): void {
   modifierBox.style.top = '20px';
   modifierBox.style.left = '60px';
   modifierBox.style.right = 'auto';
 }
 
-function setupCleanupHandlers() {
+function setupCleanupHandlers(): void {
   window.addEventListener('beforeunload', () => {
     if (
       window.ModifierBoxThemeManager &&
@@ -247,7 +212,7 @@ function setupCleanupHandlers() {
   });
 }
 
-export function checkDependencies() {
+export function checkDependencies(): boolean {
   const hasThemeManager =
     window.ModifierBoxThemeManager &&
     typeof window.ModifierBoxThemeManager.addStyles === 'function';
@@ -270,7 +235,7 @@ export function checkDependencies() {
   return true;
 }
 
-const ComponentInitializer = {
+const ComponentInitializer: ModifierBoxComponentInitializerModule = {
   setupModifierBoxComponents,
   checkDependencies,
 };
