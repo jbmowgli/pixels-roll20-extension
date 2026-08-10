@@ -238,6 +238,59 @@
   background-color: rgba(76, 175, 80, 0.1) !important;
 }
 
+/* Roll Window Slider */
+#pixels-modifier-box .pixels-roll-window {
+  padding: 8px 16px 12px !important;
+  border-top: 1px solid #444444 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  background-color: #2b2b2b !important;
+}
+
+#pixels-modifier-box .roll-window-label {
+  font-size: 12px !important;
+  color: #cccccc !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+#pixels-modifier-box .roll-window-value {
+  font-weight: bold !important;
+  color: #4a9eff !important;
+}
+
+#pixels-modifier-box .roll-window-slider {
+  width: 100% !important;
+  height: 4px !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background: #444444 !important;
+  border-radius: 2px !important;
+  outline: none !important;
+  cursor: pointer !important;
+}
+
+#pixels-modifier-box .roll-window-slider::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 14px !important;
+  height: 14px !important;
+  border-radius: 50% !important;
+  background: #4a9eff !important;
+  cursor: pointer !important;
+}
+
+#pixels-modifier-box .roll-window-slider::-moz-range-thumb {
+  width: 14px !important;
+  height: 14px !important;
+  border-radius: 50% !important;
+  background: #4a9eff !important;
+  cursor: pointer !important;
+  border: none !important;
+}
+
 /* Resize Handle */
 #pixels-modifier-box .pixels-resize-handle {
   position: absolute !important;

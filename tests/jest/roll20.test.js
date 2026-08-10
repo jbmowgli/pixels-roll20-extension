@@ -353,7 +353,7 @@ describe('Roll20.js - Comprehensive Tests', () => {
       // Status is sent automatically on module load
       expect(mockChrome.runtime.sendMessage).toHaveBeenCalledWith({
         action: 'showText',
-        text: 'No Pixel connected',
+        text: 'No Pixels connected',
       });
     });
   });

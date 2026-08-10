@@ -4,6 +4,7 @@
  */
 
 import { filter } from 'ramda';
+import { getKnownDice } from '../utils/knownDiceStorage.js';
 
 // Message handler for extension communication
 export const sendMessageToExtension = data => {
@@ -32,29 +33,44 @@ export const sendTextToExtension = txt => {
   sendMessageToExtension({ action: 'showText', text: txt });
 };
 
-export const sendStatusToExtension = () => {
+export const sendStatusToExtension = async () => {
   const pixels = window.pixels || [];
 
   // Verify actual GATT state for each pixel, not just cached _isConnected
   const connectedPixels = filter(p => {
     try {
-      return p.isConnected && p.device && p.device.gatt && p.device.gatt.connected;
+      return (
+        p.isConnected && p.device && p.device.gatt && p.device.gatt.connected
+      );
     } catch {
       return false;
     }
   }, pixels);
-  const totalPixels = pixels.length;
 
-  if (totalPixels === 0) {
-    sendTextToExtension('No Pixel connected');
-  } else if (totalPixels === 1) {
-    const status = connectedPixels.length === 1 ? 'connected' : 'disconnected';
-    sendTextToExtension(`1 Pixel ${status}`);
+  // Use known dice count as the total so status shows progress toward full reconnection
+  let knownTotal = 0;
+  try {
+    const knownDice = await getKnownDice();
+    knownTotal = knownDice.length;
+  } catch {
+    knownTotal = 0;
+  }
+
+  const totalToShow = Math.max(knownTotal, pixels.length);
+
+  if (totalToShow === 0) {
+    sendTextToExtension('No Pixels connected');
   } else {
     sendTextToExtension(
-      `${connectedPixels.length}/${totalPixels} Pixels connected`
+      `${connectedPixels.length}/${totalToShow} Pixels connected`
     );
   }
+
+  // Update the extension icon badge with the connected count
+  sendMessageToExtension({
+    action: 'updateBadge',
+    count: connectedPixels.length,
+  });
 };
 
 export const setupMessageListener = () => {
@@ -105,18 +121,6 @@ export const setupMessageListener = () => {
                   }
                 }
               }
-            }
-            break;
-
-          case 'showModifier':
-            if (window.showModifierBox) {
-              window.showModifierBox();
-            }
-            break;
-
-          case 'hideModifier':
-            if (window.hideModifierBox) {
-              window.hideModifierBox();
             }
             break;
 

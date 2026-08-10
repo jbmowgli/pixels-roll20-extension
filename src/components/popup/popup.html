@@ -14,28 +14,32 @@
 
       <!-- Content area -->
       <div class="popup-content">
-        <!-- Connection section -->
-        <div class="connection-section">
-          <button id="connect" class="primary-button">Connect to Pixel</button>
-          <div class="connection-status">
-            <div id="text" class="status-text"></div>
-          </div>
-        </div>
-
-        <!-- Modifier controls -->
+        <!-- Roll mode controls -->
         <div class="modifier-section">
-          <div class="button-container">
-            <button id="showModifier" class="secondary-button">
-              Show Modifier Box
-            </button>
-            <button id="hideModifier" class="secondary-button">
-              Hide Modifier Box
-            </button>
+          <div class="toggle-container">
+            <label class="toggle-label">
+              <input type="checkbox" id="allowUnprompted" checked />
+              <span class="toggle-text">Allow unprompted rolls</span>
+            </label>
+          </div>
+          <div class="toggle-container">
+            <label class="toggle-label">
+              <input type="checkbox" id="allowDiceSubstitution" />
+              <span class="toggle-text"
+                >Allow d8, d12 and d20 as d4, d6 and d10</span
+              >
+            </label>
+          </div>
+          <div class="button-container" id="modifierButtons">
+            <label class="toggle-label">
+              <input type="checkbox" id="toggleModifierBox" checked />
+              <span class="toggle-text">Show Modifier Box</span>
+            </label>
           </div>
         </div>
 
         <!-- Profiles -->
-        <div class="profiles-section">
+        <div class="profiles-section" id="profilesSection">
           <div class="section-label">Saved Profiles</div>
 
           <div
@@ -85,9 +89,24 @@
             />
           </div>
         </div>
+
+        <!-- Connection section -->
+        <div class="connection-section">
+          <div
+            id="knownDiceSection"
+            class="known-dice-section"
+            style="display: none"
+          >
+            <div class="section-label">
+              Known Dice
+              <span id="knownDiceCount" class="dice-count-label"></span>
+            </div>
+            <ul id="knownDiceList" class="known-dice-list"></ul>
+          </div>
+          <button id="connect" class="primary-button">Connect to Pixel</button>
+        </div>
       </div>
     </div>
-    <!-- <button id="disconnect">Disconnect</button> -->
     <script src="popup.js"></script>
   </body>
 </html>

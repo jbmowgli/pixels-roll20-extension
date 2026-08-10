@@ -5,18 +5,20 @@
 - Chrome(ium) browser (version 88 or later)
 - Bluetooth-enabled computer
 - Pixels dice
-- Roll20 account
+- Roll20 account (any game system — no character sheet dependencies)
 
 **Development Only**:
+
 - Node.js (version 14 or later) - only needed if building from source
 
 ## Installation Options
 
 ### Option 1: Pre-built Package (Recommended) ⚡
 
-**Fastest method**: Download and install the ready-to-use extension in under 2 minutes.
+**Fastest method**: Download and install PixelLink in under 2 minutes. Works with any Roll20 game — no campaign setup required.
 
 #### Steps:
+
 1. **Download the Extension**
    - Download `pixels-roll20-extension-store.zip` from the [latest release](../../releases)
    - Or get it directly from the repository root
@@ -33,7 +35,7 @@
    - Extension icon should appear in Chrome toolbar
 
 4. **Verify Installation**
-   - Look for the Pixels dice icon in Chrome toolbar
+   - Look for the PixelLink dice icon in Chrome toolbar
    - Click it to open the popup interface
    - Ready to connect your dice!
 
@@ -42,6 +44,7 @@
 **For developers**: Build the extension yourself from the source code with webpack.
 
 #### Prerequisites:
+
 ```bash
 # Ensure you have Node.js installed
 node --version  # Should be 14 or later
@@ -49,18 +52,22 @@ npm --version   # Should be 6 or later
 ```
 
 #### Steps:
+
 1. **Clone the Repository**
+
    ```bash
    git clone https://github.com/your-username/PixelsRoll20ChromeExtension.git
    cd PixelsRoll20ChromeExtension
    ```
 
 2. **Install Dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Build the Extension with Webpack**
+
    ```bash
    # For development build (faster, includes source maps)
    npm run build
@@ -80,10 +87,10 @@ npm --version   # Should be 6 or later
 
 After installation (either method):
 
-1. **Extension Loaded**: Look for the Pixels dice icon in Chrome toolbar
+1. **Extension Loaded**: Look for the PixelLink dice icon in Chrome toolbar
 2. **Popup Works**: Click the icon - popup should open without errors
 3. **Permissions Granted**: Extension should have all required permissions
-4. **Ready for Roll20**: Navigate to a Roll20 game to test
+4. **Ready for Roll20**: Navigate to any Roll20 game to test (works with every system)
 
 ## Development Setup (Optional)
 
@@ -122,15 +129,15 @@ npm run zip:store      # Create zip package from dist/ folder
 
 1. **Make Changes**: Edit files in the `src/` directory
 2. **Build**: Run `npm run build` or `npm run watch` (auto-rebuild)
-3. **Reload Extension**: 
+3. **Reload Extension**:
    - Go to `chrome://extensions/`
    - Click the reload button (🔄) next to the extension
 4. **Test Changes**: Verify functionality in Roll20
 
-1. **Make Changes**: Edit files in the `src/` directory
-2. **Build**: Run `npm run build` to rebuild the `dist/` folder
-3. **Reload Extension**: Click the reload button (🔄) in `chrome://extensions/`
-4. **Test Changes**: Verify your changes work in Roll20
+5. **Make Changes**: Edit files in the `src/` directory
+6. **Build**: Run `npm run build` to rebuild the `dist/` folder
+7. **Reload Extension**: Click the reload button (🔄) in `chrome://extensions/`
+8. **Test Changes**: Verify your changes work in Roll20
 
 ## First Use
 
@@ -203,10 +210,11 @@ That's it! Roll your dice and they should appear in Roll20 chat.
 
 ### Roll20 Integration
 
-1. **Page Recognition**: Extension works on Roll20 game pages
+1. **Page Recognition**: Extension activates on Roll20 game pages
 2. **Chat Integration**: Rolls appear in Roll20 chat
 3. **Modifier Box**: Floating interface appears correctly
 4. **Theme Adaptation**: Interface matches Roll20 theme
+5. **System-Independent**: Works identically regardless of game system or character sheet
 
 ## Troubleshooting Installation
 
@@ -257,7 +265,7 @@ That's it! Roll your dice and they should appear in Roll20 chat.
 #### Extension Logs
 
 1. Go to `chrome://extensions/`
-2. Find Pixels Roll20 extension
+2. Find PixelLink for Roll20
 3. Click "Inspect views: background page"
 4. Check console for background script errors
 
@@ -272,12 +280,12 @@ That's it! Roll your dice and they should appear in Roll20 chat.
 
 ### Pre-built Package Updates
 
-1. **Download Latest Version**: Get the newest `pixels-roll20-extension-store.zip` 
-2. **Remove Old Extension**: 
+1. **Download Latest Version**: Get the newest `pixels-roll20-extension-store.zip`
+2. **Remove Old Extension**:
    - Go to `chrome://extensions/`
-   - Find Pixels Roll20 extension
+   - Find PixelLink for Roll20
    - Click "Remove" button
-3. **Install New Version**: 
+3. **Install New Version**:
    - Extract new package
    - Load the `dist/` folder using "Load unpacked"
 4. **Verify Update**: Test that new features/fixes are working
@@ -306,7 +314,7 @@ npm run build:prod  # Rebuild with webpack
 
 1. **Remove from Chrome**:
    - Go to `chrome://extensions/`
-   - Find Pixels Roll20 extension
+   - Find PixelLink for Roll20
    - Click "Remove" button
    - Confirm removal
 
@@ -343,4 +351,4 @@ npm run build:prod  # Rebuild with webpack
 
 ---
 
-**Installation complete!** You're now ready to bring the magic of Pixels dice to your Roll20 sessions. Roll on! 🎲
+**Installation complete!** You're now ready to bring the magic of Pixels dice to your Roll20 sessions — any system, any game.

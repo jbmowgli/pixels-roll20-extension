@@ -8,30 +8,48 @@
  * - Roll handling and formula processing
  */
 
-import { curry, pipe, map, filter, find, propEq, prop } from 'ramda';
+import { curry, map, filter, find, prop } from 'ramda';
+import { saveKnownDie } from '../../utils/knownDiceStorage.js';
 
 // Utility functions
 const log = window.log || console.log;
 const postChatMessage = window.postChatMessage || function () {};
 const sendTextToExtension = window.sendTextToExtension || function () {};
-const sendStatusToExtension = window.sendStatusToExtension || function () {};
+
+// Resolved lazily because roll20.js sets this after PixelsBluetooth loads
+const getSendStatusToExtension = () =>
+  window.sendStatusToExtension || function () {};
 
 // Pixels dice UUIDs from the official Pixels JS SDK
 
 // Modern Pixels dice UUIDs
 const PIXELS_SERVICE_UUID = 'a6b90001-7a5a-43f2-a962-350c8edc9b5b';
 const PIXELS_NOTIFY_CHARACTERISTIC = 'a6b90002-7a5a-43f2-a962-350c8edc9b5b';
-const _PIXELS_WRITE_CHARACTERISTIC = 'a6b90003-7a5a-43f2-a962-350c8edc9b5b';
+const PIXELS_WRITE_CHARACTERISTIC = 'a6b90003-7a5a-43f2-a962-350c8edc9b5b';
 
 // Legacy Pixels dice UUIDs (for older dice)
 const PIXELS_LEGACY_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const PIXELS_LEGACY_NOTIFY_CHARACTERISTIC =
   '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
-const _PIXELS_LEGACY_WRITE_CHARACTERISTIC =
+const PIXELS_LEGACY_WRITE_CHARACTERISTIC =
   '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
 
 // Global pixels array
 const pixels = [];
+
+// Die type enum from the Pixels BLE protocol (IAmADie message)
+const DIE_TYPE_FACES = {
+  0: 0, // Unknown
+  1: 4, // D4
+  2: 6, // D6
+  3: 8, // D8
+  4: 10, // D10
+  5: 100, // D00 (percentile)
+  6: 12, // D12
+  7: 20, // D20
+  8: 6, // D6 Pipped
+  9: 6, // D6 Fudge
+};
 
 // Reconnection strategy: 'unknown' until first attempt, then 'watch' or 'poll'
 let reconnectionStrategy = 'unknown';
@@ -46,7 +64,7 @@ const pixelsFormulaSimple =
 const isConnected = prop('_isConnected');
 const getName = prop('_name');
 const getPixelByName = curry((name, pixelList) =>
-  find(pipe(getName, propEq(name)), pixelList)
+  find(pixel => getName(pixel) === name, pixelList)
 );
 const getPixelByDeviceId = curry((deviceId, pixelList) =>
   pixelList.find(pixel => {
@@ -75,6 +93,8 @@ export const createPixel = (name, server, device) => {
   let _connectionMonitor = null;
   let _lastActivity = Date.now();
   let _face = null;
+  let _dieType = null; // Parsed from IAmADie BLE message (number of faces)
+  let _batteryLevel = null; // Battery percentage from IAmADie message (0-100)
 
   // Private methods
   const setNotifyCharacteristic = notify => {
@@ -91,6 +111,8 @@ export const createPixel = (name, server, device) => {
       clearInterval(_connectionMonitor);
     }
 
+    let _batteryPollCounter = 0;
+
     _connectionMonitor = setInterval(() => {
       // Only monitor GATT connection state, no timeout-based disconnection
       // This allows for hours between dice rolls without disconnecting
@@ -105,6 +127,13 @@ export const createPixel = (name, server, device) => {
                 attemptReconnection(deviceRef, _pixelSelf);
               }
             }, 5000);
+          } else if (_server) {
+            // Poll battery every ~5 minutes (10 ticks × 30s = 300s)
+            _batteryPollCounter += 1;
+            if (_batteryPollCounter >= 10) {
+              _batteryPollCounter = 0;
+              sendRequestBatteryLevel(_server);
+            }
           }
         } catch (error) {
           log(
@@ -158,7 +187,7 @@ export const createPixel = (name, server, device) => {
           _connectionMonitor = null;
         }
         log(`Pixel ${_name} marked as disconnected`);
-        sendStatusToExtension();
+        getSendStatusToExtension()();
       }
       _disconnectionTimeout = null;
     }, 1000); // 1 second debounce
@@ -185,7 +214,7 @@ export const createPixel = (name, server, device) => {
     }
 
     log(`Pixel ${_name} reconnected successfully`);
-    sendStatusToExtension();
+    getSendStatusToExtension()();
   };
 
   const disconnect = () => {
@@ -206,14 +235,31 @@ export const createPixel = (name, server, device) => {
       _lastActivity = Date.now(); // Track activity for connection monitoring
 
       const value = event.target.value;
-      const arr = [];
-      // Convert raw data bytes to hex values just for the sake of showing something.
-      for (let i = 0; i < value.byteLength; i++) {
-        arr.push(`0x${`00${value.getUint8(i).toString(16)}`.slice(-2)}`);
-      }
 
-      if (value.getUint8(0) === 3) {
+      const messageType = value.getUint8(0);
+
+      if (messageType === 2 && value.byteLength >= 4) {
+        // IAmADie message: parse die type and battery level
+        // Format: [type=2, ledCount, colorway, dieType, dataSetHash(4), pixelId(4),
+        //          availableFlash(2), buildTimestamp(4), rollState, faceIndex,
+        //          batteryLevelPercent, batteryState]
+        const dieTypeEnum = value.getUint8(3);
+        const faces = DIE_TYPE_FACES[dieTypeEnum] || 0;
+        if (faces > 0) {
+          _dieType = faces;
+          log(`Pixel ${_name} identified as d${faces}`);
+          saveKnownDie(_name, faces);
+        }
+        if (value.byteLength >= 21) {
+          _batteryLevel = value.getUint8(20);
+          log(`Pixel ${_name} battery: ${_batteryLevel}%`);
+        }
+      } else if (messageType === 3) {
         handleFaceEvent(value.getUint8(1), value.getUint8(2));
+      } else if (messageType === 34 && value.byteLength >= 2) {
+        // BatteryLevel response: [type=34, levelPercent, batteryState]
+        _batteryLevel = value.getUint8(1);
+        log(`Pixel ${_name} battery update: ${_batteryLevel}%`);
       }
     } catch (error) {
       log(`Notification handling error for ${_name}: ${error.message}`);
@@ -228,7 +274,7 @@ export const createPixel = (name, server, device) => {
       }
     } else if (ev === 1) {
       _face = face;
-      const txt = `${_name}: face up = ${face + 1}`;
+      _hasMoved = false; // Require movement before next roll registers
 
       // Check if modifier box is visible to determine modifier application
       const isModifierBoxVisible =
@@ -245,44 +291,68 @@ export const createPixel = (name, server, device) => {
         window.ModifierBox.syncGlobalVars();
       }
 
-      const diceValue = face + 1;
+      // Calculate face value based on die type
+      // d00 (percentile): faces represent 00, 10, 20... 90
+      // d10: faces represent 1-10 (0 face reads as 10)
+      // All other dice: face index + 1
+      let diceValue;
+      if (_dieType === 100) {
+        diceValue = face === 0 ? 100 : face * 10;
+      } else if (_dieType === 10) {
+        diceValue = face === 0 ? 10 : face;
+      } else {
+        diceValue = face + 1;
+      }
       const modifier = isModifierBoxVisible
         ? parseInt(window.pixelsModifier) || 0
         : 0;
-      const result = diceValue + modifier;
 
-      // Choose formula based on modifier box visibility
-      let formula = isModifierBoxVisible
-        ? pixelsFormulaWithModifier
-        : pixelsFormulaSimple;
-
-      // Add critical hit message if face value is 20
-      if (diceValue === 20 && isModifierBoxVisible) {
-        formula = formula.replace(
-          '{{Pixel=#face_value}}',
-          '{{&#128293; <span style="color: #ff4444; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">CRITICAL!</span> &#128293;}} {{Pixel=#face_value}}'
-        );
+      // Route roll through the prompt (if active) or the batcher
+      const command = window.PixelsCommand;
+      if (command && command.isPromptActive()) {
+        const dieType =
+          _dieType ||
+          (window.RollBatcher &&
+            window.RollBatcher.parseDieType(_name, diceValue)) ||
+          diceValue;
+        command.offerRoll(dieType, diceValue);
+        return;
       }
 
-      // Add fumble message if face value is 1
-      if (diceValue === 1 && isModifierBoxVisible) {
-        formula = formula.replace(
-          '{{Pixel=#face_value}}',
-          '{{&#128128; <span style="color: #888888; font-size: 16px; font-style: italic; opacity: 0.7;">FUMBLE!</span> &#128128;}} {{Pixel=#face_value}}'
-        );
+      // If unprompted rolls are disabled, ignore rolls outside of /pix prompts
+      if (!window.pixelsAllowUnprompted) {
+        return;
       }
 
-      const message = formula
-        .replaceAll('#modifier_name', window.pixelsModifierName)
-        .replaceAll('#modifier_sign', formatModifierSign(modifier))
-        .replaceAll('#face_value', diceValue.toString())
-        .replaceAll('#pixel_name', _name)
-        .replaceAll('#modifier', modifier.toString())
-        .replaceAll('#result', result.toString());
+      const batcher = window.RollBatcher;
+      if (batcher && batcher.addRoll) {
+        const dieType = _dieType || batcher.parseDieType(_name, diceValue);
+        batcher.addRoll({
+          dieName: _name,
+          dieType,
+          faceValue: diceValue,
+          modifier,
+          modifierName: window.pixelsModifierName,
+          isModifierBoxVisible,
+        });
+      } else {
+        // Fallback: post immediately if batcher unavailable
+        const result = diceValue + modifier;
+        const formula = isModifierBoxVisible
+          ? pixelsFormulaWithModifier
+          : pixelsFormulaSimple;
 
-      message.split('\\n').forEach(s => postChatMessage(s));
+        const message = formula
+          .replaceAll('#modifier_name', window.pixelsModifierName)
+          .replaceAll('#modifier_sign', formatModifierSign(modifier))
+          .replaceAll('#face_value', diceValue.toString())
+          .replaceAll('#pixel_name', _name)
+          .replaceAll('#modifier', modifier.toString())
+          .replaceAll('#result', result.toString());
 
-      sendTextToExtension(txt);
+        message.split('\\n').forEach(s => postChatMessage(s));
+        sendTextToExtension(`${_name}: face up = ${diceValue}`);
+      }
     }
   };
 
@@ -315,6 +385,12 @@ export const createPixel = (name, server, device) => {
     },
     get lastFaceUp() {
       return _face;
+    },
+    get dieType() {
+      return _dieType;
+    },
+    get batteryLevel() {
+      return _batteryLevel;
     },
     setNotifyCharacteristic,
     startConnectionMonitoring,
@@ -412,6 +488,43 @@ const findNotifyCharacteristic = async server => {
   );
 };
 
+// Send a single-byte message to the die's write characteristic.
+// Tries modern UUIDs first, then legacy. Non-blocking: failures are silently
+// ignored since the die may not support or respond to every message type.
+const sendMessage = async (server, messageType) => {
+  const writeUuids = [
+    { service: PIXELS_SERVICE_UUID, write: PIXELS_WRITE_CHARACTERISTIC },
+    {
+      service: PIXELS_LEGACY_SERVICE_UUID,
+      write: PIXELS_LEGACY_WRITE_CHARACTERISTIC,
+    },
+  ];
+
+  for (const { service: serviceUuid, write: writeUuid } of writeUuids) {
+    try {
+      const service = await server.getPrimaryService(serviceUuid);
+      const writeChar = await service.getCharacteristic(writeUuid);
+      await writeChar.writeValue(new Uint8Array([messageType]));
+      return;
+    } catch {
+      // Try next UUID pair
+    }
+  }
+};
+
+// Send WhoAreYou (message type 1) to request IAmADie response with die type.
+// Non-blocking: failures are silently ignored since dice may send IAmADie
+// automatically, or the die type will fall back to inference from the name/value.
+const sendWhoAreYou = async server => {
+  await sendMessage(server, 1);
+};
+
+// Send RequestBatteryLevel (message type 33) to request a BatteryLevel response.
+// The die replies with message type 34 containing levelPercent and state.
+const sendRequestBatteryLevel = async server => {
+  await sendMessage(server, 33);
+};
+
 // Main Bluetooth connection logic using functional approach
 const connectToNewPixel = async () => {
   if (!navigator.bluetooth) {
@@ -477,8 +590,15 @@ const connectToNewPixel = async () => {
     log(`Connected to ${device.name}`);
     sendTextToExtension(`Connected to ${device.name}`);
 
+    // Remember this die for quick reconnect in the popup
+    saveKnownDie(device.name);
+
     return pixel;
   } catch (error) {
+    if (error.name === 'NotFoundError') {
+      log('User cancelled the device chooser');
+      return null;
+    }
     log(`Connection failed: ${error.message}`);
     throw error;
   }
@@ -492,7 +612,7 @@ const _handleDeviceDisconnection = device => {
   if (pixel) {
     pixel.markDisconnected();
     sendTextToExtension(`Pixel ${device.name} disconnected`);
-    sendStatusToExtension();
+    getSendStatusToExtension()();
 
     // Attempt to reconnect after a delay
     setTimeout(() => {
@@ -603,7 +723,7 @@ const attemptPollReconnection = async (device, pixel) => {
       sendTextToExtension(
         `Failed to reconnect to ${pixel.name} after ${maxAttempts} attempts`
       );
-      sendStatusToExtension();
+      getSendStatusToExtension()();
     }
   }
 };
@@ -650,6 +770,76 @@ const attemptReconnection = async (device, pixel) => {
 // Export the main connection function
 export const connectToPixel = connectToNewPixel;
 
+// Connect to a specific die by name (filters the Bluetooth chooser)
+export const connectToPixelByName = async name => {
+  if (!navigator.bluetooth) {
+    const error = new Error('Bluetooth not supported in this browser');
+    log(error.message);
+    throw error;
+  }
+
+  const filters = [{ name }];
+
+  try {
+    const device = await navigator.bluetooth.requestDevice({
+      filters,
+      optionalServices: [PIXELS_SERVICE_UUID, PIXELS_LEGACY_SERVICE_UUID],
+    });
+
+    const existingPixel = getPixelByDeviceId(device.id, pixels);
+
+    if (existingPixel && isConnected(existingPixel)) {
+      log(`Already connected to ${device.name} (ID: ${device.id})`);
+      return existingPixel;
+    }
+
+    const server = await device.gatt.connect();
+    const notifyChar = await findNotifyCharacteristic(server);
+
+    await notifyChar.startNotifications();
+
+    // Request die identification (triggers IAmADie response with die type)
+    sendWhoAreYou(server);
+
+    let pixel;
+    if (existingPixel) {
+      existingPixel.reconnect(server, notifyChar);
+      pixel = existingPixel;
+    } else {
+      pixel = createPixel(device.name, server, device);
+      pixel.setNotifyCharacteristic(notifyChar);
+      pixels.push(pixel);
+    }
+
+    pixel.updateActivity();
+    pixel.startConnectionMonitoring();
+
+    if (!pixel._hasDisconnectListener) {
+      device.addEventListener('gattserverdisconnected', () => {
+        log(`Device ${device.name} disconnected`);
+        pixel.markDisconnected();
+        setTimeout(() => {
+          attemptReconnection(device, pixel);
+        }, 5000);
+      });
+      pixel._hasDisconnectListener = true;
+    }
+
+    log(`Connected to ${device.name}`);
+    sendTextToExtension(`Connected to ${device.name}`);
+    saveKnownDie(device.name);
+
+    return pixel;
+  } catch (error) {
+    if (error.name === 'NotFoundError') {
+      log('User cancelled the device chooser');
+      return null;
+    }
+    log(`Connection to ${name} failed: ${error.message}`);
+    throw error;
+  }
+};
+
 // Disconnect all pixels using functional approach
 export const disconnectAllPixels = () => {
   const connectedPixels = getConnectedPixels(pixels);
@@ -659,7 +849,7 @@ export const disconnectAllPixels = () => {
 
   log(`Disconnected ${connectedPixels.length} pixels`);
   sendTextToExtension(`Disconnected ${connectedPixels.length} pixels`);
-  sendStatusToExtension();
+  getSendStatusToExtension()();
 };
 
 // Get pixels list
@@ -693,7 +883,7 @@ const setupGlobalCleanup = () => {
       if (activePixels.length !== pixels.length) {
         pixels.length = 0;
         pixels.push(...activePixels);
-        sendStatusToExtension();
+        getSendStatusToExtension()();
       }
     }, 300000); // Check every 5 minutes instead of 1 minute
   } catch (error) {
@@ -701,7 +891,9 @@ const setupGlobalCleanup = () => {
   }
 };
 
-// Attempt silent reconnection to previously-permitted devices
+// Attempt silent reconnection to previously-permitted devices.
+// Uses watchAdvertisements to listen indefinitely for each known die to
+// start advertising, then connects GATT and sets up notifications.
 const reconnectKnownDevices = async () => {
   if (!navigator.bluetooth || !navigator.bluetooth.getDevices) {
     log('getDevices() not available, skipping silent reconnection');
@@ -716,7 +908,7 @@ const reconnectKnownDevices = async () => {
     }
 
     log(
-      `Found ${devices.length} previously-permitted device(s), attempting reconnection`
+      `Found ${devices.length} previously-permitted device(s), watching for advertisements`
     );
 
     for (const device of devices) {
@@ -726,20 +918,86 @@ const reconnectKnownDevices = async () => {
         continue;
       }
 
-      // Create or reuse pixel entry
-      let pixel = existingPixel;
-      if (!pixel) {
-        pixel = createPixel(device.name || 'Unknown Pixel', null, device);
-        pixel._isConnected = false;
+      watchForDeviceAndConnect(device);
+    }
+  } catch (error) {
+    log(`Silent reconnection setup failed: ${error.message}`);
+  }
+};
+
+// Watch for a single device's advertisements and connect when seen.
+// The listener stays active indefinitely until the device advertises.
+const watchForDeviceAndConnect = device => {
+  const deviceName = device.name || 'Unknown Pixel';
+
+  const handleAdvertisement = async () => {
+    log(`Advertisement received from ${deviceName}, connecting...`);
+
+    // Remove this listener so we don't double-connect
+    device.removeEventListener('advertisementreceived', handleAdvertisement);
+
+    try {
+      const server = await device.gatt.connect();
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      if (!server.connected) {
+        log(`${deviceName} connection lost immediately, will keep watching`);
+        watchForDeviceAndConnect(device);
+        return;
+      }
+
+      const notifyChar = await findNotifyCharacteristic(server);
+      await notifyChar.startNotifications();
+
+      // Request die identification (triggers IAmADie response with die type)
+      sendWhoAreYou(server);
+
+      // Reuse existing pixel or create new one
+      let pixel = getPixelByDeviceId(device.id, pixels);
+      if (pixel) {
+        pixel.reconnect(server, notifyChar, device);
+      } else {
+        pixel = createPixel(deviceName, server, device);
+        pixel.setNotifyCharacteristic(notifyChar);
         pixels.push(pixel);
       }
 
-      // Attempt reconnection using dual-path strategy
-      attemptReconnection(device, pixel);
+      pixel.updateActivity();
+      pixel.startConnectionMonitoring();
+
+      if (!pixel._hasDisconnectListener) {
+        device.addEventListener('gattserverdisconnected', () => {
+          log(`Device ${deviceName} disconnected`);
+          pixel.markDisconnected();
+          // Re-watch for the device to come back
+          setTimeout(() => {
+            watchForDeviceAndConnect(device);
+          }, 2000);
+        });
+        pixel._hasDisconnectListener = true;
+      }
+
+      log(`Silently reconnected to ${deviceName}`);
+      sendTextToExtension(`Reconnected to ${deviceName}`);
+      getSendStatusToExtension()();
+      saveKnownDie(deviceName);
+    } catch (error) {
+      log(`Silent reconnection to ${deviceName} failed: ${error.message}`);
+      // Retry watching — the die may have stopped advertising briefly
+      setTimeout(() => {
+        watchForDeviceAndConnect(device);
+      }, 5000);
     }
-  } catch (error) {
-    log(`Silent reconnection failed: ${error.message}`);
-  }
+  };
+
+  device.addEventListener('advertisementreceived', handleAdvertisement);
+
+  device.watchAdvertisements().catch(error => {
+    if (error.name !== 'InvalidStateError') {
+      // InvalidStateError means already watching, which is fine
+      log(`watchAdvertisements failed for ${deviceName}: ${error.message}`);
+    }
+  });
 };
 
 // Initialize the module

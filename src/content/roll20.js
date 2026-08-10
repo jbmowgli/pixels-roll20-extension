@@ -8,9 +8,12 @@
 import {
   initialize as initializePixelsBluetooth,
   connectToPixel,
+  connectToPixelByName,
   disconnectAllPixels,
   getPixels,
+  findPixelByName,
 } from './modules/PixelsBluetooth.js';
+import { setupChatInterception } from './modules/PixelsCommand.js';
 import {
   sendTextToExtension,
   sendStatusToExtension,
@@ -23,6 +26,19 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
   // Global modifier variables (accessed by modifierBox.js)
   window.pixelsModifier = '0';
   window.pixelsModifierName = 'Modifier 1';
+  window.pixelsAllowUnprompted = true; // Default: process all rolls
+  window.pixelsAllowDiceSubstitution = false; // Default: no substitution
+
+  // Load saved unprompted setting
+  if (typeof chrome !== 'undefined' && chrome.storage) {
+    chrome.storage.local.get('pixels_allow_unprompted', result => {
+      window.pixelsAllowUnprompted = result.pixels_allow_unprompted !== false;
+    });
+    chrome.storage.local.get('pixels_allow_dice_substitution', result => {
+      window.pixelsAllowDiceSubstitution =
+        result.pixels_allow_dice_substitution === true;
+    });
+  }
 
   // Initialize modules and set up message handling
   function initializeExtension() {
@@ -33,8 +49,12 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
     // Initialize the Bluetooth module
     initializePixelsBluetooth();
 
+    // Initialize /pixels chat command interception
+    setupChatInterception();
+
     // Expose functions to global scope for backwards compatibility
     window.connectToPixel = connectToPixel;
+    window.connectToPixelByName = connectToPixelByName;
     window.disconnectAllPixels = disconnectAllPixels;
     window.getPixels = getPixels;
     window.sendTextToExtension = sendTextToExtension;
@@ -88,6 +108,14 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
 
             case 'hideModifier':
               window.hideModifierBox();
+              break;
+
+            case 'setAllowUnprompted':
+              window.pixelsAllowUnprompted = msg.value !== false;
+              break;
+
+            case 'setAllowDiceSubstitution':
+              window.pixelsAllowDiceSubstitution = msg.value === true;
               break;
 
             case 'getCurrentRows': {
@@ -168,9 +196,67 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
               })();
               break;
 
+            case 'reconnect':
+              // Reconnect to a specific die by name (filtered Bluetooth chooser)
+              (async () => {
+                try {
+                  await connectToPixelByName(msg.name);
+                } catch (error) {
+                  log(`Error reconnecting to ${msg.name}: ${error.message}`);
+                  if (typeof window.sendTextToExtension === 'function') {
+                    window.sendTextToExtension(
+                      `Failed to reconnect to ${msg.name}: ${error.message}`
+                    );
+                  }
+                }
+              })();
+              break;
+
             case 'disconnect':
               disconnectAllPixels();
               break;
+
+            case 'disconnectByName': {
+              const pixel = findPixelByName(msg.name, getPixels());
+              if (pixel) {
+                pixel.disconnect();
+                log(`Disconnected ${msg.name}`);
+              }
+              break;
+            }
+
+            case 'forgetByName': {
+              const pixelToForget = findPixelByName(msg.name, getPixels());
+              if (pixelToForget) {
+                const device = pixelToForget.device;
+                pixelToForget.destroy();
+                if (device && device.forget) {
+                  device
+                    .forget()
+                    .catch(err =>
+                      log(`Could not un-pair ${msg.name}: ${err.message}`)
+                    );
+                }
+              }
+              break;
+            }
+
+            case 'getConnectedDice': {
+              const connectedPixels = getPixels().filter(p => p.isConnected);
+              const connected = connectedPixels.map(p => p.name);
+              const batteryLevels = {};
+              const dieTypes = {};
+              connectedPixels.forEach(p => {
+                if (p.batteryLevel !== null) {
+                  batteryLevels[p.name] = p.batteryLevel;
+                }
+                if (p.dieType !== null) {
+                  dieTypes[p.name] = p.dieType;
+                }
+              });
+              sendResponse({ connected, batteryLevels, dieTypes });
+              return true;
+            }
 
             case 'getTheme': {
               // Get current theme from ThemeDetector
@@ -275,14 +361,26 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
     // Load modifier settings from localStorage
     window.loadModifierSettings();
 
-    // Show modifier box by default after a delay
+    // Initialize the modifier box and apply saved visibility after DOM settles
     setTimeout(() => {
       try {
-        // Only show modifier box if not in a popup window
-        if (!window.isRoll20PopupWindow()) {
-          window.showModifierBox();
-        } else {
+        if (window.isRoll20PopupWindow()) {
           window.log('Skipping modifier box in popup window');
+          return;
+        }
+        // Apply saved visibility preferences
+        const shouldShowUnprompted = window.pixelsAllowUnprompted !== false;
+        if (!shouldShowUnprompted) {
+          return;
+        }
+        if (typeof chrome !== 'undefined' && chrome.storage) {
+          chrome.storage.local.get('pixels_modifier_box_visible', result => {
+            if (result.pixels_modifier_box_visible !== false) {
+              window.showModifierBox();
+            }
+          });
+        } else {
+          window.showModifierBox();
         }
       } catch (error) {
         window.log(`Error showing modifier box: ${error}`);

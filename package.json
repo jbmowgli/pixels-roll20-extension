@@ -95,6 +95,7 @@
     ]
   },
   "dependencies": {
+    "@3d-dice/dice-roller-parser": "0.2.6",
     "eslint": "^9.30.0",
     "ramda": "^0.31.3"
   }
