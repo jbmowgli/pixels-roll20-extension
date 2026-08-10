@@ -233,6 +233,36 @@ The `/pix` command supports the full Roll20 dice specification:
 
 The d100 (percentile/d00) die — which shows faces 00, 10, 20 … 90 — can always be used as a d10 during prompted rolls. When a `/pix` prompt is waiting for a d10 and no d100 slot is pending, rolling the percentile die converts its value to the 1–10 range (divide by 10; the 00 face counts as 10). This works unconditionally, regardless of the dice substitution setting.
 
+### Roll Queries (?{prompt})
+
+PixelLink supports Roll20's roll query syntax for dynamic formulas. When a `/pix` command contains `?{...}` tokens, a modal appears asking you to fill in each value before the dice prompt overlay shows.
+
+**Text input** — single default value after the label:
+
+```
+/pix ?{Number of dice}d6+?{Modifier|0}
+```
+
+This prompts "Number of dice" (blank default) and "Modifier" (default 0). If you type `4` and leave the modifier at `0`, the formula resolves to `4d6+0`.
+
+**Dropdown** — multiple options separated by `|`:
+
+```
+/pix ?{Damage|1d6|1d8|2d6}+?{Bonus|0}
+```
+
+This shows a dropdown with choices 1d6, 1d8, and 2d6 for the damage dice, plus a text input for the bonus.
+
+**Syntax reference:**
+
+| Query                        | Result                                 |
+| ---------------------------- | -------------------------------------- |
+| `?{Label}`                   | Text input, empty default              |
+| `?{Label\|default}`          | Text input with default value          |
+| `?{Label\|opt1\|opt2\|opt3}` | Dropdown with options (first selected) |
+
+Roll queries work with both `/pix` and `/gmpix`, and also with saved roll formulas that use the query syntax.
+
 ### Exploding Dice
 
 When a die triggers an explosion condition (e.g., rolling max on `2d6!`), a new slot appears in the overlay automatically. Roll the extra die to fill it. If that roll also explodes, another slot appears — and so on, until the chain stops or the safety limit (20 explosions per group) is reached.
