@@ -239,6 +239,7 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
                 const connected = connectedPixels.map(p => p.name);
                 const batteryLevels: Record<string, number> = {};
                 const dieTypes: Record<string, number> = {};
+                const rssiLevels: Record<string, number> = {};
                 connectedPixels.forEach(p => {
                   if (p.batteryLevel !== null) {
                     batteryLevels[p.name] = p.batteryLevel;
@@ -246,8 +247,16 @@ if (typeof window.roll20PixelsLoaded === 'undefined') {
                   if (p.dieType !== null) {
                     dieTypes[p.name] = p.dieType;
                   }
+                  if (p.rssi !== null) {
+                    rssiLevels[p.name] = p.rssi;
+                  }
                 });
-                sendResponse({ connected, batteryLevels, dieTypes });
+                sendResponse({
+                  connected,
+                  batteryLevels,
+                  dieTypes,
+                  rssiLevels,
+                });
                 return true;
               }
 

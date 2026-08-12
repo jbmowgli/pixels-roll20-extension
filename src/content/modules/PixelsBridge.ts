@@ -58,6 +58,15 @@ function wireRollEvents(pixel: Pixel): void {
   pixel.addEventListener('battery', ({ level }) => {
     log(`Pixel ${pixel.name} battery: ${level}%`);
   });
+
+  pixel.addEventListener('rssi', ({ rssi }) => {
+    log(`Pixel ${pixel.name} RSSI: ${rssi} dBm`);
+  });
+
+  // Start RSSI reporting (every 5 seconds)
+  pixel.reportRssi(true, 5000).catch(() => {
+    // Silently ignore — die may not support RSSI reporting
+  });
 }
 
 // Wire manager-level events

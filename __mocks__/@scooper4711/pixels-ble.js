@@ -37,6 +37,7 @@ class Pixel extends EventEmitter {
     this.name = (knownInfo && knownInfo.name) || device?.name || 'MockPixel';
     this.dieType = (knownInfo && knownInfo.dieType) || null;
     this.batteryLevel = null;
+    this.rssi = null;
     this.isConnected = false;
   }
 
@@ -49,6 +50,8 @@ class Pixel extends EventEmitter {
   }
 
   async blink() {}
+
+  async reportRssi() {}
 
   startConnectionMonitoring() {}
 

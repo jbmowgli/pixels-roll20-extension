@@ -55,6 +55,7 @@ function removeKnownDie(name: string): Promise<void> {
 interface DiceStatusResponse {
   connected: string[];
   batteryLevels: Record<string, number>;
+  rssiLevels: Record<string, number>;
   dieTypes: Record<string, number>;
 }
 
@@ -63,6 +64,7 @@ interface MessageResponse {
   theme?: string;
   connected?: string[];
   batteryLevels?: Record<string, number>;
+  rssiLevels?: Record<string, number>;
   dieTypes?: Record<string, number>;
   rows?: RowEntry[];
 }
@@ -346,6 +348,55 @@ function getDiePath(dieType: number | null): string {
   }
 }
 
+/**
+ * Creates a signal strength SVG icon with 4 bars colored by RSSI level.
+ * Thresholds: ≥ -65 = 4 bars, -65 to -75 = 3 bars, -75 to -85 = 2 bars, < -85 = 1 bar.
+ */
+function createSignalIcon(rssi: number): SVGSVGElement {
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('fill', 'currentColor');
+  svg.style.width = '14px';
+  svg.style.height = '14px';
+
+  let bars: number;
+  let color: string;
+  if (rssi >= -65) {
+    bars = 4;
+    color = '#4ade80';
+  } else if (rssi >= -75) {
+    bars = 3;
+    color = '#4ade80';
+  } else if (rssi >= -85) {
+    bars = 2;
+    color = '#fbbf24';
+  } else {
+    bars = 1;
+    color = '#f87171';
+  }
+
+  const barWidths = [
+    { x: 1, y: 12, width: 2, height: 3 },
+    { x: 5, y: 9, width: 2, height: 6 },
+    { x: 9, y: 5, width: 2, height: 10 },
+    { x: 13, y: 1, width: 2, height: 14 },
+  ];
+
+  barWidths.forEach((bar, index) => {
+    const rect = document.createElementNS(svgNS, 'rect');
+    rect.setAttribute('x', String(bar.x));
+    rect.setAttribute('y', String(bar.y));
+    rect.setAttribute('width', String(bar.width));
+    rect.setAttribute('height', String(bar.height));
+    rect.setAttribute('rx', '0.5');
+    rect.setAttribute('fill', index < bars ? color : '#555555');
+    svg.appendChild(rect);
+  });
+
+  return svg;
+}
+
 async function renderKnownDice(): Promise<void> {
   const section = document.getElementById('knownDiceSection');
   const list = document.getElementById('knownDiceList');
@@ -371,11 +422,17 @@ async function renderKnownDice(): Promise<void> {
       { action: 'getConnectedDice' },
       (response: MessageResponse | undefined) => {
         if (chrome.runtime.lastError || !response) {
-          resolve({ connected: [], batteryLevels: {}, dieTypes: {} });
+          resolve({
+            connected: [],
+            batteryLevels: {},
+            rssiLevels: {},
+            dieTypes: {},
+          });
         } else {
           resolve({
             connected: response.connected || [],
             batteryLevels: response.batteryLevels || {},
+            rssiLevels: response.rssiLevels || {},
             dieTypes: response.dieTypes || {},
           });
         }
@@ -446,6 +503,14 @@ async function renderKnownDice(): Promise<void> {
 
     li.appendChild(dieIcon);
     li.appendChild(nameSpan);
+    if (isConnected && diceStatus.rssiLevels[die.name] !== undefined) {
+      const rssi = diceStatus.rssiLevels[die.name];
+      const signalSpan = document.createElement('span');
+      signalSpan.className = 'known-dice-signal';
+      signalSpan.title = `Signal: ${rssi} dBm`;
+      signalSpan.appendChild(createSignalIcon(rssi));
+      li.appendChild(signalSpan);
+    }
     if (isConnected && battery !== undefined) {
       const batterySpan = document.createElement('span');
       batterySpan.className = 'known-dice-battery';
