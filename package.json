@@ -123,6 +123,7 @@
   },
   "dependencies": {
     "@3d-dice/dice-roller-parser": "github:scooper4711/dice-roller-parser#fix/grouped-roll-modifiers",
+    "@scooper4711/pixels-ble": "^0.2.1",
     "eslint": "^9.30.0"
   }
 }
